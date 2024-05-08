@@ -10,14 +10,14 @@ export class UsersService {
     private readonly userRepository: Repository<UserEntity>,
   ) {}
 
-  findOneByEmail(email: string) {
+  findOneByEmail = (email: string) => {
     return this.userRepository.findOneBy({ email });
-  }
-  async update(user: UserEntity) {
+  };
+  update = async (user: UserEntity) => {
     const exists = await this.userRepository.existsBy({ email: user.email });
     if (!exists) {
       throw new BadRequestException('The user does not exist');
     }
     return this.userRepository.save(user);
-  }
+  };
 }

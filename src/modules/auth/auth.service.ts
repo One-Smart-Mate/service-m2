@@ -3,11 +3,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { LoginDto } from './dto/login.dto';
+import { LoginDTO } from './models/dto/login.dto';
 import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { ResestPasswordDto } from './dto/resetPassword.dto';
+import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
 import { UsersService } from '../users/users.service';
+import { stringConstants } from './constants/string.constant';
 
 @Injectable()
 export class AuthService {
@@ -16,10 +17,10 @@ export class AuthService {
     private readonly usersSevice: UsersService,
   ) {}
 
-  async login(data: LoginDto): Promise<{ access_token: string }> {
+  login = async (data: LoginDTO): Promise<{ access_token: string }> => {
     const user = await this.usersSevice.findOneByEmail(data.email);
     if (!user) {
-      throw new UnauthorizedException('Email does not exist');
+      throw new UnauthorizedException(stringConstants.nonexistentEmail);
     }
 
     const isPasswordValid = await bcryptjs.compare(
@@ -27,7 +28,7 @@ export class AuthService {
       user.password,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Email or password wrong');
+      throw new UnauthorizedException(stringConstants.wrongAuth);
     }
 
     const payload = { email: user.email };
@@ -36,8 +37,8 @@ export class AuthService {
     return {
       access_token,
     };
-  }
-  async resetPassword(data: ResestPasswordDto, email: string) {
+  };
+  resetPassword = async (data: ResestPasswordDTO, email: string) => {
     const user = await this.usersSevice.findOneByEmail(email);
     user.password = await bcryptjs.hash(data.newPassword, 10);
     this.usersSevice.update(user);
@@ -48,5 +49,5 @@ export class AuthService {
     return {
       access_token,
     };
-  }
+  };
 }
