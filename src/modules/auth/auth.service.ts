@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
 import { UsersService } from '../users/users.service';
 import { stringConstants } from './constants/string.constant';
+import { UserResponse } from '../users/models/user.response';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +18,7 @@ export class AuthService {
     private readonly usersSevice: UsersService,
   ) {}
 
-  login = async (data: LoginDTO): Promise<{ access_token: string }> => {
+  login = async (data: LoginDTO): Promise<UserResponse> => {
     const user = await this.usersSevice.findOneByEmail(data.email);
     if (!user) {
       throw new UnauthorizedException(stringConstants.nonexistentEmail);
@@ -31,12 +32,13 @@ export class AuthService {
       throw new UnauthorizedException(stringConstants.wrongAuth);
     }
 
-    const payload = { email: user.email };
+    const roles = await this.usersSevice.getUserRoles(user.id);
+
+    const payload = { id: user.id, name: user.name, email: user.email };
+
     const access_token = await this.jwtService.signAsync(payload);
 
-    return {
-      access_token,
-    };
+    return new UserResponse(user, access_token, roles);
   };
   resetPassword = async (data: ResestPasswordDTO, email: string) => {
     const user = await this.usersSevice.findOneByEmail(email);

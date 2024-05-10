@@ -1,3 +1,5 @@
+import { RoleEntity } from 'src/modules/roles/entities/role.entity';
+import { UserRoleEntity } from 'src/modules/roles/entities/user-role.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -6,13 +8,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  OneToMany,
 } from 'typeorm';
 
 @Entity('users')
 @Index(['siteCode'], { unique: true })
 export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
-  id: string;
+  id: number;
 
   @Column({ name: 'site_id', type: 'int', nullable: false })
   siteId: number;
@@ -81,4 +84,7 @@ export class UserEntity {
 
   @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
+  userRoles: UserRoleEntity[];
 }
