@@ -20,4 +20,13 @@ export class UsersService {
     }
     return this.userRepository.save(user);
   };
+
+  getUserRoles = async (userId: number): Promise<string[]> => {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['userRoles', 'userRoles.role'],
+    });
+
+    return user.userRoles.map((userRole) => userRole.role.name);
+  };
 }
