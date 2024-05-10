@@ -15,5 +15,4 @@ const typeOrmConfig = TypeOrmModule.forRoot({
   },
 });
 
-console.log(process.env);
 export default typeOrmConfig;

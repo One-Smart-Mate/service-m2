@@ -22,12 +22,10 @@ export class UsersService {
   };
 
   getUserRoles = async (userId: number): Promise<string[]> => {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.userRoles', 'userRoles')
-      .leftJoinAndSelect('userRoles.role', 'role')
-      .where('user.id = :userId', { userId })
-      .getOne();
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['userRoles', 'userRoles.role'],
+    });
 
     return user.userRoles.map((userRole) => userRole.role.name);
   };
