@@ -8,7 +8,7 @@ import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
 import { UsersService } from '../users/users.service';
-import { stringConstants } from './constants/string.constant';
+import { stringConstants } from '../../utils/string.constant';
 import { UserResponse } from '../users/models/user.response';
 
 @Injectable()
