@@ -4,6 +4,7 @@ import { IsEmail, IsString, MinLength } from 'class-validator';
 
 export class LoginDTO {
   @ApiProperty({ description: 'email', example: 'username@domain' })
+  @Transform(({ value }) => value.trim())
   @IsEmail()
   email: string;
 

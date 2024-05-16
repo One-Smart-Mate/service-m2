@@ -8,8 +8,12 @@ import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
 import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
 import { UsersService } from '../users/users.service';
-import { stringConstants } from '../../utils/string.constant';
 import { UserResponse } from '../users/models/user.response';
+import {
+  ValidationException,
+  ValidationExceptionType,
+} from 'src/common/exceptions/types/validation.exception';
+import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 
 @Injectable()
 export class AuthService {
@@ -19,37 +23,47 @@ export class AuthService {
   ) {}
 
   login = async (data: LoginDTO): Promise<UserResponse> => {
-    const user = await this.usersSevice.findOneByEmail(data.email);
-    if (!user) {
-      throw new UnauthorizedException(stringConstants.nonexistentEmail);
+    try {
+      const user = await this.usersSevice.findOneByEmail(data.email);
+
+      if (!user) {
+        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+      }
+
+      const isPasswordValid = await bcryptjs.compare(
+        data.password,
+        user.password,
+      );
+
+      if (!isPasswordValid) {
+        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+      }
+
+      const roles = await this.usersSevice.getUserRoles(user.id);
+
+      const payload = { id: user.id, name: user.name, email: user.email };
+
+      const access_token = await this.jwtService.signAsync(payload);
+
+      return new UserResponse(user, access_token, roles);
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-
-    const isPasswordValid = await bcryptjs.compare(
-      data.password,
-      user.password,
-    );
-    if (!isPasswordValid) {
-      throw new UnauthorizedException(stringConstants.wrongAuth);
-    }
-
-    const roles = await this.usersSevice.getUserRoles(user.id);
-
-    const payload = { id: user.id, name: user.name, email: user.email };
-
-    const access_token = await this.jwtService.signAsync(payload);
-
-    return new UserResponse(user, access_token, roles);
   };
   resetPassword = async (data: ResestPasswordDTO, email: string) => {
-    const user = await this.usersSevice.findOneByEmail(email);
-    user.password = await bcryptjs.hash(data.newPassword, 10);
-    this.usersSevice.update(user);
+    try {
+      const user = await this.usersSevice.findOneByEmail(email);
+      user.password = await bcryptjs.hash(data.newPassword, 10);
+      this.usersSevice.update(user);
 
-    const payload = { email: user.email };
-    const access_token = await this.jwtService.signAsync(payload);
+      const payload = { email: user.email };
+      const access_token = await this.jwtService.signAsync(payload);
 
-    return {
-      access_token,
-    };
+      return {
+        access_token,
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
   };
 }
