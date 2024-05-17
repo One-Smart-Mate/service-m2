@@ -6,7 +6,7 @@ import {
 import { LoginDTO } from './models/dto/login.dto';
 import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
+import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { UsersService } from '../users/users.service';
 import { UserResponse } from '../users/models/user.response';
 import {
