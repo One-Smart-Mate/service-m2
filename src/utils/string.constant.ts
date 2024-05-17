@@ -2,6 +2,10 @@ export const stringConstants = {
   incorrectAuth: 'Incorrect e-mail or password.',
   duplicateRecord: 'This record already exists.',
 
+
+  //not found errors
+  companyNotFound: 'Company not found',
+
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
   TABLE_NOT_FOUND: 'TABLE_NOT_FOUND',

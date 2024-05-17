@@ -8,6 +8,7 @@ import {
   ValidationException,
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
+import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
 export class CompanyService {
@@ -36,4 +37,27 @@ export class CompanyService {
       HandleException.exception(exception);
     }
   };
+
+  findAllCompanies = async () => {
+    try{
+      return await this.companyRepository.find()
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
+
+  findCompanyById = async (id: number) =>{
+    try{
+      const companyExists = await this.companyRepository.existsBy({id: id})
+
+      if(!companyExists){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY)
+      }
+      
+      return await this.companyRepository.findBy({id: id})
+
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }
