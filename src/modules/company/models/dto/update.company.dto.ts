@@ -8,6 +8,7 @@ import {
   IsString,
   IsUrl,
 } from 'class-validator';
+import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateCompanyDTO {
   @ApiProperty({ description: 'Id', required: true })
@@ -83,7 +84,7 @@ export class UpdateCompanyDTO {
   })
   @IsNotEmpty()
   @IsString()
-  @IsIn(['A', 'I'])
+  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus])
   status: string;
 
   updatedAt?: Date;

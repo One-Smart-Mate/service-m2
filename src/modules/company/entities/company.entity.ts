@@ -1,13 +1,5 @@
 import { Exclude } from 'class-transformer';
-import {
-  BeforeInsert,
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('companies')
 export class CompanyEntity {
@@ -48,17 +40,14 @@ export class CompanyEntity {
   status: string;
 
   @Exclude()
-  @Column({
-    name: 'created_at',
-    default: () => 'CURRENT_TIMESTAMP',
-  })
+  @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;
 
   @Exclude()
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
   updatedAt: Date;
 
   @Exclude()
-  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
 }

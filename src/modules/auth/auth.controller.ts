@@ -9,7 +9,7 @@ import {
 import { AuthService } from './auth.service';
 import { LoginDTO } from './models/dto/login.dto';
 import { AuthGuard } from './guard/auth.guard';
-import { ResestPasswordDTO } from './models/dto/resetPassword.dto';
+import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Authentication')
