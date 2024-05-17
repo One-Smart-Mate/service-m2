@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put } from '@nestjs/common';
 import { CompanyService } from './company.service';
-import { CreateCompanyDTO } from './dto/create-company.dto';
+import { CreateCompanyDTO } from './models/dto/create-company.dto';
 import { ApiBody, ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
+import { UpdateCompanyDTO } from './models/dto/update-company.dto';
 
 @ApiTags('company')
 @Controller('company')
@@ -10,8 +11,8 @@ export class CompanyController {
 
   @Post('/create')
   @ApiBody({ type: CreateCompanyDTO })
-  create(@Body() createCompanyDto: CreateCompanyDTO) {
-    return this.companyService.create(createCompanyDto);
+  create(@Body() createCompanyDTO: CreateCompanyDTO) {
+    return this.companyService.create(createCompanyDTO);
   }
 
   @Get('/all')
@@ -23,5 +24,11 @@ export class CompanyController {
   @ApiParam({ name: 'plantCode', required: true, example: 1 })
   findOne(@Param('plantCode') id: number) {
     return this.companyService.findCompanyById(+id);
+  }
+
+  @Put('/update')
+  @ApiBody({ type: UpdateCompanyDTO })
+  updateCompany(@Body() updateCompanyDTO: UpdateCompanyDTO) {
+    return this.companyService.update(updateCompanyDTO)
   }
 }
