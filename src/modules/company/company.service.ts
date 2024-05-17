@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CreateCompanyDTO } from './models/dto/create-company.dto';
+import { CreateCompanyDTO } from './models/dto/create.company.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CompanyEntity } from './entities/company.entity';
 import { Not, Repository } from 'typeorm';
@@ -12,8 +12,9 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { UpdateCompanyDTO } from './models/dto/update-company.dto';
-import { UpdateStatusDTO } from './models/dto/update-status.dto';
+import { UpdateCompanyDTO } from './models/dto/update.company.dto';
+import { UpdateStatusDTO } from './models/dto/update.status.dto';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class CompanyService {
@@ -119,7 +120,7 @@ export class CompanyService {
       company.status = updateStatusDTO.status;
       company.updatedAt = new Date();
 
-      if (updateStatusDTO.status === 'I') {
+      if (updateStatusDTO.status === stringConstants.inactiveStatus) {
         company.deletedAt = new Date();
       }
 
