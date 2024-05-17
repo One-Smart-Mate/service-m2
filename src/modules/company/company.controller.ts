@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Get, Param, Put } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Put, Patch } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { CreateCompanyDTO } from './models/dto/create-company.dto';
 import { ApiBody, ApiOkResponse, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UpdateCompanyDTO } from './models/dto/update-company.dto';
+import {UpdateStatusDTO } from './models/dto/update-status.dto';
 
 @ApiTags('company')
 @Controller('company')
@@ -30,5 +31,11 @@ export class CompanyController {
   @ApiBody({ type: UpdateCompanyDTO })
   updateCompany(@Body() updateCompanyDTO: UpdateCompanyDTO) {
     return this.companyService.update(updateCompanyDTO)
+  }
+
+  @Patch('/update/status')
+  @ApiBody({type: UpdateStatusDTO})
+  updateStatus(@Body() updateStatus: UpdateStatusDTO){
+    return this.companyService.updateStatus(updateStatus)
   }
 }

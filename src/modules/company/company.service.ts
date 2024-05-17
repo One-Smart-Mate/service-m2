@@ -13,6 +13,7 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { UpdateCompanyDTO } from './models/dto/update-company.dto';
+import { UpdateStatusDTO } from './models/dto/update-status.dto';
 
 @Injectable()
 export class CompanyService {
@@ -101,6 +102,29 @@ export class CompanyService {
       return await this.companyRepository.save(company);
     } catch (exception) {
       console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  updateStatus = async (updateStatusDTO: UpdateStatusDTO) => {
+    try {
+      const company = await this.companyRepository.findOne({
+        where: { id: updateStatusDTO.id },
+      });
+
+      if (!company) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
+      }
+
+      company.status = updateStatusDTO.status;
+      company.updatedAt = new Date();
+
+      if (updateStatusDTO.status === 'I') {
+        company.deletedAt = new Date();
+      }
+
+      return await this.companyRepository.save(company);
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };
