@@ -6,6 +6,9 @@ export const stringConstants = {
   activeStatus: 'A',
   inactiveStatus: 'I',
 
+  //priority entity
+  hardCodedSiteCode: 'AAAAAA',
+
 
   //not found errors
   companyNotFound: 'Company not found',
