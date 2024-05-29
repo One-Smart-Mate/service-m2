@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  Put,
 } from '@nestjs/common';
 import { PriorityService } from './priority.service';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreatePriorityDTO } from './dto/create.priority.dto';
+import { UpdatePriorityDTO } from './dto/update.priority.dto';
 
 @ApiTags('priority')
 @Controller('priority')
@@ -26,5 +28,11 @@ export class PriorityController {
   @ApiBody({ type: CreatePriorityDTO })
   create(@Body() createPriorityDTO: CreatePriorityDTO) {
     return this.priorityService.create(createPriorityDTO);
+  }
+
+  @Put('/update')
+  @ApiBody({ type: UpdatePriorityDTO})
+  update (@Body() updatePriorityDTO: UpdatePriorityDTO){
+    return this.priorityService.update(updatePriorityDTO)
   }
 }
