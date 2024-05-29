@@ -12,6 +12,7 @@ export const stringConstants = {
 
   //not found errors
   companyNotFound: 'Company not found',
+  priorityNotFound: 'Priority not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',

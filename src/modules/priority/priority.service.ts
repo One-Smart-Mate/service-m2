@@ -10,6 +10,7 @@ import {
 import { CreatePriorityDTO } from './dto/create.priority.dto';
 import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
+import { UpdatePriorityDTO } from './dto/update.priority.dto';
 
 @Injectable()
 export class PriorityService {
@@ -49,6 +50,28 @@ export class PriorityService {
       createPriorityDTO.createdAt = new Date();
 
       return await this.priorityRepository.save(createPriorityDTO);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  update = async (updatepriorityDTO: UpdatePriorityDTO) => {
+    try {
+      const foundPriority = await this.priorityRepository.findOne({
+        where: { id: updatepriorityDTO.id },
+      });
+
+      if (!foundPriority) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+
+      foundPriority.priorityCode = updatepriorityDTO.priorityCode;
+      foundPriority.priorityDescription = updatepriorityDTO.priorityDescription;
+      foundPriority.priorityDays = updatepriorityDTO.priorityDays;
+      foundPriority.status = updatepriorityDTO.status;
+      foundPriority.updatedAt = new Date();
+
+      return await this.priorityRepository.save(foundPriority);
     } catch (exception) {
       HandleException.exception(exception);
     }
