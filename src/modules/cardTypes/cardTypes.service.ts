@@ -29,7 +29,6 @@ export class CardTypesService {
 
       return await this.cardTypesRepository.findBy({ siteId: companyId });
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
