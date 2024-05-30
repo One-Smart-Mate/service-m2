@@ -29,4 +29,8 @@ export class UsersService {
 
     return user.userRoles.map((userRole) => userRole.role.name);
   };
+
+  findById = async (userId: number) => {
+    return await this.userRepository.findOneBy({id: userId})
+  }
 }

@@ -10,8 +10,8 @@ import {
 } from '@nestjs/common';
 import { PriorityService } from './priority.service';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
-import { CreatePriorityDTO } from './dto/create.priority.dto';
-import { UpdatePriorityDTO } from './dto/update.priority.dto';
+import { CreatePriorityDTO } from './models/dto/create.priority.dto';
+import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
 
 @ApiTags('priority')
 @Controller('priority')

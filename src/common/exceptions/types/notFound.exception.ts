@@ -10,11 +10,15 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.PRIORITY) {
       message = stringConstants.priorityNotFound;
     }
+    if (type === NotFoundCustomExceptionType.USER) {
+      message = stringConstants.userNotFound;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
 
 export enum NotFoundCustomExceptionType {
   COMPANY,
-  PRIORITY
+  PRIORITY,
+  USER,
 }

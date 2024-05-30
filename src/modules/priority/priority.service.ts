@@ -7,10 +7,10 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { CreatePriorityDTO } from './dto/create.priority.dto';
+import { CreatePriorityDTO } from './models/dto/create.priority.dto';
 import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
-import { UpdatePriorityDTO } from './dto/update.priority.dto';
+import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
 
 @Injectable()
 export class PriorityService {
