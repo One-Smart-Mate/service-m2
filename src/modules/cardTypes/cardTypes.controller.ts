@@ -1,6 +1,7 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { CardTypesService } from './cardTypes.service';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 
 @Controller('cardTypes')
 @ApiTags('cardTypes')
@@ -11,5 +12,11 @@ export class CardTypesController {
   @ApiParam({ name: 'siteId', required: true, example: 1 })
   findCardTypesByCompany(@Param('siteId') companyId: number) {
     return this.cardTypesService.findCompanyCardTypes(companyId);
+  }
+
+  @Post('/create')
+  @ApiBody({type: CreateCardTypesDTO})
+  create(@Body() createCardTypesDTO:CreateCardTypesDTO){
+    return this.cardTypesService.create(createCardTypesDTO)
   }
 }
