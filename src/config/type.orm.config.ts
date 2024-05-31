@@ -13,6 +13,7 @@ const typeOrmConfig = TypeOrmModule.forRoot({
   extra: {
     connectionLimit: 1000,
   },
+  logging: true
 });
 
 export default typeOrmConfig;
