@@ -11,6 +11,7 @@ import { CompanyService } from '../company/company.service';
 import { UsersService } from '../users/users.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
+import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
 
 @Injectable()
 export class CardTypesService {
@@ -62,6 +63,53 @@ export class CardTypesService {
       createCardTypesDTO.siteCode = stringConstants.hardCodedSiteCode;
 
       return await this.cardTypesRepository.save(createCardTypesDTO);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  update = async (updateCardTypesDTO: UpdateCardTypesDTO) => {
+    try {
+      const foundCardTpyes = await this.cardTypesRepository.findOneBy({
+        id: updateCardTypesDTO.id,
+      });
+
+      if (!foundCardTpyes) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES,);
+      }
+
+
+      if (updateCardTypesDTO.responsableId) {
+        const foundUser = await this.usersService.findById(
+          updateCardTypesDTO.responsableId,
+        );
+        if (!foundUser) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        }
+        foundCardTpyes.responsableId = updateCardTypesDTO.responsableId
+        foundCardTpyes.responsableName = foundUser.name;
+        foundCardTpyes.email = foundUser.email;
+      }
+
+      foundCardTpyes.methodology = updateCardTypesDTO.methodology
+      foundCardTpyes.name = updateCardTypesDTO.name
+      foundCardTpyes.description = updateCardTypesDTO.description
+      foundCardTpyes.color = updateCardTypesDTO.color
+      foundCardTpyes.quantityPicturesCreate = updateCardTypesDTO.quantityPicturesCreate
+      foundCardTpyes.quantityAudiosCreate = updateCardTypesDTO.quantityAudiosCreate
+      foundCardTpyes.quantityVideosCreate = updateCardTypesDTO.quantityVideosCreate
+      foundCardTpyes.audiosDurationCreate = updateCardTypesDTO.audiosDurationCreate
+      foundCardTpyes.videosDurationCreate = updateCardTypesDTO.videosDurationCreate
+      foundCardTpyes.quantityPicturesClose = updateCardTypesDTO.quantityPicturesClose
+      foundCardTpyes.quantityAudiosClose = updateCardTypesDTO.quantityAudiosClose
+      foundCardTpyes.quantityVideosClose = updateCardTypesDTO.quantityVideosClose
+      foundCardTpyes.audiosDurationClose = updateCardTypesDTO.audiosDurationClose
+      foundCardTpyes.videosDurationClose = updateCardTypesDTO.videosDurationClose
+      foundCardTpyes.status = updateCardTypesDTO.status
+      foundCardTpyes.updatedAt = new Date()
+
+      return await this.cardTypesRepository.save(foundCardTpyes)
+
     } catch (exception) {
       HandleException.exception(exception);
     }
