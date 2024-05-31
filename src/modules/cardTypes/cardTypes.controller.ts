@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { CardTypesService } from './cardTypes.service';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
+import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
 
 @Controller('cardTypes')
 @ApiTags('cardTypes')
@@ -18,5 +19,11 @@ export class CardTypesController {
   @ApiBody({type: CreateCardTypesDTO})
   create(@Body() createCardTypesDTO:CreateCardTypesDTO){
     return this.cardTypesService.create(createCardTypesDTO)
+  }
+
+  @Put('/update')
+  @ApiBody({type: UpdateCardTypesDTO})
+  update(@Body() updateCardTypesDTO: UpdateCardTypesDTO){
+    return this.cardTypesService.update(updateCardTypesDTO)
   }
 }
