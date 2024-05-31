@@ -1,5 +1,5 @@
 import { Exclude } from 'class-transformer';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, DeleteDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity("card_types")
 export class CardTypesEntity {
@@ -32,7 +32,7 @@ export class CardTypesEntity {
 
   @Exclude()
   @Column({name: "responsable_id", type: 'bigint', unsigned: true, nullable: true })
-  responsableId: string;
+  responsableId: number;
 
   @Column({name: "responsable_name", type: 'varchar', length: 100, nullable: true })
   responsableName: string;
@@ -45,44 +45,44 @@ export class CardTypesEntity {
   email: string;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_pictures_create: number;
+  @Column({name: "quantity_pictures_create", type: 'tinyint', unsigned: true, nullable: true })
+  quantityPicturesCreate: number;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_audios_create: number;
+  @Column({name: "quantity_audios_create", type: 'tinyint', unsigned: true, nullable: true })
+  quantityAudiosCreate: number;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_videos_create: number;
+  @Column({name: "quantity_videos_create", type: 'tinyint', unsigned: true, nullable: true })
+  quantityVideosCreate: number;
 
   @Exclude()
-  @Column({ type: 'int', unsigned: true, nullable: true })
-  audios_duration_create: number;
+  @Column({name: "audios_duration_create", type: 'int', unsigned: true, nullable: true })
+  audiosDurationCreate: number;
 
   @Exclude()
-  @Column({ type: 'int', unsigned: true, nullable: true })
-  videos_duration_create: number;
+  @Column({name: "videos_duration_create", type: 'int', unsigned: true, nullable: true })
+  videosDurationCreate: number;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_pictures_close: number;
+  @Column({name: "quantity_pictures_close", type: 'tinyint', unsigned: true, nullable: true })
+  quantityPicturesClose: number;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_audios_close: number;
+  @Column({name: "quantity_audios_close", type: 'tinyint', unsigned: true, nullable: true })
+  quantityAudiosClose: number;
 
   @Exclude()
-  @Column({ type: 'tinyint', unsigned: true, nullable: true })
-  quantity_videos_close: number;
+  @Column({name: "quantity_videos_close", type: 'tinyint', unsigned: true, nullable: true })
+  quantityVideosClose: number;
 
   @Exclude()
-  @Column({ type: 'int', unsigned: true, nullable: true })
-  audios_duration_close: number;
+  @Column({name: "audios_duration_close", type: 'int', unsigned: true, nullable: true })
+  audiosDurationClose: number;
 
   @Exclude()
-  @Column({ type: 'int', unsigned: true, nullable: true })
-  videos_duration_close: number;
+  @Column({name: "videos_duration_close", type: 'int', unsigned: true, nullable: true })
+  videosDurationClose: number;
 
   @Exclude()
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
