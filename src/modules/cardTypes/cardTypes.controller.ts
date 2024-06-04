@@ -11,8 +11,8 @@ export class CardTypesController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findCardTypesByCompany(@Param('siteId') companyId: number) {
-    return this.cardTypesService.findCompanyCardTypes(companyId);
+  findCardTypesByCompany(@Param('siteId') siteId: number) {
+    return this.cardTypesService.findSiteCardTypes(siteId);
   }
 
   @Post('/create')

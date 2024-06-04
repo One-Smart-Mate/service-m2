@@ -7,7 +7,6 @@ export const stringConstants = {
   inactiveStatus: 'I',
 
   //Harcoded
-  hardCodedSiteCode: 'AAAAAA',
   tagVersion: '1.0.0',
 
   //not found errors

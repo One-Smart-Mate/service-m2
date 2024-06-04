@@ -99,4 +99,18 @@ export class SiteService {
       HandleException.exception(exception)
     }
   }
+
+  findById = async(id: number) =>{
+    try {
+      const siteExists = await this.siteRepository.existsBy({ id: id });
+
+      if (!siteExists) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
+      return await this.siteRepository.findOneBy({ id: id });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 }
