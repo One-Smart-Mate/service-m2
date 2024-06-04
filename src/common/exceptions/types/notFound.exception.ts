@@ -16,6 +16,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.CARDTYPES) {
       message = stringConstants.cardTypesNotFound;
     }
+    if (type === NotFoundCustomExceptionType.SITE) {
+      message = stringConstants.siteNotFound;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -24,5 +27,6 @@ export enum NotFoundCustomExceptionType {
   COMPANY,
   PRIORITY,
   USER,
-  CARDTYPES
+  CARDTYPES,
+  SITE,
 }
