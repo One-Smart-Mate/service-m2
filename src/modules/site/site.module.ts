@@ -3,9 +3,10 @@ import { SiteService } from './site.service';
 import { SiteController } from './site.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SiteEntity } from './entities/site.entity';
+import { CompanyModule } from '../company/company.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SiteEntity])],
+  imports: [CompanyModule, TypeOrmModule.forFeature([SiteEntity])],
   controllers: [SiteController],
   providers: [SiteService],
 })
