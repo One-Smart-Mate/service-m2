@@ -4,9 +4,10 @@ import { PriorityController } from './priority.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
 import { CompanyModule } from '../company/company.module';
+import { SiteModule } from '../site/site.module';
 
 @Module({
-  imports: [CompanyModule, TypeOrmModule.forFeature([PriorityEntity])],
+  imports: [SiteModule, TypeOrmModule.forFeature([PriorityEntity])],
   controllers: [PriorityController],
   providers: [PriorityService],
 })

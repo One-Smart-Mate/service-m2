@@ -11,26 +11,19 @@ import { CreatePriorityDTO } from './models/dto/create.priority.dto';
 import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
+import { SiteService } from '../site/site.service';
 
 @Injectable()
 export class PriorityService {
   constructor(
     @InjectRepository(PriorityEntity)
     private readonly priorityRepository: Repository<PriorityEntity>,
-    private readonly companyService: CompanyService,
+    private readonly siteService: SiteService,
   ) {}
 
-  findCompanyPriorities = async (id: number) => {
+  findSitePriorities = async (siteId: number) => {
     try {
-      const existCompanyPriorities = await this.priorityRepository.existsBy({
-        siteId: id,
-      });
-
-      if (!existCompanyPriorities) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
-      }
-
-      return await this.priorityRepository.findBy({ siteId: id });
+      return await this.priorityRepository.findBy({ siteId: siteId });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -38,15 +31,15 @@ export class PriorityService {
 
   create = async (createPriorityDTO: CreatePriorityDTO) => {
     try {
-      const foundCompany = await this.companyService.findCompanyById(
+      const foundSite = await this.siteService.findById(
         createPriorityDTO.siteId,
       );
 
-      if (!foundCompany) {
+      if (!foundSite) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
 
-      createPriorityDTO.siteCode = stringConstants.hardCodedSiteCode;
+      createPriorityDTO.siteCode = foundSite.siteCode;
       createPriorityDTO.createdAt = new Date();
 
       return await this.priorityRepository.save(createPriorityDTO);

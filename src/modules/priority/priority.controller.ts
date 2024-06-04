@@ -20,8 +20,8 @@ export class PriorityController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findPrioritiesByCompanyId(@Param('siteId') id: number) {
-    return this.priorityService.findCompanyPriorities(+id);
+  findPrioritiesByCompanyId(@Param('siteId') siteId: number) {
+    return this.priorityService.findSitePriorities(+siteId);
   }
 
   @Post('/create')

@@ -7,32 +7,23 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { CompanyService } from '../company/company.service';
 import { UsersService } from '../users/users.service';
-import { stringConstants } from 'src/utils/string.constant';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
+import { SiteService } from '../site/site.service';
 
 @Injectable()
 export class CardTypesService {
   constructor(
     @InjectRepository(CardTypesEntity)
     private readonly cardTypesRepository: Repository<CardTypesEntity>,
-    private readonly companyService: CompanyService,
     private readonly usersService: UsersService,
+    private readonly siteService: SiteService
   ) {}
 
-  findCompanyCardTypes = async (companyId: number) => {
+  findSiteCardTypes = async (siteId: number) => {
     try {
-      const existCompanyCardTypes = await this.cardTypesRepository.existsBy({
-        siteId: companyId,
-      });
-
-      if (!existCompanyCardTypes) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
-      }
-
-      return await this.cardTypesRepository.findBy({ siteId: companyId });
+      return await this.cardTypesRepository.findBy({ siteId: siteId });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -40,11 +31,11 @@ export class CardTypesService {
 
   create = async (createCardTypesDTO: CreateCardTypesDTO) => {
     try {
-      const foundCompany = await this.companyService.findCompanyById(
+      const foundSite = await this.siteService.findById(
         createCardTypesDTO.siteId,
       );
 
-      if (!foundCompany) {
+      if (!foundSite) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
 
@@ -60,7 +51,7 @@ export class CardTypesService {
       }
 
       createCardTypesDTO.createdAt = new Date();
-      createCardTypesDTO.siteCode = stringConstants.hardCodedSiteCode;
+      createCardTypesDTO.siteCode = foundSite.siteCode;
 
       return await this.cardTypesRepository.save(createCardTypesDTO);
     } catch (exception) {
