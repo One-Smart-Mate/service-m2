@@ -60,7 +60,7 @@ export class SiteEntity {
 
   @Exclude()
   @Column({name: 'due_date', type: 'date' })
-  dueDate: Date;
+  dueDate: string;
 
   @Exclude()
   @Column({name: 'monthly_payment', type: 'decimal', precision: 12, scale: 2 })
@@ -77,7 +77,7 @@ export class SiteEntity {
   @Column({name: 'app_history_days', type: 'smallint' })
   appHistoryDays: number;
 
-  @Column({ type: 'char', length: 1 })
+  @Column({ type: 'char', length: 1, default: 'A' })
   status: string;
 
   @Exclude()
