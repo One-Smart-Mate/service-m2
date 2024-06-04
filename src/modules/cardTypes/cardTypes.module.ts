@@ -11,5 +11,6 @@ import { SiteModule } from '../site/site.module';
   imports: [SiteModule ,CompanyModule, UsersModule,TypeOrmModule.forFeature([CardTypesEntity])],
   controllers: [CardTypesController],
   providers: [CardTypesService],
+  exports: [CardTypesService]
 })
 export class CardTypesModule {}

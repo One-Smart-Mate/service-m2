@@ -105,4 +105,18 @@ export class CardTypesService {
       HandleException.exception(exception);
     }
   };
+
+  findById = async (id : number ) => {
+    try {
+      const cardTypeExist = await this.cardTypesRepository.existsBy({ id: id });
+
+      if (!cardTypeExist) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES);
+      }
+
+      return await this.cardTypesRepository.findOneBy({ id: id });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 }
