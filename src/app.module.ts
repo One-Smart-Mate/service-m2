@@ -10,6 +10,7 @@ import { CompanyModule } from './modules/company/company.module';
 import { PriorityModule } from './modules/priority/priority.module';
 import { CardTypesModule } from './modules/cardTypes/cardTypes.module';
 import { SiteModule } from './modules/site/site.module';
+import { PreclassifierModule } from './modules/preclassifier/preclassifier.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SiteModule } from './modules/site/site.module';
     PriorityModule,
     CardTypesModule,
     SiteModule,
+    PreclassifierModule,
   ],
   controllers: [AppController],
   providers: [AppService],
