@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { PriorityModule } from './modules/priority/priority.module';
 import { CardTypesModule } from './modules/cardTypes/cardTypes.module';
+import { SiteModule } from './modules/site/site.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { CardTypesModule } from './modules/cardTypes/cardTypes.module';
     CompanyModule,
     PriorityModule,
     CardTypesModule,
+    SiteModule,
   ],
   controllers: [AppController],
   providers: [AppService],

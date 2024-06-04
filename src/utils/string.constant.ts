@@ -6,9 +6,9 @@ export const stringConstants = {
   activeStatus: 'A',
   inactiveStatus: 'I',
 
-  //priority entity
+  //Harcoded
   hardCodedSiteCode: 'AAAAAA',
-
+  tagVersion: '1.0.0',
 
   //not found errors
   companyNotFound: 'Company not found',
