@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
 import { SiteService } from './site.service';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateSiteDTO } from './models/dto/create-site.dto';
+import { UpadeSiteDTO } from './models/dto/update.site.dto';
 
 @ApiTags('sites')
 @Controller('sites')
@@ -18,5 +19,11 @@ export class SiteController {
   @ApiBody({type: CreateSiteDTO})
   create(@Body() createSiteDTO: CreateSiteDTO){
     return this.siteService.create(createSiteDTO)
+  }
+
+  @Put('/update')
+  @ApiBody({type: UpadeSiteDTO})
+  update(@Body() updateSiteDTO: UpadeSiteDTO){
+    return this.siteService.update(updateSiteDTO)
   }
 }
