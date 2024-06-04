@@ -1,8 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { stringConstants } from './utils/string.constant';
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
+  getAppInfo(): {app_version: string, env: string} {
+    return {
+      app_version: stringConstants.tagVersion,
+      env: process.env.APP_ENV
+    };
   }
 }
