@@ -3,9 +3,10 @@ import { PreclassifierService } from './preclassifier.service';
 import { PreclassifierController } from './preclassifier.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PreclassifierEntity } from './entities/preclassifier.entity';
+import { CardTypesModule } from '../cardTypes/cardTypes.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PreclassifierEntity])],
+  imports: [CardTypesModule, TypeOrmModule.forFeature([PreclassifierEntity])],
   controllers: [PreclassifierController],
   providers: [PreclassifierService],
 })

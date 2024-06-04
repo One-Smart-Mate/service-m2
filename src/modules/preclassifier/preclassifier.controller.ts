@@ -1,8 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { PreclassifierService } from './preclassifier.service';
-import { CreatePreclassifierDto } from './models/dto/create-preclassifier.dto';
-import { UpdatePreclassifierDto } from './models/dto/update-preclassifier.dto';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { CreatePreclassifierDTO } from './models/dto/create-preclassifier.dto';
 
 @ApiTags('preclassifier')
 @Controller('preclassifier')
@@ -13,5 +12,11 @@ export class PreclassifierController {
   @ApiParam({name:'cardTypesId', required: true, example: 1})
   findAllByCardTypes(@Param('cardTypesId') cardTypeId: number){
     return this.preclassifierService.findCardTypesPreclassifiers(cardTypeId)
+  }
+
+  @Post('/create')
+  @ApiBody({type: CreatePreclassifierDTO})
+  create(@Body() createPreclassifierDTO: CreatePreclassifierDTO){
+    return this.preclassifierService.create(createPreclassifierDTO)
   }
 }
