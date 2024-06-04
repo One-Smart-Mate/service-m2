@@ -1,8 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { SiteService } from './site.service';
-import { CreateSiteDto } from './dto/create-site.dto';
-import { UpdateSiteDto } from './dto/update-site.dto';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { CreateSiteDTO } from './models/dto/create-site.dto';
 
 @ApiTags('sites')
 @Controller('sites')
@@ -15,4 +14,9 @@ export class SiteController {
     return this.siteService.findCompanySites(companyId);
   }
 
+  @Post('/create')
+  @ApiBody({type: CreateSiteDTO})
+  create(@Body() createSiteDTO: CreateSiteDTO){
+    return this.siteService.create(createSiteDTO)
+  }
 }
