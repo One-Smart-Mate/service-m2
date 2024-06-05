@@ -19,6 +19,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.SITE) {
       message = stringConstants.siteNotFound;
     }
+    if (type === NotFoundCustomExceptionType.PRECLASSIFIER) {
+      message = stringConstants.preclsassifierNotFound;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -29,4 +32,5 @@ export enum NotFoundCustomExceptionType {
   USER,
   CARDTYPES,
   SITE,
+  PRECLASSIFIER
 }
