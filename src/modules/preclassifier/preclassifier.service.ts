@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { UpdatePreclassifierDto } from './models/dto/update-preclassifier.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PreclassifierEntity } from './entities/preclassifier.entity';
 import { Repository } from 'typeorm';
@@ -10,6 +9,7 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { UpdatePreclassifierDTO } from './models/dto/update-preclassifier.dto';
 
 @Injectable()
 export class PreclassifierService {
@@ -44,4 +44,21 @@ export class PreclassifierService {
       HandleException.exception(exception);
     }
   };
+  update = async (updatePreclassifierDTO:UpdatePreclassifierDTO) => {
+    try{
+      const preclassifier = await this.preclassifiersRepository.findOneBy({id: updatePreclassifierDTO.id})
+      if(!preclassifier){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRECLASSIFIER)
+      }
+
+      preclassifier.preclassifierCode = updatePreclassifierDTO.preclassifierCode
+      preclassifier.preclassifierDescription = updatePreclassifierDTO.preclassifierDescription
+      preclassifier.status = updatePreclassifierDTO.status
+      preclassifier.updatedAt = new Date()
+
+      return await this.preclassifiersRepository.save(preclassifier)
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }

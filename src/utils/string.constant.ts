@@ -15,6 +15,7 @@ export const stringConstants = {
   userNotFound: 'User not found',
   cardTypesNotFound: 'Card types not fond',
   siteNotFound: 'Site not fond',
+  preclsassifierNotFound: 'Preclassifier not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
