@@ -5,11 +5,13 @@ export class UserResponse {
   email: string;
   token: string;
   roles: string[];
+  logo: string;
 
-  constructor(user: UserEntity, token: string, roles: string[]) {
+  constructor(user: UserEntity, token: string, roles: string[], logo) {
     this.name = user.name;
     this.email = user.email;
     this.token = token;
     this.roles = roles;
+    this.logo = logo
   }
 }

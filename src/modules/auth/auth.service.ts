@@ -14,12 +14,14 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
+import { SiteService } from '../site/site.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly usersSevice: UsersService,
+    private readonly siteService: SiteService
   ) {}
 
   login = async (data: LoginDTO): Promise<UserResponse> => {
@@ -45,7 +47,9 @@ export class AuthService {
 
       const access_token = await this.jwtService.signAsync(payload);
 
-      return new UserResponse(user, access_token, roles);
+      const logo = await this.siteService.getLogoByUserSiteId(user.siteId)
+
+      return new UserResponse(user, access_token, roles, logo);
     } catch (exception) {
       HandleException.exception(exception);
     }

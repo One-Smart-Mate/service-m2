@@ -113,4 +113,13 @@ export class SiteService {
       HandleException.exception(exception);
     }
   }
+
+  getLogoByUserSiteId = async (userSiteId: number) => {
+    try{
+      const {logo} = await this.siteRepository.findOne({where: {id: userSiteId}, select: ['logo']})
+      return logo
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  } 
 }
