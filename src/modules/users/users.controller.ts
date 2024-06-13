@@ -17,8 +17,8 @@ export class UsersController {
       excludeExtraneousValues: true,
     });
   }
-  @Get('/all')
-  FindAll() {
+  @Get('/responsibles')
+  FindAllResponsiblesData() {
     const users = this.usersService.findAllUsers();
     return plainToClass(UserResponsible, users, {
       excludeExtraneousValues: true,
