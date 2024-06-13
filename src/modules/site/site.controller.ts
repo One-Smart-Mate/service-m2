@@ -4,7 +4,7 @@ import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateSiteDTO } from './models/dto/create-site.dto';
 import { UpadeSiteDTO } from './models/dto/update.site.dto';
 import { plainToClass } from 'class-transformer';
-import { FindOneSiteDTO } from './models/findOne.site.dto';
+import { FindOneSiteDTO } from './models/dto/findOne.site.dto';
 
 @ApiTags('sites')
 @Controller('sites')
