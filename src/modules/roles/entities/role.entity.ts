@@ -8,6 +8,7 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 @Entity('role')
 export class RoleEntity {
@@ -17,9 +18,11 @@ export class RoleEntity {
   @Column({ type: 'text', nullable: true })
   name: string;
 
+  @Exclude()
   @Column({ name: 'created_at', type: 'date', nullable: true })
   createdAt: Date;
 
+  @Exclude()
   @OneToMany(() => UserRoleEntity, (userRole) => userRole.role)
   userRoles: UserRoleEntity[];
 }
