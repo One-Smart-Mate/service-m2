@@ -3,10 +3,9 @@ import { stringConstants } from './utils/string.constant';
 
 @Injectable()
 export class AppService {
-  getAppInfo(): {app_version: string, env: string} {
+  getAppInfo(): { app_version: string } {
     return {
-      app_version: stringConstants.tagVersion,
-      env: process.env.APP_ENV
+      app_version: process.env.APP_ENV,
     };
   }
 }
