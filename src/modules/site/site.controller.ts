@@ -3,6 +3,8 @@ import { SiteService } from './site.service';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateSiteDTO } from './models/dto/create-site.dto';
 import { UpadeSiteDTO } from './models/dto/update.site.dto';
+import { plainToClass } from 'class-transformer';
+import { FindOneSiteDTO } from './models/findOne.site.dto';
 
 @ApiTags('sites')
 @Controller('sites')
@@ -26,4 +28,11 @@ export class SiteController {
   update(@Body() updateSiteDTO: UpadeSiteDTO){
     return this.siteService.update(updateSiteDTO)
   }
+
+  @Get('site/:siteId')
+  @ApiParam({name: 'siteId', required: true, example: 1})
+  async findById(@Param('siteId') siteId: number){
+    const site = await this.siteService.findById(siteId)
+    return plainToClass(FindOneSiteDTO, site, { excludeExtraneousValues: true });
+  } 
 }
