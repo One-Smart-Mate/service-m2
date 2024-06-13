@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +32,22 @@ export class UsersService {
   };
 
   findById = async (userId: number) => {
-    return await this.userRepository.findOneBy({id: userId})
-  }
+    return await this.userRepository.findOneBy({ id: userId });
+  };
+
+  findSiteUsers = async (siteId: number) => {
+    try {
+      return await this.userRepository.findBy({ siteId: siteId });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findAllUsers = async () => {
+    try {
+      return await this.userRepository.find();
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
