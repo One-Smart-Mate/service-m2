@@ -69,4 +69,16 @@ export class PriorityService {
       HandleException.exception(exception);
     }
   };
+  findById = async (id: number) => {
+    try{
+      const priorityExist =  await this.priorityRepository.existsBy({id: id})
+      if(!priorityExist){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY)
+      }
+
+      return await this.priorityRepository.findOneBy({id: id})
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }

@@ -35,4 +35,9 @@ export class PriorityController {
   update (@Body() updatePriorityDTO: UpdatePriorityDTO){
     return this.priorityService.update(updatePriorityDTO)
   }
+  @Get('/one/:id')
+  @ApiParam({name: 'id', example: 1})
+  findOneById(@Param('id') id: number){
+    return this.priorityService.findById(id)
+  }
 }
