@@ -11,6 +11,7 @@ import { PriorityModule } from './modules/priority/priority.module';
 import { CardTypesModule } from './modules/cardTypes/cardTypes.module';
 import { SiteModule } from './modules/site/site.module';
 import { PreclassifierModule } from './modules/preclassifier/preclassifier.module';
+import { LevelModule } from './modules/level/level.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { PreclassifierModule } from './modules/preclassifier/preclassifier.modul
     CardTypesModule,
     SiteModule,
     PreclassifierModule,
+    LevelModule,
   ],
   controllers: [AppController],
   providers: [AppService],
