@@ -22,6 +22,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.PRECLASSIFIER) {
       message = stringConstants.preclsassifierNotFound;
     }
+    if (type === NotFoundCustomExceptionType.LEVELS) {
+      message = stringConstants.levels;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -32,5 +35,6 @@ export enum NotFoundCustomExceptionType {
   USER,
   CARDTYPES,
   SITE,
-  PRECLASSIFIER
+  PRECLASSIFIER,
+  LEVELS,
 }
