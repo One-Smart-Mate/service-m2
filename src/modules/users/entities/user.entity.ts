@@ -1,5 +1,6 @@
 import { RoleEntity } from 'src/modules/roles/entities/role.entity';
 import { UserRoleEntity } from 'src/modules/roles/entities/user-role.entity';
+import { SiteEntity } from 'src/modules/site/entities/site.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -9,6 +10,8 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity('users')
@@ -17,8 +20,10 @@ export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
 
-  @Column({ name: 'site_id', type: 'int', nullable: false })
-  siteId: number;
+
+  @OneToOne(()=> SiteEntity)
+  @JoinColumn({name: 'site_id'})
+  site: SiteEntity;
 
   @Column({ name: 'site_code', type: 'varchar', length: 6, nullable: false })
   siteCode: string;

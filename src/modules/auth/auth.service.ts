@@ -46,13 +46,12 @@ export class AuthService {
       const payload = { id: user.id, name: user.name, email: user.email };
 
       const access_token = await this.jwtService.signAsync(payload);
-      
-      const userSite = await this.siteService.findById(user.siteId)
 
-      const companyName = await this.siteService.getCompanyName(userSite.companyId)
+      const companyName = await this.siteService.getCompanyName(user.site.companyId)
 
-      return new UserResponse(user, access_token, roles, companyName, userSite);
+      return new UserResponse(user, access_token, roles, companyName);
     } catch (exception) {
+      console.log(exception)
       HandleException.exception(exception);
     }
   };

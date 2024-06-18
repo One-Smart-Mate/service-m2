@@ -12,7 +12,7 @@ export class UsersService {
   ) {}
 
   findOneByEmail = (email: string) => {
-    return this.userRepository.findOneBy({ email });
+    return this.userRepository.findOne({where: {email: email}, relations: ['site']  });
   };
   update = async (user: UserEntity) => {
     const exists = await this.userRepository.existsBy({ email: user.email });
@@ -37,7 +37,7 @@ export class UsersService {
 
   findSiteUsers = async (siteId: number) => {
     try {
-      return await this.userRepository.findBy({ siteId: siteId });
+      return await this.userRepository.find({where: {site: {id: siteId}}});
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -45,7 +45,21 @@ export class UsersService {
 
   findAllUsers = async () => {
     try {
-      return await this.userRepository.find();
+      const users = await this.userRepository.find({
+        relations: ['userRoles', 'userRoles.role', 'site'],
+      });
+
+      const transformedUsers = users.map((user) => ({
+        name: user.name,
+        email: user.email,
+        roles: user.userRoles.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name
+        })),
+        site: {id: user.site.id, name: user.site.name, logo: user.site.logo}
+      }));
+
+      return transformedUsers;
     } catch (exception) {
       HandleException.exception(exception);
     }
