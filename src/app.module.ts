@@ -13,6 +13,7 @@ import { SiteModule } from './modules/site/site.module';
 import { PreclassifierModule } from './modules/preclassifier/preclassifier.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { LevelModule } from './modules/level/level.module';
+import { CardModule } from './modules/card/card.module';
 
 
 @Module({
@@ -28,6 +29,7 @@ import { LevelModule } from './modules/level/level.module';
     PreclassifierModule,
     RolesModule,
     LevelModule,
+    CardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
