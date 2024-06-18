@@ -17,16 +17,15 @@ export class UserResponse {
     token: string,
     roles: string[],
     companyName: string,
-    site: SiteEntity,
   ) {
     this.name = user.name;
     this.email = user.email;
     this.token = token;
     this.roles = roles;
-    this.logo = site.logo;
-    this.companyId = site.companyId;
-    this.siteId = site.id;
+    this.logo = user.site.logo;
+    this.companyId = user.site.companyId;
+    this.siteId = user.site.id;
     this.companyName = companyName;
-    this.siteName = site.name;
+    this.siteName = user.site.name;
   }
 }
