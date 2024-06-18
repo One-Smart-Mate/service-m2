@@ -121,5 +121,13 @@ export class SiteService {
     }catch(exception){
       HandleException.exception(exception)
     }
+  }
+  getCompanyName = async (companyId: number) =>{
+    try{
+      const {name} = await this.companyService.findCompanyById(companyId)
+      return name
+    }catch(exception){
+      HandleException.exception(exception)
+    }
   } 
 }
