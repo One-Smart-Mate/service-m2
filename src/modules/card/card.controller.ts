@@ -12,4 +12,9 @@ export class CardController {
   findBySiteId(@Param('siteId') siteId: number){
     return this.cardService.findSiteCards(siteId)
   }
+  @Get('/responsible/:responsibleId')
+  @ApiParam({name: 'responsibleId'})
+  findByResponsibleId(@Param('responsibleId') responsibleId: number){
+    return this.cardService.findSiteCards(responsibleId)
+  }
 }

@@ -15,4 +15,11 @@ export class CardService {
       HandleException.exception(exception)
     }
   }
+  findResponsibleCards = async (responsibleId: number) => {
+    try{
+      return await this.cardRepository.findBy({responsableId: responsibleId})
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }
