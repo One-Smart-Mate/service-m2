@@ -60,7 +60,7 @@ export class CompanyService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
 
-      return await this.companyRepository.findBy({ id: id });
+      return await this.companyRepository.findOneBy({ id: id });
     } catch (exception) {
       HandleException.exception(exception);
     }

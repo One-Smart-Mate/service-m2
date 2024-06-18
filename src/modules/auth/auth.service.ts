@@ -49,7 +49,9 @@ export class AuthService {
       
       const userSite = await this.siteService.findById(user.siteId)
 
-      return new UserResponse(user, access_token, roles, userSite);
+      const companyName = await this.siteService.getCompanyName(userSite.companyId)
+
+      return new UserResponse(user, access_token, roles, companyName, userSite);
     } catch (exception) {
       HandleException.exception(exception);
     }
