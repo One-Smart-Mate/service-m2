@@ -4,9 +4,14 @@ import { CardController } from './card.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
+import { SiteModule } from '../site/site.module';
+import { PriorityModule } from '../priority/priority.module';
+import { CardTypesModule } from '../cardTypes/cardTypes.module';
+import { PreclassifierModule } from '../preclassifier/preclassifier.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CardEntity, EvidenceEntity])],
+  imports: [SiteModule, PriorityModule, CardTypesModule, PreclassifierModule, UsersModule,TypeOrmModule.forFeature([CardEntity, EvidenceEntity])],
   controllers: [CardController],
   providers: [CardService],
 })
