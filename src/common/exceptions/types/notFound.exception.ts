@@ -25,6 +25,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.LEVELS) {
       message = stringConstants.levels;
     }
+    if (type === NotFoundCustomExceptionType.ROLES) {
+      message = stringConstants.roles;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -37,4 +40,5 @@ export enum NotFoundCustomExceptionType {
   SITE,
   PRECLASSIFIER,
   LEVELS,
+  ROLES,
 }

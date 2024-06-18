@@ -10,6 +10,9 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATE_RECORD) {
       message = stringConstants.duplicateRecord;
     }
+    if (type === ValidationExceptionType.DUPLICATED_USER) {
+      message = stringConstants.duplicateUser;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -17,4 +20,5 @@ export class ValidationException extends HttpException {
 export enum ValidationExceptionType {
   WRONG_AUTH,
   DUPLICATE_RECORD,
+  DUPLICATED_USER,
 }
