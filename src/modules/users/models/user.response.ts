@@ -2,6 +2,7 @@ import { SiteEntity } from 'src/modules/site/entities/site.entity';
 import { UserEntity } from '../entities/user.entity';
 
 export class UserResponse {
+  userId: number;
   name: string;
   email: string;
   token: string;
@@ -18,6 +19,7 @@ export class UserResponse {
     roles: string[],
     companyName: string,
   ) {
+    this.userId = user.id
     this.name = user.name;
     this.email = user.email;
     this.token = token;
