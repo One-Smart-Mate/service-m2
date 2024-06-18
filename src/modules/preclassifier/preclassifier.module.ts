@@ -9,5 +9,6 @@ import { CardTypesModule } from '../cardTypes/cardTypes.module';
   imports: [CardTypesModule, TypeOrmModule.forFeature([PreclassifierEntity])],
   controllers: [PreclassifierController],
   providers: [PreclassifierService],
+  exports: [PreclassifierService]
 })
 export class PreclassifierModule {}
