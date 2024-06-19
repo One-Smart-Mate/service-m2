@@ -15,6 +15,12 @@ export class PreclassifierController {
     return this.preclassifierService.findCardTypesPreclassifiers(cardTypeId)
   }
 
+  @Get('/site/:siteId')
+  @ApiParam({name:'siteId', required: true, example: 1})
+  findAllBySite(@Param('siteId') siteId: number){
+    return this.preclassifierService.findSitePreclassifiers(siteId)
+  }
+
   @Post('/create')
   @ApiBody({type: CreatePreclassifierDTO})
   create(@Body() createPreclassifierDTO: CreatePreclassifierDTO){
