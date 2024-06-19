@@ -90,4 +90,12 @@ export class LevelService {
       HandleException.exception(exception)
     }
   }
+
+  findById = async (levelId: number) => {
+    try{
+      return await this.levelRepository.findOneBy({id: levelId})
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }

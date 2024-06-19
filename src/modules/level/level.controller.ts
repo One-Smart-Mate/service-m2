@@ -22,4 +22,10 @@ export class LevelController {
   update(@Body() updateLevelDTO: UpdateLevelDTO){
     return this.levelService.update(updateLevelDTO)
   }
+
+  @Get('/:levelId')
+  @ApiParam({ name: 'levelId', required: true, example: 1 })
+  findById(@Param('levelId') levelId: number) {
+    return this.levelService.findById(+levelId);
+  }
 }
