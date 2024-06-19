@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CreateLevelDto } from './models/dto/create.level.dto';
-import { UpdateLevelDto } from './models/dto/update.level.dto';
+import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
 import { Repository } from 'typeorm';
@@ -48,7 +48,30 @@ export class LevelService {
 
       return await this.levelRepository.save(createLevelDTO)
     } catch (exception) {
-      console.log(exception)
+      HandleException.exception(exception);
+    }
+  };
+  update = async (updateLevelDTO: UpdateLevelDTO) => {
+    try {
+      const level = await this.levelRepository.findOneBy({id: updateLevelDTO.id})
+      if(!level){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      const responsible = await this.usersService.findById(updateLevelDTO.responsibleId);
+      if (!responsible) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      level.name = updateLevelDTO.name
+      level.description = updateLevelDTO.description
+      level.status = updateLevelDTO.status
+      level.responsibleId = updateLevelDTO.responsibleId
+      level.responsibleName = responsible.name
+      level.updatedAt = new Date()
+
+      return await this.levelRepository.save(level)
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };
