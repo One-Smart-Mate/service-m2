@@ -61,6 +61,45 @@ export class RolesService {
     }
   };
 
+  updateUserRoles = async (
+    user: UserEntity,
+    newRoleEntities: RoleEntity[],
+  ): Promise<UserEntity> => {
+    try {
+      const currentUserRoles = await this.userRoleRepository.find({
+        where: { user: { email: user.email } },
+        relations: ['role'],
+      });
+      const currentRoleIds = new Set(currentUserRoles.map((ur) => ur.role.id));
+      const newRoleIds = new Set(newRoleEntities.map((role) => role.id));
+
+      const rolesToRemove = currentUserRoles.filter(
+        (ur) => !newRoleIds.has(ur.role.id),
+      );
+      if (rolesToRemove.length > 0) {
+        await this.userRoleRepository.remove(rolesToRemove);
+      }
+
+      const rolesToAdd = newRoleEntities.filter(
+        (role) => !currentRoleIds.has(role.id),
+      );
+      if (rolesToAdd.length > 0) {
+        const newUserRoles = rolesToAdd.map((role) => {
+          const userRole = new UserRoleEntity();
+          userRole.user = user;
+          userRole.role = role;
+          return userRole;
+        });
+        await this.userRoleRepository.save(newUserRoles);
+      }
+
+      return user;
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
   create = async (createRoleDTO: CreateRoleDTO) => {
     try {
       const roleExists = await this.rolesRepository.existsBy({
@@ -111,5 +150,5 @@ export class RolesService {
     } catch (exception) {
       HandleException.exception(exception);
     }
-  }
+  };
 }
