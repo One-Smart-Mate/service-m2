@@ -2,6 +2,7 @@ export const stringConstants = {
   incorrectAuth: 'Incorrect e-mail or password.',
   duplicateRecord: 'This record already exists.',
   duplicateUser: 'This user already exists',
+  duplicateRole: 'This role already exists',
 
   //status
   activeStatus: 'A',
