@@ -29,6 +29,16 @@ export class PreclassifierService {
     }
   };
 
+  findSitePreclassifiers = async (siteId: number) =>{
+    try {
+      return await this.preclassifiersRepository.findBy({
+        siteId: siteId
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
   create = async (createPreclassifierDTO: CreatePreclassifierDTO) => {
     try {
       const existCardType = await this.cardTypeService.findById(
