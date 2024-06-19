@@ -17,4 +17,9 @@ export class CardController {
   findByResponsibleId(@Param('responsibleId') responsibleId: number){
     return this.cardService.findSiteCards(responsibleId)
   }
+
+  @Get('/:cardId')
+  findByIDAndGetEvidences(@Param('cardId') cardId: number){
+    return this.cardService.findCardByIDAndGetEvidences(cardId)
+  }
 }
