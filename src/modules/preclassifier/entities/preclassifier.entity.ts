@@ -6,7 +6,6 @@ export class PreclassifierEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
 
-  @Exclude()
   @Column({ name: 'cardType_id', type: 'bigint', unsigned: true })
   cardTypeId: number;
 
