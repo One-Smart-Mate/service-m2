@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -10,6 +10,7 @@ import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common
 import { RolesService } from '../roles/roles.service';
 import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
+import { UpdateUserDTO } from './models/update.user.dto';
 
 @Injectable()
 export class UsersService {
@@ -86,7 +87,7 @@ export class UsersService {
 
       if(!site){
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE)
-      }else if(!roles){
+      }else if(roles.length === 0){
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES)
       }
 
@@ -99,7 +100,7 @@ export class UsersService {
         appVersion: process.env.APP_ENV,
         siteCode: site.siteCode,
         uploadCardDataWithDataNet : createUserDTO.uploadCardDataWithDataNet,
-        uploadCardEvidenceWithDataNet : createUserDTO.uploadCardDataWithDataNet,
+        uploadCardEvidenceWithDataNet : createUserDTO.uploadCardEvidenceWithDataNet,
         createdAt : new Date()
       })
 
@@ -108,6 +109,71 @@ export class UsersService {
       return await this.roleService.assignUserRoles(user, roles)
     }catch(exception){
       HandleException.exception(exception)
+    }
+  }
+
+  updateUser  = async (updateUserDTO: UpdateUserDTO) => {
+    try{
+      const user = await this.userRepository.findOneBy({id: updateUserDTO.id})
+
+      if(!user){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER)
+      }
+
+      const emailIsNotUnique = await this.userRepository.exists({where: {email: updateUserDTO.email, id: Not(updateUserDTO.id)}})
+      if(emailIsNotUnique){
+        throw new ValidationException(ValidationExceptionType.DUPLICATED_USER)
+      }
+
+      const site = await this.siteService.findById(updateUserDTO.siteId)
+      const roles = await this.roleService.findRolesByIds(updateUserDTO.roles)
+
+      console.log(roles)
+      if(!site){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE)
+      }else if(roles.length === 0){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES)
+      }
+
+      user.name= updateUserDTO.name
+      user.email = updateUserDTO.email
+      if(updateUserDTO.password) user.password = await bcryptjs.hash(updateUserDTO.password, stringConstants.SALT_ROUNDS)
+      user.site = site
+      user.appVersion= process.env.APP_ENV
+      user.siteCode= site.siteCode
+      user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet
+      user.uploadCardEvidenceWithDataNet = updateUserDTO.uploadCardEvidenceWithDataNet
+      user.updatedAt = new Date()
+      
+
+      await this.userRepository.save(user)
+
+      return await this.roleService.updateUserRoles(user, roles)
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
+
+  findOneById = async (userId: number) => {
+    try {
+      const user =  await this.userRepository.findOne({where: {id: userId}, relations: ['site', 'userRoles', 'userRoles.role']});
+      if(user){
+        const transformedUser = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          roles: user.userRoles.map((role) => role.id),
+          siteId: user.site.id,
+          uploadCardDataWithDataNet: user.uploadCardDataWithDataNet,
+          uploadCardEvidenceWithDataNet: user.uploadCardEvidenceWithDataNet,
+          status: user.status
+        }
+        return transformedUser
+      }
+      return user
+    } catch (exception) {
+      console.log(exception)
+      HandleException.exception(exception);
     }
   }
 }

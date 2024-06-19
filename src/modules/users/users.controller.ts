@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
 import { plainToClass } from 'class-transformer';
 import { CreateUserDTO } from './models/create.user.dto';
+import { UpdateUserDTO } from './models/update.user.dto';
 
 @Controller('users')
 @ApiTags('users')
@@ -26,5 +27,15 @@ export class UsersController {
   @Post('/create')
   create(@Body() createUserDTO: CreateUserDTO) {
     return this.usersService.create(createUserDTO)
+  }
+
+  @Get('/user/:userId')
+  findOneById(@Param('userId') userId: number) {
+    return this.usersService.findOneById(userId)
+  }
+  
+  @Put('/update')
+  update(@Body() updateUserDTO: UpdateUserDTO) {
+    return this.usersService.updateUser(updateUserDTO)
   }
 }

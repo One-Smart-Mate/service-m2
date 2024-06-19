@@ -1,3 +1,4 @@
+import { Exclude } from 'class-transformer';
 import { RoleEntity } from 'src/modules/roles/entities/role.entity';
 import { UserRoleEntity } from 'src/modules/roles/entities/user-role.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
@@ -70,6 +71,7 @@ export class UserEntity {
   @Column({ type: 'char', length: 1, nullable: false, default: 'A' })
   status: string;
 
+  @Exclude()
   @Column({ type: 'varchar', length: 191, nullable: false })
   password: string;
 
