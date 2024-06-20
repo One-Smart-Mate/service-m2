@@ -26,7 +26,7 @@ export class CardService {
     private readonly priorityService: PriorityService,
     private readonly cardTypeService: CardTypesService,
     private readonly preclassifierService: PreclassifierService,
-    private readonly userService: UsersService,
+    private readonly userService: UsersService
   ) {}
 
   findSiteCards = async (siteId: number) => {
@@ -137,17 +137,14 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       } else if (!priorityExists) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
-      } else if (!cardTypeExists) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CARDTYPES,
-        );
-      } else if (!preclassifierExists) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.PRECLASSIFIER,
-        );
-      } else if (anyUserNotExist) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      } else if (!cardTypeExists){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES)
+      } else if (!preclassifierExists){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRECLASSIFIER)
+      } else if (anyUserNotExist){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER)
       }
+
     } catch (exception) {
       HandleException.exception(exception);
     }
