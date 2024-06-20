@@ -16,6 +16,9 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATE_ROLE) {
       message = stringConstants.duplicateRole;
     }
+    if (type === ValidationExceptionType.DUPLICATE_CARD_UUID) {
+      message = stringConstants.duplicateCardUUID;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -25,4 +28,5 @@ export enum ValidationExceptionType {
   DUPLICATE_RECORD,
   DUPLICATED_USER,
   DUPLICATE_ROLE,
+  DUPLICATE_CARD_UUID
 }

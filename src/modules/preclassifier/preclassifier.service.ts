@@ -71,4 +71,12 @@ export class PreclassifierService {
       HandleException.exception(exception)
     }
   }
+
+  findById = async (preclassifierId: number) => {
+    try{
+      return await this.preclassifiersRepository.findOneBy({id: preclassifierId})
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }

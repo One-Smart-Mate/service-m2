@@ -10,5 +10,6 @@ import { SiteModule } from '../site/site.module';
   imports: [UsersModule , SiteModule,TypeOrmModule.forFeature([LevelEntity])],
   controllers: [LevelController],
   providers: [LevelService],
+  exports: [LevelService]
 })
 export class LevelModule {}

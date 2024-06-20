@@ -10,5 +10,6 @@ import { SiteModule } from '../site/site.module';
   imports: [SiteModule, TypeOrmModule.forFeature([PriorityEntity])],
   controllers: [PriorityController],
   providers: [PriorityService],
+  exports: [PriorityService]
 })
 export class PriorityModule {}

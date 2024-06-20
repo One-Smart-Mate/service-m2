@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { CreateCardDTO } from './models/dto/create-card.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -21,5 +22,10 @@ export class CardController {
   @Get('/:cardId')
   findByIDAndGetEvidences(@Param('cardId') cardId: number){
     return this.cardService.findCardByIDAndGetEvidences(cardId)
+  }
+
+  @Post('/create')
+  create(@Body() createCardDTO: CreateCardDTO){
+    return this.cardService.create(createCardDTO)
   }
 }
