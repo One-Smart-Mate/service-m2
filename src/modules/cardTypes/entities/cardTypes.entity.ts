@@ -44,43 +44,33 @@ export class CardTypesEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   email: string;
 
-  @Exclude()
   @Column({name: "quantity_pictures_create", type: 'tinyint', unsigned: true, nullable: true })
   quantityPicturesCreate: number;
 
-  @Exclude()
   @Column({name: "quantity_audios_create", type: 'tinyint', unsigned: true, nullable: true })
   quantityAudiosCreate: number;
 
-  @Exclude()
   @Column({name: "quantity_videos_create", type: 'tinyint', unsigned: true, nullable: true })
   quantityVideosCreate: number;
 
-  @Exclude()
   @Column({name: "audios_duration_create", type: 'int', unsigned: true, nullable: true })
   audiosDurationCreate: number;
 
-  @Exclude()
   @Column({name: "videos_duration_create", type: 'int', unsigned: true, nullable: true })
   videosDurationCreate: number;
 
-  @Exclude()
   @Column({name: "quantity_pictures_close", type: 'tinyint', unsigned: true, nullable: true })
   quantityPicturesClose: number;
 
-  @Exclude()
   @Column({name: "quantity_audios_close", type: 'tinyint', unsigned: true, nullable: true })
   quantityAudiosClose: number;
 
-  @Exclude()
   @Column({name: "quantity_videos_close", type: 'tinyint', unsigned: true, nullable: true })
   quantityVideosClose: number;
 
-  @Exclude()
   @Column({name: "audios_duration_close", type: 'int', unsigned: true, nullable: true })
   audiosDurationClose: number;
 
-  @Exclude()
   @Column({name: "videos_duration_close", type: 'int', unsigned: true, nullable: true })
   videosDurationClose: number;
 
