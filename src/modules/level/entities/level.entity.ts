@@ -24,7 +24,6 @@ export class LevelEntity {
   @Column({ type: 'int', default: 0 })
   level: number;
 
-  @Exclude()
   @Column({name: 'superior_id', type: 'bigint', default: 0 })
   superiorId: number;
 
