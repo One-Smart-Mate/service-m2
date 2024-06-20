@@ -9,9 +9,18 @@ import { PriorityModule } from '../priority/priority.module';
 import { CardTypesModule } from '../cardTypes/cardTypes.module';
 import { PreclassifierModule } from '../preclassifier/preclassifier.module';
 import { UsersModule } from '../users/users.module';
+import { LevelModule } from '../level/level.module';
 
 @Module({
-  imports: [SiteModule, PriorityModule, CardTypesModule, PreclassifierModule, UsersModule,TypeOrmModule.forFeature([CardEntity, EvidenceEntity])],
+  imports: [
+    SiteModule,
+    PriorityModule,
+    CardTypesModule,
+    PreclassifierModule,
+    UsersModule,
+    LevelModule,
+    TypeOrmModule.forFeature([CardEntity, EvidenceEntity]),
+  ],
   controllers: [CardController],
   providers: [CardService],
 })

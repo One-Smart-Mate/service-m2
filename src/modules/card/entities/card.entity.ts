@@ -47,10 +47,10 @@ export class CardEntity {
   status: string;
 
   @Column({ type: 'datetime', nullable: false, name: 'card_creation_date' })
-  cardCreationDate: Date;
+  cardCreationDate: string;
 
   @Column({ type: 'date', nullable: false, name: 'card_due_date' })
-  cardDueDate: string;
+  cardDueDate: Date;
 
   @Column({ type: 'int', nullable: true, name: 'area_id' })
   areaId: number | null;
@@ -94,7 +94,7 @@ export class CardEntity {
     nullable: true,
     name: 'cardType_methodology',
   })
-  cardTypeMethodology: 'M' | 'C' | null;
+  cardTypeMethodology: string;
 
   @Column({
     type: 'varchar',
@@ -282,7 +282,7 @@ export class CardEntity {
   managerName: string | null;
 
   @Column({ type: 'datetime', nullable: true, name: 'card_manager_close_date' })
-  cardManagerCloseDate: Date | null;
+  cardManagerCloseDate: string;
 
   @Column({
     type: 'varchar',
@@ -305,7 +305,7 @@ export class CardEntity {
     nullable: true,
     name: 'card_provisional_solution_date',
   })
-  cardProvisionalSolutionDate: Date | null;
+  cardProvisionalSolutionDate: string;
 
   @Column({
     type: 'varchar',
@@ -320,7 +320,7 @@ export class CardEntity {
     nullable: true,
     name: 'card_definitive_solution_date',
   })
-  cardDefinitiveSolutionDate: Date | null;
+  cardDefinitiveSolutionDate: string;
 
   @Column({
     type: 'varchar',

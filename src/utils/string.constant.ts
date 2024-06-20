@@ -3,6 +3,7 @@ export const stringConstants = {
   duplicateRecord: 'This record already exists.',
   duplicateUser: 'This user already exists',
   duplicateRole: 'This role already exists',
+  duplicateCardUUID: 'The UUID already exists',
 
   //status
   activeStatus: 'A',

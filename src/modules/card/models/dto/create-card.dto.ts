@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsString, IsEnum, IsBoolean, IsDate, IsOptional } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, IsEnum, IsBoolean, IsDate, IsOptional, IsISO8601 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 enum Feasibility {
@@ -11,39 +11,27 @@ enum Effect {
   Bajo = 'Bajo',
 }
 
-enum CardTypeMethodology {
-  M = 'M',
-  C = 'C',
-}
-
 enum CardTypeValue {
   Safe = 'safe',
   Unsafe = 'unsafe',
 }
 
 export class CreateCardDTO {
-  @ApiProperty()
-  @IsInt()
-  siteCardId: number;
+  siteCardId?: number;
 
   @ApiProperty()
   @IsInt()
   siteId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  siteCode: string;
+  siteCode?: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   cardUUID: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  cardTypeColor: string;
+
+  cardTypeColor?: string;
 
   @ApiProperty({ enum: ['Alto', 'Bajo'], nullable: true })
   @IsEnum(Feasibility)
@@ -55,62 +43,31 @@ export class CreateCardDTO {
   @IsOptional()
   effect: Effect | null;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  status: string;
 
-  @ApiProperty()
-  @IsDate()
-  cardCreationDate: Date;
+  @ApiProperty({type: 'Date', example: '2023-06-20T00:00:00.000Z'})
+  @IsISO8601()
+  cardCreationDate: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  cardDueDate: string;
+  cardDueDate?: Date;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   areaId: number | null;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  areaName: string;
-
-  @ApiProperty()
-  @IsInt()
-  level: number;
-
-  @ApiProperty()
-  @IsInt()
-  superiorId: number;
+  areaName?: string;
+  level?: number;
+  superiorId?: number;
 
   @ApiProperty()
   @IsInt()
   priorityId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  priorityCode: string;
+  priorityCode?: string;
+  priorityDescription?: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  priorityDescription: string;
-
-  @ApiProperty({ enum: ['M', 'C'], nullable: true })
-  @IsEnum(CardTypeMethodology)
-  @IsOptional()
-  cardTypeMethodology: CardTypeMethodology | null;
-
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsNotEmpty()
-  @IsOptional()
-  cardTypeMethodologyName: string | null;
+  cardTypeMethodology?: string;
+  cardTypeMethodologyName?: string;
 
   @ApiProperty({ enum: ['safe', 'unsafe'] })
   @IsEnum(CardTypeValue)
@@ -120,107 +77,72 @@ export class CreateCardDTO {
   @IsInt()
   cardTypeId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  cardTypeName: string;
+  cardTypeName?: string;
 
   @ApiProperty()
   @IsInt()
   preclassifierId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  preclassifierCode: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  preclassifierDescription: string;
+  preclassifierCode?: string;
+  preclassifierDescription?: string;
 
   @ApiProperty()
   @IsInt()
   creatorId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  creatorName: string;
+  creatorName?: string;
 
   @ApiProperty()
   @IsInt()
   responsableId: number;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  responsableName: string;
+  responsableName?: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   mechanicId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  mechanicName: string | null;
+  mechanicName?: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   userProvisionalSolutionId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  userProvisionalSolutionName: string | null;
+  userProvisionalSolutionName?: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   userAppProvisionalSolutionId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  userAppProvisionalSolutionName: string | null;
+  userAppProvisionalSolutionName: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   userDefinitiveSolutionId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  userDefinitiveSolutionName: string | null;
+  userDefinitiveSolutionName?: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   userAppDefinitiveSolutionId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  userAppDefinitiveSolutionName: string | null;
+  userAppDefinitiveSolutionName?: string;
 
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
   managerId: number | null;
 
-  @ApiProperty({ required: false })
-  @IsString()
-  @IsOptional()
-  managerName: string | null;
+  managerName?: string;
 
-  @ApiProperty({ required: false })
-  @IsDate()
-  @IsOptional()
-  cardManagerCloseDate: Date | null;
+  @ApiProperty({ required: false, type: 'Date', example: '2023-06-20T00:00:00.000Z'})
+  @IsISO8601()
+  cardManagerCloseDate: string;
 
   @ApiProperty({ required: false })
   @IsString()
@@ -232,20 +154,18 @@ export class CreateCardDTO {
   @IsOptional()
   commentsAtCardCreation: string | null;
 
-  @ApiProperty({ required: false })
-  @IsDate()
-  @IsOptional()
-  cardProvisionalSolutionDate: Date | null;
+  @ApiProperty({ required: false, type: 'Date', example: '2023-06-20T00:00:00.000Z'})
+  @IsISO8601()
+  cardProvisionalSolutionDate: string;
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   commentsAtCardProvisionalSolution: string | null;
 
-  @ApiProperty({ required: false })
-  @IsDate()
-  @IsOptional()
-  cardDefinitiveSolutionDate: Date | null;
+  @ApiProperty({ required: false, type: 'Date', example: '2023-06-20T00:00:00.000Z'})
+  @IsISO8601()
+  cardDefinitiveSolutionDate: string;
 
   @ApiProperty({ required: false })
   @IsString()
@@ -275,4 +195,6 @@ export class CreateCardDTO {
   @ApiProperty()
   @IsBoolean()
   evidenceImcl: boolean;
+
+  createdAt?: Date
 }

@@ -14,6 +14,8 @@ import { PriorityService } from '../priority/priority.service';
 import { CardTypesService } from '../cardTypes/cardTypes.service';
 import { PreclassifierService } from '../preclassifier/preclassifier.service';
 import { UsersService } from '../users/users.service';
+import { LevelService } from '../level/level.service';
+import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 
 @Injectable()
 export class CardService {
@@ -23,10 +25,11 @@ export class CardService {
     @InjectRepository(EvidenceEntity)
     private readonly evidenceRepository: Repository<EvidenceEntity>,
     private readonly siteService: SiteService,
+    private readonly levelService: LevelService,
     private readonly priorityService: PriorityService,
     private readonly cardTypeService: CardTypesService,
     private readonly preclassifierService: PreclassifierService,
-    private readonly userService: UsersService
+    private readonly userService: UsersService,
   ) {}
 
   findSiteCards = async (siteId: number) => {
@@ -76,76 +79,127 @@ export class CardService {
 
   create = async (createCardDTO: CreateCardDTO) => {
     try {
-      const siteExists = await this.siteService.findById(createCardDTO.siteId);
-      const priorityExists = await this.priorityService.findById(
-        createCardDTO.priorityId,
-      );
-      const cardTypeExists = await this.cardTypeService.findById(
-        createCardDTO.cardTypeId,
-      );
-      const preclassifierExists = await this.preclassifierService.findById(
-        createCardDTO.preclassifierId,
-      );
-      const creatorExists = await this.userService.findById(
-        createCardDTO.creatorId,
-      );
-      const responsibleExists = await this.userService.findById(
-        createCardDTO.responsableId,
-      );
-      const mechanicExists = createCardDTO.mechanicId
-        ? await this.userService.findById(createCardDTO.mechanicId)
-        : true;
-      const userProvisionalSolutionExists =
-        createCardDTO.userProvisionalSolutionId
-          ? await this.userService.findById(
-              createCardDTO.userProvisionalSolutionId,
-            )
-          : true;
-      const userAppProvisionalSolutionExists =
-        createCardDTO.userAppProvisionalSolutionId
-          ? await this.userService.findById(
-              createCardDTO.userAppProvisionalSolutionId,
-            )
-          : true;
-      const userDefinitiveSolutionExists =
-        createCardDTO.userDefinitiveSolutionId
-          ? await this.userService.findById(
-              createCardDTO.userDefinitiveSolutionId,
-            )
-          : true;
-      const userAppDefinitiveSolutionExists =
-        createCardDTO.userAppDefinitiveSolutionId
-          ? await this.userService.findById(
-              createCardDTO.userAppDefinitiveSolutionId,
-            )
-          : true;
-      const managerExists = createCardDTO.managerId
-        ? await this.userService.findById(createCardDTO.managerId)
-        : true;
+      const cardUUIDisNotUnique = await this.cardRepository.exists({where: {cardUUID: createCardDTO.cardUUID}})
 
-      const anyUserNotExist =
-        !creatorExists ||
-        !responsibleExists ||
-        !mechanicExists ||
-        !userProvisionalSolutionExists ||
-        !userAppProvisionalSolutionExists ||
-        !userDefinitiveSolutionExists ||
-        !userAppDefinitiveSolutionExists ||
-        !managerExists;
-
-      if (!siteExists) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (!priorityExists) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
-      } else if (!cardTypeExists){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES)
-      } else if (!preclassifierExists){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRECLASSIFIER)
-      } else if (anyUserNotExist){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER)
+      if(cardUUIDisNotUnique){
+        throw new ValidationException(ValidationExceptionType.DUPLICATE_CARD_UUID)
       }
 
+      const site = await this.siteService.findById(createCardDTO.siteId);
+      const priority = await this.priorityService.findById(
+        createCardDTO.priorityId,
+      );
+      const area = await this.levelService.findById(createCardDTO.areaId);
+      const cardType = await this.cardTypeService.findById(
+        createCardDTO.cardTypeId,
+      );
+      const preclassifier = await this.preclassifierService.findById(
+        createCardDTO.preclassifierId,
+      );
+      const creator = await this.userService.findById(createCardDTO.creatorId);
+      const responsible = await this.userService.findById(
+        createCardDTO.responsableId,
+      );
+
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      } else if (!area) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      } else if (!priority) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      } else if (!cardType) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
+      } else if (!preclassifier) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.PRECLASSIFIER,
+        );
+      } else if (!creator || !responsible) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      if (createCardDTO.mechanicId) {
+        const mechanic = await this.userService.findById(
+          createCardDTO.mechanicId,
+        );
+        if (!mechanic)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.mechanicName = mechanic.name;
+      }
+
+      if (createCardDTO.userProvisionalSolutionId) {
+        const userProvisionalSolution = await this.userService.findById(
+          createCardDTO.userProvisionalSolutionId,
+        );
+        if (!userProvisionalSolution)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.userProvisionalSolutionName =
+          userProvisionalSolution.name;
+      }
+
+      if (createCardDTO.userAppProvisionalSolutionId) {
+        const userAppProvisionalSolution = await this.userService.findById(
+          createCardDTO.userAppProvisionalSolutionId,
+        );
+        if (!userAppProvisionalSolution)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.userAppProvisionalSolutionName =
+          userAppProvisionalSolution.name;
+      }
+
+      if (createCardDTO.userDefinitiveSolutionId) {
+        const userDefinitiveSolution = await this.userService.findById(
+          createCardDTO.userDefinitiveSolutionId,
+        );
+        if (!userDefinitiveSolution)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.userDefinitiveSolutionName = userDefinitiveSolution.name;
+      }
+
+      if (createCardDTO.userAppDefinitiveSolutionId) {
+        const userAppDefinitiveSolution = await this.userService.findById(
+          createCardDTO.userAppDefinitiveSolutionId,
+        );
+        if (!userAppDefinitiveSolution)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.userAppDefinitiveSolutionName =
+          userAppDefinitiveSolution.name;
+      }
+
+      if (createCardDTO.managerId) {
+        const manager = await this.userService.findById(
+          createCardDTO.managerId,
+        );
+        if (!manager)
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        createCardDTO.managerName = manager.name;
+      }
+
+      const lastInsertedCard = await this.cardRepository.find({order: {id: 'DESC'}, take: 1})
+      const {siteCardId} = lastInsertedCard[0]
+      createCardDTO.siteCardId = siteCardId+1
+      createCardDTO.siteCode = site.siteCode
+      createCardDTO.cardTypeColor = cardType.color
+      createCardDTO.areaName = area.name
+      createCardDTO.level = area.level
+      createCardDTO.superiorId = Number(area.superiorId) === 0 ? area.id: area.superiorId
+      createCardDTO.priorityCode = priority.priorityCode
+      createCardDTO.priorityDescription = priority.priorityDescription
+      createCardDTO.cardTypeMethodology = cardType.cardTypeMethodology
+      createCardDTO.cardTypeMethodologyName = cardType.methodology
+      createCardDTO.cardTypeName = cardType.name
+      createCardDTO.preclassifierCode = preclassifier.preclassifierCode
+      createCardDTO.preclassifierDescription = preclassifier.preclassifierDescription
+      createCardDTO.creatorName = creator.name
+      createCardDTO.responsableName = responsible.name
+      createCardDTO.createdAt = new Date()
+      createCardDTO.cardDueDate = new Date()
+
+     return await this.cardRepository.save(createCardDTO)
+
     } catch (exception) {
+      console.log(exception)
       HandleException.exception(exception);
     }
   };
