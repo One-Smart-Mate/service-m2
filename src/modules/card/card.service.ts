@@ -19,6 +19,7 @@ import {
   ValidationException,
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class CardService {
@@ -104,9 +105,6 @@ export class CardService {
         createCardDTO.preclassifierId,
       );
       const creator = await this.userService.findById(createCardDTO.creatorId);
-      const responsible = await this.userService.findById(
-        createCardDTO.responsableId,
-      );
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
@@ -122,7 +120,7 @@ export class CardService {
         throw new NotFoundCustomException(
           NotFoundCustomExceptionType.PRECLASSIFIER,
         );
-      } else if (!creator || !responsible) {
+      } else if (!creator) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
@@ -148,7 +146,6 @@ export class CardService {
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
-        responsableName: responsible.name,
         createdAt: new Date(),
         cardDueDate: new Date(),
         commentsAtCardCreation: createCardDTO.comments,
@@ -160,22 +157,22 @@ export class CardService {
 
       await Promise.all(createCardDTO.evidences.map(async (evidence) => {
         switch (evidence.type) {
-          case 'AUCR':
+          case stringConstants.AUCR:
             cardAssignEvidences.evidenceAucr = true;
             break;
-          case 'VICR':
+          case stringConstants.VICR:
             cardAssignEvidences.evidenceVicr = true;
             break;
-          case 'IMCR':
+          case stringConstants.VICR:
             cardAssignEvidences.evidenceImcr = true;
             break;
-          case 'AUCL':
+          case stringConstants.AUCL:
             cardAssignEvidences.evidenceAucl = true;
             break;
-          case 'VICL':
+          case stringConstants.VICL:
             cardAssignEvidences.evidenceVicl = true;
             break;
-          case 'IMCL':
+          case stringConstants.IMCL:
             cardAssignEvidences.evidenceImcl = true;
             break;
         }

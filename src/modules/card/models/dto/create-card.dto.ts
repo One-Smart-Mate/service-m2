@@ -78,11 +78,7 @@ export class CreateCardDTO {
   @ApiProperty()
   @IsInt()
   creatorId: number;
-
-  @ApiProperty()
-  @IsInt()
-  responsableId: number;
-
+  
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
