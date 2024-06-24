@@ -5,6 +5,14 @@ export const stringConstants = {
   duplicateRole: 'This role already exists',
   duplicateCardUUID: 'The UUID already exists',
 
+  //Types of evidences
+  AUCR: 'AUCR',
+  VICR: 'VICR',
+  IMCR: 'IMCR',
+  AUCL: 'AUCL',
+  VICL: 'VICL',
+  IMCL: 'IMCL',
+
   //status
   activeStatus: 'A',
   inactiveStatus: 'I',
