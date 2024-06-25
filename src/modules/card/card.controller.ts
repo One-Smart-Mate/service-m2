@@ -32,5 +32,10 @@ export class CardController {
   @Put('/update/definitive-solution')
   updateDefinitiveSolution(@Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO){
     return this.cardService.updateDefinitivesolution(updateDefinitiveSolutionDTO)
+
+  @Get('/all/zone/:superiorId')
+  @ApiParam({name: 'superiorId'})
+  getCardsZone(@Param('superiorId') superiorId: number){
+    return this.cardService.getCardBySuperiorId(superiorId)
   }
 }
