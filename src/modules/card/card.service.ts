@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create-card.dto';
@@ -193,4 +193,12 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
+  getCardBySuperiorId = async (superiorId: number) =>{
+    try{
+      return await this.cardRepository.find({where: {superiorId: superiorId, status: In([stringConstants.A, stringConstants.P, stringConstants.V]), deletedAt: null}})
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  } 
 }

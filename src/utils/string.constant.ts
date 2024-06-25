@@ -13,6 +13,11 @@ export const stringConstants = {
   VICL: 'VICL',
   IMCL: 'IMCL',
 
+  //card status
+  A : 'A',
+  P : 'P',
+  V: 'V',
+
   //status
   activeStatus: 'A',
   inactiveStatus: 'I',

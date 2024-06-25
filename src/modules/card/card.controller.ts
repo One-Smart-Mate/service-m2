@@ -28,4 +28,10 @@ export class CardController {
   create(@Body() createCardDTO: CreateCardDTO){
     return this.cardService.create(createCardDTO)
   }
+
+  @Get('/all/zone/:superiorId')
+  @ApiParam({name: 'superiorId'})
+  getCardsZone(@Param('superiorId') superiorId: number){
+    return this.cardService.getCardBySuperiorId(superiorId)
+  }
 }
