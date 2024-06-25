@@ -15,6 +15,9 @@ export const stringConstants = {
   R: 'R',
   noteDefinitiveSoluition: 'Auto: Definitivesolution: Se agrego la solucion definitiva',
 
+  //methodology
+  M: 'M',
+
   //card status
   A : 'A',
   P : 'P',
