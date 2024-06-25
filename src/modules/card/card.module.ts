@@ -10,6 +10,7 @@ import { CardTypesModule } from '../cardTypes/cardTypes.module';
 import { PreclassifierModule } from '../preclassifier/preclassifier.module';
 import { UsersModule } from '../users/users.module';
 import { LevelModule } from '../level/level.module';
+import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { LevelModule } from '../level/level.module';
     PreclassifierModule,
     UsersModule,
     LevelModule,
-    TypeOrmModule.forFeature([CardEntity, EvidenceEntity]),
+    TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity]),
   ],
   controllers: [CardController],
   providers: [CardService],

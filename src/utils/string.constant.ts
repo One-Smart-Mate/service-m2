@@ -12,6 +12,8 @@ export const stringConstants = {
   AUCL: 'AUCL',
   VICL: 'VICL',
   IMCL: 'IMCL',
+  R: 'R',
+  noteDefinitiveSoluition: 'Auto: Definitivesolution: Se agrego la solucion definitiva',
 
   //status
   activeStatus: 'A',
@@ -29,6 +31,7 @@ export const stringConstants = {
   preclsassifierNotFound: 'Preclassifier not found',
   levels: 'Levels not found',
   roles: 'Roles not found',
+  cardNotFound: 'Card not found', 
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',

@@ -320,7 +320,7 @@ export class CardEntity {
     nullable: true,
     name: 'card_definitive_solution_date',
   })
-  cardDefinitiveSolutionDate: string;
+  cardDefinitiveSolutionDate: Date;
 
   @Column({
     type: 'varchar',

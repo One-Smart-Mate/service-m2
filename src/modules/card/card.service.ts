@@ -20,6 +20,8 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { stringConstants } from 'src/utils/string.constant';
+import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
+import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 
 @Injectable()
 export class CardService {
@@ -28,6 +30,8 @@ export class CardService {
     private readonly cardRepository: Repository<CardEntity>,
     @InjectRepository(EvidenceEntity)
     private readonly evidenceRepository: Repository<EvidenceEntity>,
+    @InjectRepository(CardNoteEntity)
+    private readonly cardNoteRepository: Repository<CardNoteEntity>, 
     private readonly siteService: SiteService,
     private readonly levelService: LevelService,
     private readonly priorityService: PriorityService,
@@ -193,4 +197,75 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+  updateDefinitivesolution = async (updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO) => {
+    try{
+      const card = await this.cardRepository.findOneBy({id: updateDefinitivesolutionDTO.cardId})
+
+      if(!card){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD)
+      }
+
+      const userDefinitiveSolution = await this.userService.findById(updateDefinitivesolutionDTO.userDefinitiveSolutionId)
+      const userAppDefinitiveSolution = await this.userService.findById(updateDefinitivesolutionDTO.userAppDefinitiveSolutionId)
+      
+      if(!userAppDefinitiveSolution  || !userDefinitiveSolution){
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER)
+      }
+
+      card.userDefinitiveSolutionId = userDefinitiveSolution.id
+      card.userDefinitiveSolutionName = userDefinitiveSolution.name
+      card.userAppDefinitiveSolutionId = userAppDefinitiveSolution.id
+      card.userAppDefinitiveSolutionName = userAppDefinitiveSolution.name
+      card.cardDefinitiveSolutionDate = new Date()
+      card.commentsAtCardDefinitiveSolution = updateDefinitivesolutionDTO.comments
+      card.status = stringConstants.R
+      card.updatedAt = new Date()
+
+      await Promise.all(updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
+        switch (evidence.type) {
+          case stringConstants.AUCR:
+            card.evidenceAucr = true;
+            break;
+          case stringConstants.VICR:
+            card.evidenceVicr = true;
+            break;
+          case stringConstants.VICR:
+            card.evidenceImcr = true;
+            break;
+          case stringConstants.AUCL:
+            card.evidenceAucl = true;
+            break;
+          case stringConstants.VICL:
+            card.evidenceVicl = true;
+            break;
+          case stringConstants.IMCL:
+            card.evidenceImcl = true;
+            break;
+        }
+        var evidenceToCreate = await this.evidenceRepository.create({
+          evidenceName: evidence.url,
+          evidenceType: evidence.type,
+          cardId: card.id,
+          siteId: card.siteId,
+          createdAt: new Date()
+        })
+        await this.evidenceRepository.save(evidenceToCreate);
+      }));
+
+      await this.cardRepository.save(card)
+
+      const note = await this.cardNoteRepository.create({
+        cardId: card.id,
+        siteId: card.siteId,
+        note: stringConstants.noteDefinitiveSoluition,
+        createdAt: new Date()
+      })
+
+      await this.cardNoteRepository.save(note)
+
+      return card
+    }catch(exception){
+      HandleException.exception(exception)
+    }
+  }
 }

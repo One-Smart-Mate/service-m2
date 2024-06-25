@@ -28,6 +28,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.ROLES) {
       message = stringConstants.roles;
     }
+    if (type === NotFoundCustomExceptionType.CARD) {
+      message = stringConstants.cardNotFound;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -41,4 +44,5 @@ export enum NotFoundCustomExceptionType {
   PRECLASSIFIER,
   LEVELS,
   ROLES,
+  CARD,
 }
