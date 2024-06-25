@@ -141,6 +141,7 @@ export class CardService {
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
         cardTypeMethodology: cardType.cardTypeMethodology === stringConstants.M? cardType.cardTypeMethodology:null,
+        cardTypeValue: cardType.cardTypeMethodology === stringConstants.M? createCardDTO.cardTypeValue:null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
         preclassifierCode: preclassifier.preclassifierCode,
