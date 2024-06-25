@@ -13,6 +13,9 @@ export const stringConstants = {
   VICL: 'VICL',
   IMCL: 'IMCL',
 
+  //methodology
+  M: 'M',
+
   //card status
   A : 'A',
   P : 'P',

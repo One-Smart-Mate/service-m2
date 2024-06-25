@@ -140,7 +140,7 @@ export class CardService {
         superiorId: Number(area.superiorId) === 0 ? area.id : area.superiorId,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
-        cardTypeMethodology: cardType.cardTypeMethodology === 'M'? cardType.cardTypeMethodology:null,
+        cardTypeMethodology: cardType.cardTypeMethodology === stringConstants.M? cardType.cardTypeMethodology:null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
         preclassifierCode: preclassifier.preclassifierCode,
