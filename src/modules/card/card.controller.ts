@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Put } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create-card.dto';
+import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -28,6 +29,9 @@ export class CardController {
   create(@Body() createCardDTO: CreateCardDTO){
     return this.cardService.create(createCardDTO)
   }
+  @Put('/update/definitive-solution')
+  updateDefinitiveSolution(@Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO){
+    return this.cardService.updateDefinitivesolution(updateDefinitiveSolutionDTO)
 
   @Get('/all/zone/:superiorId')
   @ApiParam({name: 'superiorId'})
