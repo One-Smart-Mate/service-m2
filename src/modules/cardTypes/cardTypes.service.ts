@@ -96,6 +96,12 @@ export class CardTypesService {
       foundCardTpyes.quantityVideosClose = updateCardTypesDTO.quantityVideosClose
       foundCardTpyes.audiosDurationClose = updateCardTypesDTO.audiosDurationClose
       foundCardTpyes.videosDurationClose = updateCardTypesDTO.videosDurationClose
+      foundCardTpyes.quantityPicturesPs = updateCardTypesDTO.quantityPicturesPs
+      foundCardTpyes.quantityAudiosPs = updateCardTypesDTO.quantityAudiosPs
+      foundCardTpyes.audiosDurationPs = updateCardTypesDTO.audiosDurationPs
+      foundCardTpyes.quantityVideosPs = updateCardTypesDTO.quantityVideosPs
+      foundCardTpyes.videosDurationPs = updateCardTypesDTO.videosDurationPs
+
       foundCardTpyes.status = updateCardTypesDTO.status
       foundCardTpyes.updatedAt = new Date()
 
@@ -108,12 +114,6 @@ export class CardTypesService {
 
   findById = async (id : number ) => {
     try {
-      const cardTypeExist = await this.cardTypesRepository.existsBy({ id: id });
-
-      if (!cardTypeExist) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES);
-      }
-
       return await this.cardTypesRepository.findOneBy({ id: id });
     } catch (exception) {
       HandleException.exception(exception);

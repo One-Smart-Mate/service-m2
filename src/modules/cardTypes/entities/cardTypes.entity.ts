@@ -14,7 +14,6 @@ export class CardTypesEntity {
   @Column({name: "site_code", type: 'char', length: 6 })
   siteCode: string;
 
-  @Exclude()
   @Column({name: "cardType_methodology", type: 'enum', enum: ['M', 'C'], default: 'M' })
   cardTypeMethodology: 'M' | 'C';
 
@@ -30,7 +29,6 @@ export class CardTypesEntity {
   @Column({ type: 'varchar', length: 6 })
   color: string;
 
-  @Exclude()
   @Column({name: "responsable_id", type: 'bigint', unsigned: true, nullable: true })
   responsableId: number;
 
@@ -85,5 +83,20 @@ export class CardTypesEntity {
   @Exclude()
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @Column({name: 'quantity_pictures_ps', type: 'tinyint', nullable: true })
+  quantityPicturesPs: number;
+
+  @Column({name: 'quantity_audios_ps', type: 'tinyint', nullable: true })
+  quantityAudiosPs: number;
+
+  @Column({name: 'quantity_videos_ps', type: 'tinyint', nullable: true })
+  quantityVideosPs: number;
+
+  @Column({name: 'audios_duration_ps', type: 'int', nullable: true })
+  audiosDurationPs: number;
+
+  @Column({name: 'videos_duration_ps', type: 'int', nullable: true })
+  videosDurationPs: number;
 }
 

@@ -7,6 +7,9 @@ import {
   MaxLength,
   IsNumber,
   IsIn,
+  Min,
+  Max,
+  IsHexColor,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { stringConstants } from 'src/utils/string.constant';
@@ -19,8 +22,6 @@ export class UpdateCardTypesDTO {
   @IsNotEmpty()
   @IsNumber()
   id: number;
-
-  siteCode?: string;
 
   @ApiProperty({
     description: 'Name of the card type methodology',
@@ -50,11 +51,11 @@ export class UpdateCardTypesDTO {
   description: string;
 
   @ApiProperty({
-    description: 'Color code of the card type',
+    description: 'Hexa color code of the card type without "#"',
     maxLength: 6,
   })
   @IsString()
-  @Length(6)
+  @IsHexColor()
   @IsNotEmpty()
   color: string;
 
@@ -76,6 +77,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityPicturesCreate?: number;
 
@@ -84,6 +87,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityAudiosCreate?: number;
 
@@ -92,6 +97,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityVideosCreate?: number;
 
@@ -116,6 +123,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityPicturesClose?: number;
 
@@ -124,6 +133,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityAudiosClose?: number;
 
@@ -132,6 +143,8 @@ export class UpdateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityVideosClose?: number;
 
@@ -150,6 +163,37 @@ export class UpdateCardTypesDTO {
   @IsInt()
   @IsOptional()
   videosDurationClose?: number;
+
+  @ApiProperty({ description: 'Quantity of pictures per session', example: 5, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityPicturesPs?: number;
+
+  @ApiProperty({ description: 'Quantity of audios per session', example: 3, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityAudiosPs?: number;
+
+  @ApiProperty({ description: 'Quantity of videos per session', example: 2, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityVideosPs?: number;
+
+  @ApiProperty({ description: 'Total duration of audios per session in seconds', example: 120, required: false })
+  @IsOptional()
+  @IsInt()
+  audiosDurationPs?: number;
+
+  @ApiProperty({ description: 'Total duration of videos per session in seconds', example: 300, required: false })
+  @IsOptional()
+  @IsInt()
+  videosDurationPs?: number;
 
   @ApiProperty({
     description: 'Status',

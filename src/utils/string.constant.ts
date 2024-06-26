@@ -7,16 +7,20 @@ export const stringConstants = {
 
   //Types of evidences
   AUCR: 'AUCR',
-  VICR: 'VICR',
-  IMCR: 'IMCR',
   AUCL: 'AUCL',
+  AUPS: 'AUPS',
+  VICR: 'VICR',
   VICL: 'VICL',
+  VIPS: 'VIPS',
+  IMCR: 'IMCR',
+  IMPS: 'IMPS',
   IMCL: 'IMCL',
   R: 'R',
   noteDefinitiveSoluition: 'Auto: Definitivesolution: Se agrego la solucion definitiva',
 
   //methodology
   M: 'M',
+  C: 'C',
 
   //card status
   A : 'A',

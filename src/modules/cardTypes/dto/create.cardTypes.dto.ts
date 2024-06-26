@@ -6,8 +6,17 @@ import {
   Length,
   MaxLength,
   IsNumber,
+  Max,
+  Min,
+  IsEnum,
+  IsHexColor,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+
+enum CardTypeMethodology {
+  M = 'M',
+  C = 'C',
+}
 
 export class CreateCardTypesDTO {
   @ApiProperty({
@@ -20,6 +29,16 @@ export class CreateCardTypesDTO {
   siteId: number;
 
   siteCode?: string;
+
+  @ApiProperty({
+    description: 'Card type methodology',
+    example: 'M',
+    enum: CardTypeMethodology,
+    default: CardTypeMethodology.M,
+    required: true,
+  })
+  @IsEnum(CardTypeMethodology)
+  cardTypeMethodology: CardTypeMethodology;
 
   @ApiProperty({
     description: 'Name of the card type methodology',
@@ -49,12 +68,12 @@ export class CreateCardTypesDTO {
   description: string;
 
   @ApiProperty({
-    description: 'Color code of the card type',
+    description: 'Hexa color code of the card type without "#"',
     maxLength: 6,
   })
   @IsString()
-  @Length(6)
   @IsNotEmpty()
+  @IsHexColor()
   color: string;
 
   @ApiProperty({
@@ -75,6 +94,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityPicturesCreate?: number;
 
@@ -83,6 +104,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityAudiosCreate?: number;
 
@@ -91,6 +114,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityVideosCreate?: number;
 
@@ -115,6 +140,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityPicturesClose?: number;
 
@@ -123,6 +150,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityAudiosClose?: number;
 
@@ -131,6 +160,8 @@ export class CreateCardTypesDTO {
     required: false,
   })
   @IsInt()
+  @Min(0)
+  @Max(255)
   @IsOptional()
   quantityVideosClose?: number;
 
@@ -149,6 +180,37 @@ export class CreateCardTypesDTO {
   @IsInt()
   @IsOptional()
   videosDurationClose?: number;
+
+  @ApiProperty({ description: 'Quantity of pictures per session', example: 5, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityPicturesPs?: number;
+
+  @ApiProperty({ description: 'Quantity of audios per session', example: 3, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityAudiosPs?: number;
+
+  @ApiProperty({ description: 'Quantity of videos per session', example: 2, required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(255)
+  quantityVideosPs?: number;
+
+  @ApiProperty({ description: 'Total duration of audios per session in seconds', example: 120, required: false })
+  @IsOptional()
+  @IsInt()
+  audiosDurationPs?: number;
+
+  @ApiProperty({ description: 'Total duration of videos per session in seconds', example: 300, required: false })
+  @IsOptional()
+  @IsInt()
+  videosDurationPs?: number;
 
   createdAt?: Date
 }

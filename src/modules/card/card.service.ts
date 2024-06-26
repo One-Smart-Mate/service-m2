@@ -31,7 +31,7 @@ export class CardService {
     @InjectRepository(EvidenceEntity)
     private readonly evidenceRepository: Repository<EvidenceEntity>,
     @InjectRepository(CardNoteEntity)
-    private readonly cardNoteRepository: Repository<CardNoteEntity>, 
+    private readonly cardNoteRepository: Repository<CardNoteEntity>,
     private readonly siteService: SiteService,
     private readonly levelService: LevelService,
     private readonly priorityService: PriorityService,
@@ -144,8 +144,14 @@ export class CardService {
         superiorId: Number(area.superiorId) === 0 ? area.id : area.superiorId,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
-        cardTypeMethodology: cardType.cardTypeMethodology === stringConstants.M? cardType.cardTypeMethodology:null,
-        cardTypeValue: cardType.cardTypeMethodology === stringConstants.M? createCardDTO.cardTypeValue:null,
+        cardTypeMethodology:
+          cardType.cardTypeMethodology === stringConstants.M
+            ? cardType.cardTypeMethodology
+            : null,
+        cardTypeValue:
+          cardType.cardTypeMethodology === stringConstants.M
+            ? createCardDTO.cardTypeValue
+            : null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
         preclassifierCode: preclassifier.preclassifierCode,
@@ -157,123 +163,162 @@ export class CardService {
       });
 
       await this.cardRepository.save(card);
-      lastInsertedCard = await this.cardRepository.find({order: {id: 'DESC'}, take: 1})
-      const cardAssignEvidences = lastInsertedCard[0]
+      lastInsertedCard = await this.cardRepository.find({
+        order: { id: 'DESC' },
+        take: 1,
+      });
+      const cardAssignEvidences = lastInsertedCard[0];
 
-      await Promise.all(createCardDTO.evidences.map(async (evidence) => {
-        switch (evidence.type) {
-          case stringConstants.AUCR:
-            cardAssignEvidences.evidenceAucr = true;
-            break;
-          case stringConstants.VICR:
-            cardAssignEvidences.evidenceVicr = true;
-            break;
-          case stringConstants.VICR:
-            cardAssignEvidences.evidenceImcr = true;
-            break;
-          case stringConstants.AUCL:
-            cardAssignEvidences.evidenceAucl = true;
-            break;
-          case stringConstants.VICL:
-            cardAssignEvidences.evidenceVicl = true;
-            break;
-          case stringConstants.IMCL:
-            cardAssignEvidences.evidenceImcl = true;
-            break;
-        }
-        var evidenceToCreate = await this.evidenceRepository.create({
-          evidenceName: evidence.url,
-          evidenceType: evidence.type,
-          cardId: cardAssignEvidences.id,
-          siteId: site.id,
-          createdAt: new Date()
-        })
-        await this.evidenceRepository.save(evidenceToCreate);
-      }));
+      await Promise.all(
+        createCardDTO.evidences.map(async (evidence) => {
+          switch (evidence.type) {
+            case stringConstants.AUCR:
+              cardAssignEvidences.evidenceAucr = true;
+              break;
+            case stringConstants.VICR:
+              cardAssignEvidences.evidenceVicr = true;
+              break;
+            case stringConstants.IMCR:
+              cardAssignEvidences.evidenceImcr = true;
+              break;
+            case stringConstants.AUCL:
+              cardAssignEvidences.evidenceAucl = true;
+              break;
+            case stringConstants.VICL:
+              cardAssignEvidences.evidenceVicl = true;
+              break;
+            case stringConstants.IMCL:
+              cardAssignEvidences.evidenceImcl = true;
+              break;
+            case stringConstants.IMPS:
+              cardAssignEvidences.evidenceImps = true;
+              break;
+            case stringConstants.AUPS:
+              cardAssignEvidences.evidenceAups = true;
+              break;
+            case stringConstants.VIPS:
+              cardAssignEvidences.evidenceVips = true;
+              break;
+          }
+          var evidenceToCreate = await this.evidenceRepository.create({
+            evidenceName: evidence.url,
+            evidenceType: evidence.type,
+            cardId: cardAssignEvidences.id,
+            siteId: site.id,
+            createdAt: new Date(),
+          });
+          await this.evidenceRepository.save(evidenceToCreate);
+        }),
+      );
 
-      return await this.cardRepository.save(cardAssignEvidences)
-
+      return await this.cardRepository.save(cardAssignEvidences);
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
   };
-  updateDefinitivesolution = async (updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO) => {
-    try{
-      const card = await this.cardRepository.findOneBy({id: updateDefinitivesolutionDTO.cardId})
+  updateDefinitivesolution = async (
+    updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO,
+  ) => {
+    try {
+      const card = await this.cardRepository.findOneBy({
+        id: updateDefinitivesolutionDTO.cardId,
+      });
 
-      if(!card){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD)
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
 
-      const userDefinitiveSolution = await this.userService.findById(updateDefinitivesolutionDTO.userDefinitiveSolutionId)
-      const userAppDefinitiveSolution = await this.userService.findById(updateDefinitivesolutionDTO.userAppDefinitiveSolutionId)
-      
-      if(!userAppDefinitiveSolution  || !userDefinitiveSolution){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER)
+      const userDefinitiveSolution = await this.userService.findById(
+        updateDefinitivesolutionDTO.userDefinitiveSolutionId,
+      );
+      const userAppDefinitiveSolution = await this.userService.findById(
+        updateDefinitivesolutionDTO.userAppDefinitiveSolutionId,
+      );
+
+      if (!userAppDefinitiveSolution || !userDefinitiveSolution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      card.userDefinitiveSolutionId = userDefinitiveSolution.id
-      card.userDefinitiveSolutionName = userDefinitiveSolution.name
-      card.userAppDefinitiveSolutionId = userAppDefinitiveSolution.id
-      card.userAppDefinitiveSolutionName = userAppDefinitiveSolution.name
-      card.cardDefinitiveSolutionDate = new Date()
-      card.commentsAtCardDefinitiveSolution = updateDefinitivesolutionDTO.comments
-      card.status = stringConstants.R
-      card.updatedAt = new Date()
+      card.userDefinitiveSolutionId = userDefinitiveSolution.id;
+      card.userDefinitiveSolutionName = userDefinitiveSolution.name;
+      card.userAppDefinitiveSolutionId = userAppDefinitiveSolution.id;
+      card.userAppDefinitiveSolutionName = userAppDefinitiveSolution.name;
+      card.cardDefinitiveSolutionDate = new Date();
+      card.commentsAtCardDefinitiveSolution =
+        updateDefinitivesolutionDTO.comments;
+      card.status = stringConstants.R;
+      card.updatedAt = new Date();
 
-      await Promise.all(updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
-        switch (evidence.type) {
-          case stringConstants.AUCR:
-            card.evidenceAucr = true;
-            break;
-          case stringConstants.VICR:
-            card.evidenceVicr = true;
-            break;
-          case stringConstants.VICR:
-            card.evidenceImcr = true;
-            break;
-          case stringConstants.AUCL:
-            card.evidenceAucl = true;
-            break;
-          case stringConstants.VICL:
-            card.evidenceVicl = true;
-            break;
-          case stringConstants.IMCL:
-            card.evidenceImcl = true;
-            break;
-        }
-        var evidenceToCreate = await this.evidenceRepository.create({
-          evidenceName: evidence.url,
-          evidenceType: evidence.type,
-          cardId: card.id,
-          siteId: card.siteId,
-          createdAt: new Date()
-        })
-        await this.evidenceRepository.save(evidenceToCreate);
-      }));
+      await Promise.all(
+        updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
+          switch (evidence.type) {
+            case stringConstants.AUCR:
+              card.evidenceAucr = true;
+              break;
+            case stringConstants.VICR:
+              card.evidenceVicr = true;
+              break;
+            case stringConstants.IMCR:
+              card.evidenceImcr = true;
+              break;
+            case stringConstants.AUCL:
+              card.evidenceAucl = true;
+              break;
+            case stringConstants.VICL:
+              card.evidenceVicl = true;
+              break;
+            case stringConstants.IMCL:
+              card.evidenceImcl = true;
+              break;
+            case stringConstants.IMPS:
+              card.evidenceImps = true;
+              break;
+            case stringConstants.AUPS:
+              card.evidenceAups = true;
+              break;
+            case stringConstants.VIPS:
+              card.evidenceVips = true;
+              break;
+          }
+          var evidenceToCreate = await this.evidenceRepository.create({
+            evidenceName: evidence.url,
+            evidenceType: evidence.type,
+            cardId: card.id,
+            siteId: card.siteId,
+            createdAt: new Date(),
+          });
+          await this.evidenceRepository.save(evidenceToCreate);
+        }),
+      );
 
-      await this.cardRepository.save(card)
+      await this.cardRepository.save(card);
 
       const note = await this.cardNoteRepository.create({
         cardId: card.id,
         siteId: card.siteId,
         note: stringConstants.noteDefinitiveSoluition,
-        createdAt: new Date()
-      })
+        createdAt: new Date(),
+      });
 
-      await this.cardNoteRepository.save(note)
+      await this.cardNoteRepository.save(note);
 
-      return card
-    }catch(exception){
-      HandleException.exception(exception)
+      return card;
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
-  getCardBySuperiorId = async (superiorId: number) =>{
-    try{
-      return await this.cardRepository.find({where: {superiorId: superiorId, status: In([stringConstants.A, stringConstants.P, stringConstants.V]), deletedAt: null}})
-    }catch(exception){
-      HandleException.exception(exception)
+  };
+  getCardBySuperiorId = async (superiorId: number) => {
+    try {
+      return await this.cardRepository.find({
+        where: {
+          superiorId: superiorId,
+          status: In([stringConstants.A, stringConstants.P, stringConstants.V]),
+          deletedAt: null,
+        },
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  } 
+  };
 }
