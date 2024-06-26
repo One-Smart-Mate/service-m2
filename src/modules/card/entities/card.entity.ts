@@ -392,4 +392,28 @@ export class CardEntity {
 
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @Column({
+    type: 'tinyint',
+    width: 1,
+    nullable: true,
+    name: 'evidence_aups',
+  })
+  evidenceAups: boolean;
+
+  @Column({
+    type: 'tinyint',
+    width: 1,
+    nullable: true,
+    name: 'evidence_vips',
+  })
+  evidenceVips: boolean;
+
+  @Column({
+    type: 'tinyint',
+    width: 1,
+    nullable: true,
+    name: 'evidence_imps',
+  })
+  evidenceImps: boolean;
 }

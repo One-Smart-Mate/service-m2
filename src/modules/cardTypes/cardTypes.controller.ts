@@ -32,7 +32,6 @@ export class CardTypesController {
   @Get('/card-type/:id')
   @ApiParam({ name: 'id', required: true, example: 1 })
   findoneById(@Param('id') id: number) {
-    const cardType = this.cardTypesService.findById(id);
-    return plainToClass(FindOneCardTypeDTO, cardType, { excludeExtraneousValues: true });
+    return this.cardTypesService.findById(id)
   }
 }
