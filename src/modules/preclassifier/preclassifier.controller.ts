@@ -21,6 +21,12 @@ export class PreclassifierController {
     return this.preclassifierService.findSitePreclassifiers(siteId)
   }
 
+  @Get('/:id')
+  @ApiParam({name:'id', required: true, example: 1})
+  findOneById(@Param('id') siteId: number){
+    return this.preclassifierService.findById(siteId)
+  }
+
   @Post('/create')
   @ApiBody({type: CreatePreclassifierDTO})
   create(@Body() createPreclassifierDTO: CreatePreclassifierDTO){

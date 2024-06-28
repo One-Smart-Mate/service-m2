@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString, Length } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, Length, MaxLength } from 'class-validator';
 
 export class CreatePreclassifierDTO {
   @ApiProperty({
@@ -7,7 +7,7 @@ export class CreatePreclassifierDTO {
     maxLength: 3,
   })
   @IsString()
-  @Length(3, 3)
+  @MaxLength(3)
   @IsNotEmpty()
   preclassifierCode: string;
 
