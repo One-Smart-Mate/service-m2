@@ -129,5 +129,12 @@ export class SiteService {
     }catch(exception){
       HandleException.exception(exception)
     }
+  }
+  findAll = async () => {
+    try{
+      return await this.siteRepository.find()
+    }catch(exceptino){
+      HandleException.exception(exceptino)
+    }
   } 
 }
