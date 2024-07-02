@@ -65,7 +65,8 @@ export class CreateCardDTO {
 
   @ApiProperty({ enum: ['safe', 'unsafe'] })
   @IsEnum(CardTypeValue)
-  cardTypeValue: CardTypeValue;
+  @IsOptional()
+  cardTypeValue: CardTypeValue | null;
 
   @ApiProperty()
   @IsInt()
