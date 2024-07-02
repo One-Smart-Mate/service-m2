@@ -8,22 +8,22 @@ export class SiteEntity {
   id: number;
 
   @Exclude()
-  @Column({name: 'company_id', type: 'bigint', unsigned: true })
+  @Column({ name: 'company_id', type: 'bigint', unsigned: true })
   companyId: number;
 
   @Exclude()
-  @Column({name: 'site_code', type: 'char', length: 6, unique: true })
+  @Column({ name: 'site_code', type: 'char', length: 6, unique: true })
   siteCode: string;
-  
+
   @Exclude()
-  @Column({name: 'site_business_name', type: 'varchar', length: 100 })
+  @Column({ name: 'site_business_name', type: 'varchar', length: 100 })
   siteBusinessName: string;
 
-  @Column({name: 'site_name', type: 'varchar', length: 100 })
+  @Column({ name: 'site_name', type: 'varchar', length: 100 })
   name: string;
 
   @Exclude()
-  @Column({name: 'site_type', type: 'varchar', length: 20 })
+  @Column({ name: 'site_type', type: 'varchar', length: 20 })
   siteType: string;
 
   @Column({ type: 'varchar', length: 13 })
@@ -59,22 +59,22 @@ export class SiteEntity {
   cellular: string;
 
   @Exclude()
-  @Column({name: 'due_date', type: 'date' })
+  @Column({ name: 'due_date', type: 'date' })
   dueDate: string;
 
   @Exclude()
-  @Column({name: 'monthly_payment', type: 'decimal', precision: 12, scale: 2 })
+  @Column({ name: 'monthly_payment', type: 'decimal', precision: 12, scale: 2 })
   monthlyPayment: number;
 
   @Exclude()
-  @Column({type: 'char', length: 3 })
+  @Column({ type: 'char', length: 3 })
   currency: string;
 
-  @Column({name: 'url_logo', type: 'varchar', length: 200, nullable: true })
+  @Column({ name: 'url_logo', type: 'varchar', length: 200, nullable: true })
   logo: string;
 
   @Exclude()
-  @Column({name: 'app_history_days', type: 'smallint' })
+  @Column({ name: 'app_history_days', type: 'smallint' })
   appHistoryDays: number;
 
   @Column({ type: 'char', length: 1, default: 'A' })
@@ -91,4 +91,19 @@ export class SiteEntity {
   @Exclude()
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @Column({ name: 'zip_code', type: 'char', length: 5, nullable: true })
+  zipCode: string;
+
+  @Column({
+    name: 'user_license',
+    type: 'enum',
+    enum: ['concurrente', 'nombrado'],
+    default: 'nombrado',
+    nullable: true,
+  })
+  userLicense: 'concurrente' | 'nombrado';
+
+  @Column({ name: 'user_quantity', type: 'int', nullable: true })
+  userQuantity: number;
 }
