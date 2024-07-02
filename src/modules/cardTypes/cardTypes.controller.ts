@@ -34,4 +34,9 @@ export class CardTypesController {
   findoneById(@Param('id') id: number) {
     return this.cardTypesService.findById(id)
   }
+
+  @Get('/catalogs')
+  findCardTypesCatalogs() {
+    return this.cardTypesService.findAllCatalogs()
+  }
 }

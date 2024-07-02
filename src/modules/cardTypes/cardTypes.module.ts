@@ -6,9 +6,10 @@ import { CardTypesEntity } from './entities/cardTypes.entity';
 import { CompanyModule } from '../company/company.module';
 import { UsersModule } from '../users/users.module';
 import { SiteModule } from '../site/site.module';
+import { CardTypesCatalogEntity } from './entities/card.types.catalog.entity';
 
 @Module({
-  imports: [SiteModule ,CompanyModule, UsersModule,TypeOrmModule.forFeature([CardTypesEntity])],
+  imports: [SiteModule ,CompanyModule, UsersModule,TypeOrmModule.forFeature([CardTypesEntity, CardTypesCatalogEntity])],
   controllers: [CardTypesController],
   providers: [CardTypesService],
   exports: [CardTypesService]

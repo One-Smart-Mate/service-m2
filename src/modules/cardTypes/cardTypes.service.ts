@@ -11,6 +11,7 @@ import { UsersService } from '../users/users.service';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
 import { SiteService } from '../site/site.service';
+import { CardTypesCatalogEntity } from './entities/card.types.catalog.entity';
 
 @Injectable()
 export class CardTypesService {
@@ -18,7 +19,9 @@ export class CardTypesService {
     @InjectRepository(CardTypesEntity)
     private readonly cardTypesRepository: Repository<CardTypesEntity>,
     private readonly usersService: UsersService,
-    private readonly siteService: SiteService
+    private readonly siteService: SiteService,
+    @InjectRepository(CardTypesCatalogEntity)
+    private readonly cardTypesCatalogRepository: Repository<CardTypesCatalogEntity>,
   ) {}
 
   findSiteCardTypes = async (siteId: number) => {
@@ -66,9 +69,10 @@ export class CardTypesService {
       });
 
       if (!foundCardTpyes) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARDTYPES,);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
       }
-
 
       if (updateCardTypesDTO.responsableId) {
         const foundUser = await this.usersService.findById(
@@ -77,46 +81,62 @@ export class CardTypesService {
         if (!foundUser) {
           throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
         }
-        foundCardTpyes.responsableId = updateCardTypesDTO.responsableId
+        foundCardTpyes.responsableId = updateCardTypesDTO.responsableId;
         foundCardTpyes.responsableName = foundUser.name;
         foundCardTpyes.email = foundUser.email;
       }
 
-      foundCardTpyes.methodology = updateCardTypesDTO.methodology
-      foundCardTpyes.name = updateCardTypesDTO.name
-      foundCardTpyes.description = updateCardTypesDTO.description
-      foundCardTpyes.color = updateCardTypesDTO.color
-      foundCardTpyes.quantityPicturesCreate = updateCardTypesDTO.quantityPicturesCreate
-      foundCardTpyes.quantityAudiosCreate = updateCardTypesDTO.quantityAudiosCreate
-      foundCardTpyes.quantityVideosCreate = updateCardTypesDTO.quantityVideosCreate
-      foundCardTpyes.audiosDurationCreate = updateCardTypesDTO.audiosDurationCreate
-      foundCardTpyes.videosDurationCreate = updateCardTypesDTO.videosDurationCreate
-      foundCardTpyes.quantityPicturesClose = updateCardTypesDTO.quantityPicturesClose
-      foundCardTpyes.quantityAudiosClose = updateCardTypesDTO.quantityAudiosClose
-      foundCardTpyes.quantityVideosClose = updateCardTypesDTO.quantityVideosClose
-      foundCardTpyes.audiosDurationClose = updateCardTypesDTO.audiosDurationClose
-      foundCardTpyes.videosDurationClose = updateCardTypesDTO.videosDurationClose
-      foundCardTpyes.quantityPicturesPs = updateCardTypesDTO.quantityPicturesPs
-      foundCardTpyes.quantityAudiosPs = updateCardTypesDTO.quantityAudiosPs
-      foundCardTpyes.audiosDurationPs = updateCardTypesDTO.audiosDurationPs
-      foundCardTpyes.quantityVideosPs = updateCardTypesDTO.quantityVideosPs
-      foundCardTpyes.videosDurationPs = updateCardTypesDTO.videosDurationPs
+      foundCardTpyes.methodology = updateCardTypesDTO.methodology;
+      foundCardTpyes.name = updateCardTypesDTO.name;
+      foundCardTpyes.description = updateCardTypesDTO.description;
+      foundCardTpyes.color = updateCardTypesDTO.color;
+      foundCardTpyes.quantityPicturesCreate =
+        updateCardTypesDTO.quantityPicturesCreate;
+      foundCardTpyes.quantityAudiosCreate =
+        updateCardTypesDTO.quantityAudiosCreate;
+      foundCardTpyes.quantityVideosCreate =
+        updateCardTypesDTO.quantityVideosCreate;
+      foundCardTpyes.audiosDurationCreate =
+        updateCardTypesDTO.audiosDurationCreate;
+      foundCardTpyes.videosDurationCreate =
+        updateCardTypesDTO.videosDurationCreate;
+      foundCardTpyes.quantityPicturesClose =
+        updateCardTypesDTO.quantityPicturesClose;
+      foundCardTpyes.quantityAudiosClose =
+        updateCardTypesDTO.quantityAudiosClose;
+      foundCardTpyes.quantityVideosClose =
+        updateCardTypesDTO.quantityVideosClose;
+      foundCardTpyes.audiosDurationClose =
+        updateCardTypesDTO.audiosDurationClose;
+      foundCardTpyes.videosDurationClose =
+        updateCardTypesDTO.videosDurationClose;
+      foundCardTpyes.quantityPicturesPs = updateCardTypesDTO.quantityPicturesPs;
+      foundCardTpyes.quantityAudiosPs = updateCardTypesDTO.quantityAudiosPs;
+      foundCardTpyes.audiosDurationPs = updateCardTypesDTO.audiosDurationPs;
+      foundCardTpyes.quantityVideosPs = updateCardTypesDTO.quantityVideosPs;
+      foundCardTpyes.videosDurationPs = updateCardTypesDTO.videosDurationPs;
 
-      foundCardTpyes.status = updateCardTypesDTO.status
-      foundCardTpyes.updatedAt = new Date()
+      foundCardTpyes.status = updateCardTypesDTO.status;
+      foundCardTpyes.updatedAt = new Date();
 
-      return await this.cardTypesRepository.save(foundCardTpyes)
-
+      return await this.cardTypesRepository.save(foundCardTpyes);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  findById = async (id : number ) => {
+  findById = async (id: number) => {
     try {
       return await this.cardTypesRepository.findOneBy({ id: id });
     } catch (exception) {
       HandleException.exception(exception);
     }
-  }
+  };
+  findAllCatalogs = async () => {
+    try {
+      return await this.cardTypesCatalogRepository.find();
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
