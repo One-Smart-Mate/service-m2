@@ -4,6 +4,8 @@ export const stringConstants = {
   duplicateUser: 'This user already exists',
   duplicateRole: 'This role already exists',
   duplicateCardUUID: 'The UUID already exists',
+  existDefinitiveSolution: 'Already exists a definitive solution',
+  existProvisionalSolution: 'Already exists a provisional solution',
 
   //Types of evidences
   AUCR: 'AUCR',
@@ -17,6 +19,8 @@ export const stringConstants = {
   IMCL: 'IMCL',
   R: 'R',
   noteDefinitiveSoluition: 'Auto: Definitivesolution: Se agrego la solucion definitiva',
+  noteProvisionalSolution: 'Auto: Provisional solution: Se agrego la solucion provisional: userApp',
+  aplico: 'Aplico:',
 
   //methodology
   M: 'M',

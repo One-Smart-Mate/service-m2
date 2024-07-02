@@ -19,6 +19,12 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATE_CARD_UUID) {
       message = stringConstants.duplicateCardUUID;
     }
+    if (type === ValidationExceptionType.OVERWRITE_DEFINITIVE_SOLUTION) {
+      message = stringConstants.existDefinitiveSolution;
+    }
+    if (type === ValidationExceptionType.OVERWRITE_PROVISIONAL_SOLUTION) {
+      message = stringConstants.existProvisionalSolution;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -28,5 +34,7 @@ export enum ValidationExceptionType {
   DUPLICATE_RECORD,
   DUPLICATED_USER,
   DUPLICATE_ROLE,
-  DUPLICATE_CARD_UUID
+  DUPLICATE_CARD_UUID,
+  OVERWRITE_PROVISIONAL_SOLUTION,
+  OVERWRITE_DEFINITIVE_SOLUTION
 }

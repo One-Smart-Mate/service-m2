@@ -305,7 +305,7 @@ export class CardEntity {
     nullable: true,
     name: 'card_provisional_solution_date',
   })
-  cardProvisionalSolutionDate: string;
+  cardProvisionalSolutionDate: Date;
 
   @Column({
     type: 'varchar',
@@ -397,6 +397,7 @@ export class CardEntity {
     type: 'tinyint',
     width: 1,
     nullable: true,
+    default: () => '0',
     name: 'evidence_aups',
   })
   evidenceAups: boolean;
@@ -405,6 +406,7 @@ export class CardEntity {
     type: 'tinyint',
     width: 1,
     nullable: true,
+    default: () => '0',
     name: 'evidence_vips',
   })
   evidenceVips: boolean;
@@ -413,6 +415,7 @@ export class CardEntity {
     type: 'tinyint',
     width: 1,
     nullable: true,
+    default: () => '0',
     name: 'evidence_imps',
   })
   evidenceImps: boolean;
