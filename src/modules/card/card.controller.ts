@@ -3,6 +3,7 @@ import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create-card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
+import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -33,7 +34,10 @@ export class CardController {
   updateDefinitiveSolution(@Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO){
     return this.cardService.updateDefinitivesolution(updateDefinitiveSolutionDTO)
   }
-
+  @Put('/update/provisional-solution')
+  updateProvisionalSolution(@Body() updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO){
+    return this.cardService.updateProvisionalSolution(updateProvisionalSolutionDTO)
+  }
   @Get('/all/zone/:superiorId')
   @ApiParam({name: 'superiorId'})
   getCardsZone(@Param('superiorId') superiorId: number){

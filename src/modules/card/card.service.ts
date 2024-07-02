@@ -22,6 +22,7 @@ import {
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
+import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 
 @Injectable()
 export class CardService {
@@ -132,11 +133,12 @@ export class CardService {
         order: { id: 'DESC' },
         take: 1,
       });
-      const { siteCardId } = lastInsertedCard[0];
 
       const card = await this.cardRepository.create({
         ...createCardDTO,
-        siteCardId: siteCardId + 1,
+        siteCardId: lastInsertedCard[0]
+          ? lastInsertedCard[0].siteCardId + 1
+          : 1,
         siteCode: site.siteCode,
         cardTypeColor: cardType.color,
         areaName: area.name,
@@ -228,7 +230,11 @@ export class CardService {
       if (!card) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
-
+      if (card.userDefinitiveSolutionId !== null) {
+        throw new ValidationException(
+          ValidationExceptionType.OVERWRITE_DEFINITIVE_SOLUTION,
+        );
+      }
       const userDefinitiveSolution = await this.userService.findById(
         updateDefinitivesolutionDTO.userDefinitiveSolutionId,
       );
@@ -317,6 +323,102 @@ export class CardService {
           deletedAt: null,
         },
       });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  updateProvisionalSolution = async (
+    updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
+  ) => {
+    try {
+      const card = await this.cardRepository.findOneBy({
+        id: updateProvisionalSolutionDTO.cardId,
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+      if (card.userProvisionalSolutionId !== null) {
+        throw new ValidationException(
+          ValidationExceptionType.OVERWRITE_PROVISIONAL_SOLUTION,
+        );
+      }
+
+      const userProvisionalSolution = await this.userService.findById(
+        updateProvisionalSolutionDTO.userProvisionalSolutionId,
+      );
+      const userAppProvisionalSolution = await this.userService.findById(
+        updateProvisionalSolutionDTO.userAppProvisionalSolutionId,
+      );
+
+      if (!userProvisionalSolution || !userProvisionalSolution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      card.userProvisionalSolutionId = userProvisionalSolution.id;
+      card.userProvisionalSolutionName = userProvisionalSolution.name;
+      card.userAppProvisionalSolutionId = userAppProvisionalSolution.id;
+      card.userAppProvisionalSolutionName = userAppProvisionalSolution.name;
+      card.cardProvisionalSolutionDate = new Date();
+      card.commentsAtCardProvisionalSolution =
+        updateProvisionalSolutionDTO.comments;
+      card.status = stringConstants.P;
+      card.updatedAt = new Date();
+
+      await Promise.all(
+        updateProvisionalSolutionDTO.evidences.map(async (evidence) => {
+          switch (evidence.type) {
+            case stringConstants.AUCR:
+              card.evidenceAucr = true;
+              break;
+            case stringConstants.VICR:
+              card.evidenceVicr = true;
+              break;
+            case stringConstants.IMCR:
+              card.evidenceImcr = true;
+              break;
+            case stringConstants.AUCL:
+              card.evidenceAucl = true;
+              break;
+            case stringConstants.VICL:
+              card.evidenceVicl = true;
+              break;
+            case stringConstants.IMCL:
+              card.evidenceImcl = true;
+              break;
+            case stringConstants.IMPS:
+              card.evidenceImps = true;
+              break;
+            case stringConstants.AUPS:
+              card.evidenceAups = true;
+              break;
+            case stringConstants.VIPS:
+              card.evidenceVips = true;
+              break;
+          }
+          var evidenceToCreate = await this.evidenceRepository.create({
+            evidenceName: evidence.url,
+            evidenceType: evidence.type,
+            cardId: card.id,
+            siteId: card.siteId,
+            createdAt: new Date(),
+          });
+          await this.evidenceRepository.save(evidenceToCreate);
+        }),
+      );
+
+      await this.cardRepository.save(card);
+
+      const note = await this.cardNoteRepository.create({
+        cardId: card.id,
+        siteId: card.siteId,
+        note: `${stringConstants.noteProvisionalSolution} ${card.userAppProvisionalSolutionId} ${card.userAppProvisionalSolutionName} ${stringConstants.aplico} ${card.userAppDefinitiveSolutionId} ${card.userAppProvisionalSolutionName}`,
+        createdAt: new Date(),
+      });
+
+      await this.cardNoteRepository.save(note);
+
+      return card;
     } catch (exception) {
       HandleException.exception(exception);
     }
