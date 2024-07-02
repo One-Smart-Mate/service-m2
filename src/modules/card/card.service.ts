@@ -147,11 +147,11 @@ export class CardService {
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
         cardTypeMethodology:
-          cardType.cardTypeMethodology === stringConstants.M
+          cardType.cardTypeMethodology === stringConstants.C
             ? cardType.cardTypeMethodology
             : null,
         cardTypeValue:
-          cardType.cardTypeMethodology === stringConstants.M
+          cardType.cardTypeMethodology === stringConstants.C
             ? createCardDTO.cardTypeValue
             : null,
         cardTypeMethodologyName: cardType.methodology,
