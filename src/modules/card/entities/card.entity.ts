@@ -111,7 +111,7 @@ export class CardEntity {
     default: 'unsafe',
     name: 'cardType_value',
   })
-  cardTypeValue: 'safe' | 'unsafe';
+  cardTypeValue: 'safe' | 'unsafe' | '';
 
   @Column({
     type: 'bigint',

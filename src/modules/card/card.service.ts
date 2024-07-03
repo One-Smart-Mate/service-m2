@@ -23,6 +23,8 @@ import { stringConstants } from 'src/utils/string.constant';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
+import { PreclassifierEntity } from '../preclassifier/entities/preclassifier.entity';
+import { PriorityEntity } from '../priority/entities/priority.entity';
 
 @Injectable()
 export class CardService {
@@ -99,9 +101,12 @@ export class CardService {
       }
 
       const site = await this.siteService.findById(createCardDTO.siteId);
-      const priority = await this.priorityService.findById(
-        createCardDTO.priorityId,
-      );
+      var priority = new PriorityEntity();
+      if (createCardDTO.priorityId && createCardDTO.priorityId !== 0) {
+        priority = await this.priorityService.findById(
+          createCardDTO.priorityId,
+        );
+      }
       const area = await this.levelService.findById(createCardDTO.areaId);
       const cardType = await this.cardTypeService.findById(
         createCardDTO.cardTypeId,
@@ -144,6 +149,7 @@ export class CardService {
         areaName: area.name,
         level: area.level,
         superiorId: Number(area.superiorId) === 0 ? area.id : area.superiorId,
+        priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
         cardTypeMethodology:
