@@ -11,7 +11,6 @@ export class SiteEntity {
   @Column({ name: 'company_id', type: 'bigint', unsigned: true })
   companyId: number;
 
-  @Exclude()
   @Column({ name: 'site_code', type: 'char', length: 6, unique: true })
   siteCode: string;
 
