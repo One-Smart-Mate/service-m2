@@ -1,5 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNumber, IsOptional, Length, IsNotEmpty, IsEmail, IsUrl, IsDateString, isDateString, IsISO8601 } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  Length,
+  IsNotEmpty,
+  IsEmail,
+  IsUrl,
+  IsISO8601,
+  IsEnum,
+  IsInt,
+  ValidateIf,
+} from 'class-validator';
+
+enum UserLicense {
+  Concurrente = 'concurrente',
+  Nombrado = 'nombrado',
+}
 
 export class CreateSiteDTO {
   @ApiProperty({ type: 'number', description: 'Company ID', required: true })
@@ -7,23 +24,44 @@ export class CreateSiteDTO {
   @IsNotEmpty()
   companyId: number;
 
-  @ApiProperty({ type: 'string', description: 'Site code', minLength: 6, maxLength: 6, required: true})
+  @ApiProperty({
+    type: 'string',
+    description: 'Site code',
+    minLength: 6,
+    maxLength: 6,
+    required: true,
+  })
   @IsString()
   @Length(6, 6, { message: 'Site code must be exactly 6 characters' })
   @IsNotEmpty()
   siteCode: string;
 
-  @ApiProperty({ type: 'string', description: 'Site name', maxLength: 100, required: true })
+  @ApiProperty({
+    type: 'string',
+    description: 'Site name',
+    maxLength: 100,
+    required: true,
+  })
   @IsString()
   @IsNotEmpty()
   siteBusinessName: string;
 
-  @ApiProperty({ type: 'string', description: 'Site name', maxLength: 100, required: true })
+  @ApiProperty({
+    type: 'string',
+    description: 'Site name',
+    maxLength: 100,
+    required: true,
+  })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ type: 'string', description: 'Site type', maxLength: 20, required: true })
+  @ApiProperty({
+    type: 'string',
+    description: 'Site type',
+    maxLength: 20,
+    required: true,
+  })
   @IsString()
   @IsNotEmpty()
   siteType: string;
@@ -97,26 +135,65 @@ export class CreateSiteDTO {
   @IsOptional()
   longitud?: string;
 
-  @ApiProperty({ type: 'date', description: 'Due date', required: true, example: '2020-09-07' })
+  @ApiProperty({
+    type: 'date',
+    description: 'Due date',
+    required: true,
+    example: '2020-09-07',
+  })
   @IsNotEmpty()
   @IsISO8601()
   dueDate: string;
 
-  @ApiProperty({ type: 'number', description: 'Monthly payment', minimum: 0, required: true })
+  @ApiProperty({
+    type: 'number',
+    description: 'Monthly payment',
+    minimum: 0,
+    required: true,
+  })
   @IsNotEmpty()
   @IsNumber()
   monthlyPayment: number;
 
-  @ApiProperty({ type: 'string', description: 'Currency code', maxLength: 3, required: true })
-  @IsString()  
+  @ApiProperty({
+    type: 'string',
+    description: 'Currency code',
+    maxLength: 3,
+    required: true,
+  })
+  @IsString()
   @IsNotEmpty()
   currency: string;
 
-  @ApiProperty({ type: 'number', description: 'App history days', required: true })
+  @ApiProperty({
+    type: 'number',
+    description: 'App history days',
+    required: true,
+  })
   @IsNumber()
   @IsNotEmpty()
   appHistoryDays: number;
 
-  createdAt?: Date;
+  @ApiProperty({ type: String, nullable: true, example: '12345' })
+  @IsString()
+  @IsOptional()
+  zipCode?: string;
 
+  @ApiProperty({
+    enum: UserLicense,
+    default: UserLicense.Nombrado,
+    nullable: true,
+    example: 'nombrado',
+  })
+  @IsEnum(UserLicense)
+  @IsOptional()
+  userLicense?: UserLicense;
+
+  @ApiProperty({ type: Number, nullable: true, example: 10 })
+  @IsInt()
+  @IsOptional()
+  @ValidateIf((o) => o.userLicense === UserLicense.Concurrente)
+  userQuantity?: number;
+
+  createdAt?: Date;
 }
