@@ -14,6 +14,7 @@ import { Type } from 'class-transformer';
 enum CardTypeValue {
   Safe = 'safe',
   Unsafe = 'unsafe',
+  nullType = ''
 }
 
 enum EvidenceType {
@@ -59,9 +60,10 @@ export class CreateCardDTO {
   @IsOptional()
   areaId: number | null;
 
-  @ApiProperty()
+  @ApiProperty({required: false})
+  @IsOptional()
   @IsInt()
-  priorityId: number;
+  priorityId: number | 0 | null;
 
   @ApiProperty({ enum: ['safe', 'unsafe'] })
   @IsEnum(CardTypeValue)
