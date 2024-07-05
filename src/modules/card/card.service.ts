@@ -181,31 +181,31 @@ export class CardService {
         createCardDTO.evidences.map(async (evidence) => {
           switch (evidence.type) {
             case stringConstants.AUCR:
-              cardAssignEvidences.evidenceAucr = true;
+              cardAssignEvidences.evidenceAucr = 1;
               break;
             case stringConstants.VICR:
-              cardAssignEvidences.evidenceVicr = true;
+              cardAssignEvidences.evidenceVicr = 1;
               break;
             case stringConstants.IMCR:
-              cardAssignEvidences.evidenceImcr = true;
+              cardAssignEvidences.evidenceImcr = 1;
               break;
             case stringConstants.AUCL:
-              cardAssignEvidences.evidenceAucl = true;
+              cardAssignEvidences.evidenceAucl = 1;
               break;
             case stringConstants.VICL:
-              cardAssignEvidences.evidenceVicl = true;
+              cardAssignEvidences.evidenceVicl = 1;
               break;
             case stringConstants.IMCL:
-              cardAssignEvidences.evidenceImcl = true;
+              cardAssignEvidences.evidenceImcl = 1;
               break;
             case stringConstants.IMPS:
-              cardAssignEvidences.evidenceImps = true;
+              cardAssignEvidences.evidenceImps = 1;
               break;
             case stringConstants.AUPS:
-              cardAssignEvidences.evidenceAups = true;
+              cardAssignEvidences.evidenceAups = 1;
               break;
             case stringConstants.VIPS:
-              cardAssignEvidences.evidenceVips = true;
+              cardAssignEvidences.evidenceVips = 1;
               break;
           }
           var evidenceToCreate = await this.evidenceRepository.create({
@@ -266,31 +266,31 @@ export class CardService {
         updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
           switch (evidence.type) {
             case stringConstants.AUCR:
-              card.evidenceAucr = true;
+              card.evidenceAucr = 1;
               break;
             case stringConstants.VICR:
-              card.evidenceVicr = true;
+              card.evidenceVicr = 1;
               break;
             case stringConstants.IMCR:
-              card.evidenceImcr = true;
+              card.evidenceImcr = 1;
               break;
             case stringConstants.AUCL:
-              card.evidenceAucl = true;
+              card.evidenceAucl = 1;
               break;
             case stringConstants.VICL:
-              card.evidenceVicl = true;
+              card.evidenceVicl = 1;
               break;
             case stringConstants.IMCL:
-              card.evidenceImcl = true;
+              card.evidenceImcl = 1;
               break;
             case stringConstants.IMPS:
-              card.evidenceImps = true;
+              card.evidenceImps = 1;
               break;
             case stringConstants.AUPS:
-              card.evidenceAups = true;
+              card.evidenceAups = 1;
               break;
             case stringConstants.VIPS:
-              card.evidenceVips = true;
+              card.evidenceVips = 1;
               break;
           }
           var evidenceToCreate = await this.evidenceRepository.create({
@@ -375,31 +375,31 @@ export class CardService {
         updateProvisionalSolutionDTO.evidences.map(async (evidence) => {
           switch (evidence.type) {
             case stringConstants.AUCR:
-              card.evidenceAucr = true;
+              card.evidenceAucr = 1;
               break;
             case stringConstants.VICR:
-              card.evidenceVicr = true;
+              card.evidenceVicr = 1;
               break;
             case stringConstants.IMCR:
-              card.evidenceImcr = true;
+              card.evidenceImcr = 1;
               break;
             case stringConstants.AUCL:
-              card.evidenceAucl = true;
+              card.evidenceAucl = 1;
               break;
             case stringConstants.VICL:
-              card.evidenceVicl = true;
+              card.evidenceVicl = 1;
               break;
             case stringConstants.IMCL:
-              card.evidenceImcl = true;
+              card.evidenceImcl = 1;
               break;
             case stringConstants.IMPS:
-              card.evidenceImps = true;
+              card.evidenceImps = 1;
               break;
             case stringConstants.AUPS:
-              card.evidenceAups = true;
+              card.evidenceAups = 1;
               break;
             case stringConstants.VIPS:
-              card.evidenceVips = true;
+              card.evidenceVips = 1;
               break;
           }
           var evidenceToCreate = await this.evidenceRepository.create({

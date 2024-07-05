@@ -337,7 +337,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_aucr',
   })
-  evidenceAucr: boolean;
+  evidenceAucr: number;
 
   @Column({
     type: 'tinyint',
@@ -346,7 +346,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_vicr',
   })
-  evidenceVicr: boolean;
+  evidenceVicr: number;
 
   @Column({
     type: 'tinyint',
@@ -355,7 +355,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_imcr',
   })
-  evidenceImcr: boolean;
+  evidenceImcr: number;
 
   @Column({
     type: 'tinyint',
@@ -364,7 +364,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_aucl',
   })
-  evidenceAucl: boolean;
+  evidenceAucl: number;
 
   @Column({
     type: 'tinyint',
@@ -373,7 +373,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_vicl',
   })
-  evidenceVicl: boolean;
+  evidenceVicl: number;
 
   @Column({
     type: 'tinyint',
@@ -382,7 +382,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_imcl',
   })
-  evidenceImcl: boolean;
+  evidenceImcl: number;
 
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;
@@ -400,7 +400,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_aups',
   })
-  evidenceAups: boolean;
+  evidenceAups: number;
 
   @Column({
     type: 'tinyint',
@@ -409,7 +409,7 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_vips',
   })
-  evidenceVips: boolean;
+  evidenceVips: number;
 
   @Column({
     type: 'tinyint',
@@ -418,5 +418,5 @@ export class CardEntity {
     default: () => '0',
     name: 'evidence_imps',
   })
-  evidenceImps: boolean;
+  evidenceImps: number;
 }
