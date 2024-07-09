@@ -23,7 +23,6 @@ import { stringConstants } from 'src/utils/string.constant';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
-import { PreclassifierEntity } from '../preclassifier/entities/preclassifier.entity';
 import { PriorityEntity } from '../priority/entities/priority.entity';
 
 @Injectable()
@@ -134,16 +133,15 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      var lastInsertedCard = await this.cardRepository.find({
+      var lastInsertedCard;
+      lastInsertedCard = await this.cardRepository.findOne({
         order: { id: 'DESC' },
-        take: 1,
+        where: { siteId: site.id },
       });
 
       const card = await this.cardRepository.create({
         ...createCardDTO,
-        siteCardId: lastInsertedCard[0]
-          ? lastInsertedCard[0].siteCardId + 1
-          : 1,
+        siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
         siteCode: site.siteCode,
         cardTypeColor: cardType.color,
         areaName: area.name,
