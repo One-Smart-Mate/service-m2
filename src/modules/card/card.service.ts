@@ -320,11 +320,12 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  getCardBySuperiorId = async (superiorId: number) => {
+  getCardBySuperiorId = async (superiorId: number, siteId: number) => {
     try {
       return await this.cardRepository.find({
         where: {
           superiorId: superiorId,
+          siteId: siteId,
           status: In([stringConstants.A, stringConstants.P, stringConstants.V]),
           deletedAt: null,
         },
