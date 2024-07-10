@@ -25,6 +25,9 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.OVERWRITE_PROVISIONAL_SOLUTION) {
       message = stringConstants.existProvisionalSolution;
     }
+    if (type === ValidationExceptionType.USER_QUANTITY_EXCEEDED) {
+      message = stringConstants.quantityOfUsersExceeded;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -36,5 +39,6 @@ export enum ValidationExceptionType {
   DUPLICATE_ROLE,
   DUPLICATE_CARD_UUID,
   OVERWRITE_PROVISIONAL_SOLUTION,
-  OVERWRITE_DEFINITIVE_SOLUTION
+  OVERWRITE_DEFINITIVE_SOLUTION,
+  USER_QUANTITY_EXCEEDED
 }
