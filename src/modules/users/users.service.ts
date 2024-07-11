@@ -71,6 +71,7 @@ export class UsersService {
       });
 
       const transformedUsers = users.map((user) => ({
+        id: user.id,
         name: user.name,
         email: user.email,
         roles: user.userRoles.map((userRole) => ({
@@ -104,15 +105,6 @@ export class UsersService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
 
-      const currentSiteUsers = await this.userRepository.findBy({
-        site: { id: createUserDTO.siteId },
-      });
-      if (currentSiteUsers.length === site.userQuantity) {
-        throw new ValidationException(
-          ValidationExceptionType.USER_QUANTITY_EXCEEDED,
-        );
-      }
-
       const user = await this.userRepository.create({
         name: createUserDTO.name,
         email: createUserDTO.email,
@@ -139,38 +131,49 @@ export class UsersService {
 
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
-      const user = await this.userRepository.findOneBy({
-        id: updateUserDTO.id,
-      });
-
+      const [user, emailIsNotUnique, site, roles] = await Promise.all([
+        this.userRepository.findOne({
+          where: { id: updateUserDTO.id },
+          relations: ['site'],
+        }),
+        this.userRepository.exists({
+          where: { email: updateUserDTO.email, id: Not(updateUserDTO.id) },
+        }),
+        this.siteService.findById(updateUserDTO.siteId),
+        this.roleService.findRolesByIds(updateUserDTO.roles),
+      ]);
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
-
-      const emailIsNotUnique = await this.userRepository.exists({
-        where: { email: updateUserDTO.email, id: Not(updateUserDTO.id) },
-      });
       if (emailIsNotUnique) {
         throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
       }
-
-      const site = await this.siteService.findById(updateUserDTO.siteId);
-      const roles = await this.roleService.findRolesByIds(updateUserDTO.roles);
-
-      console.log(roles);
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (roles.length === 0) {
+      }
+      if (roles.length === 0) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
+      }
+
+      if (site.id !== user.site.id) {
+        const currentSiteUsers = await this.userRepository.find({
+          where: { site: { id: updateUserDTO.siteId } },
+        });
+        if (currentSiteUsers.length === site.userQuantity) {
+          throw new ValidationException(
+            ValidationExceptionType.USER_QUANTITY_EXCEEDED,
+          );
+        }
       }
 
       user.name = updateUserDTO.name;
       user.email = updateUserDTO.email;
-      if (updateUserDTO.password)
+      if (updateUserDTO.password) {
         user.password = await bcryptjs.hash(
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+      }
       user.site = site;
       user.appVersion = process.env.APP_ENV;
       user.siteCode = site.siteCode;
@@ -198,7 +201,7 @@ export class UsersService {
           id: user.id,
           name: user.name,
           email: user.email,
-          roles: user.userRoles.map((role) => role.id),
+          roles: user.userRoles.map((userRoles) => userRoles.role.id),
           siteId: user.site.id,
           uploadCardDataWithDataNet: user.uploadCardDataWithDataNet,
           uploadCardEvidenceWithDataNet: user.uploadCardEvidenceWithDataNet,
