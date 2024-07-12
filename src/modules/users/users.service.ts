@@ -104,6 +104,14 @@ export class UsersService {
       } else if (roles.length === 0) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
+      const currentSiteUsers = await this.userRepository.findBy({
+        site: { id: createUserDTO.siteId },
+      });
+      if (currentSiteUsers.length === site.userQuantity) {
+        throw new ValidationException(
+          ValidationExceptionType.USER_QUANTITY_EXCEEDED,
+        );
+      }
 
       const user = await this.userRepository.create({
         name: createUserDTO.name,
@@ -128,7 +136,6 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
-
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
       const [user, emailIsNotUnique, site, roles] = await Promise.all([
@@ -183,7 +190,7 @@ export class UsersService {
       user.updatedAt = new Date();
 
       await this.userRepository.save(user);
-
+      
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
       HandleException.exception(exception);
