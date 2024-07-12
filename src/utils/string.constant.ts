@@ -6,6 +6,7 @@ export const stringConstants = {
   duplicateCardUUID: 'The UUID already exists',
   existDefinitiveSolution: 'Already exists a definitive solution',
   existProvisionalSolution: 'Already exists a provisional solution',
+  quantityOfUsersExceeded: 'Quantity of site users exceeded',
 
   //Types of evidences
   AUCR: 'AUCR',
