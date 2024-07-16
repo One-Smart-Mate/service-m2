@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { UserEntity } from '../users/entities/user.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { sendCodeMessage } from './templates/email.templates';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class MailService {
@@ -12,7 +13,7 @@ export class MailService {
     try {
       await this.mailerService.sendMail({
         to: user.email,
-        subject: 'Reset Your Password - M2',
+        subject: stringConstants.resetPasswordEmailSubject,
         html: sendCodeMessage(user.name, code),
       });
     } catch (exception) {

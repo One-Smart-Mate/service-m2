@@ -9,7 +9,8 @@ export const stringConstants = {
   quantityOfUsersExceeded: 'Quantity of site users exceeded',
   codeExpired: 'The code has expired',
   wrongResetCode: 'Wrong reset code',
-  emailIsMissing : 'The e-mail is missing',
+  emailIsMissing: 'The e-mail is missing',
+  resetPasswordEmailSubject: 'Reset Your Password - M2',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
 
   //Types of evidences
