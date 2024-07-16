@@ -5,6 +5,8 @@ import { UserResponsible } from './models/user.responsible.dto';
 import { plainToClass } from 'class-transformer';
 import { CreateUserDTO } from './models/create.user.dto';
 import { UpdateUserDTO } from './models/update.user.dto';
+import { SendCodeDTO } from './models/send.code.dto';
+import { ResetPasswordDTO } from './models/reset.password.dto';
 
 @Controller('users')
 @ApiTags('users')
@@ -21,21 +23,34 @@ export class UsersController {
   }
   @Get('/all')
   findAll() {
-    return this.usersService.findAllUsers()
+    return this.usersService.findAllUsers();
   }
 
   @Post('/create')
   create(@Body() createUserDTO: CreateUserDTO) {
-    return this.usersService.create(createUserDTO)
+    return this.usersService.create(createUserDTO);
+  }
+
+  @Post('/send-code')
+  sendCodeToEmail(@Body('email') email: string) {
+    return this.usersService.sendCodeToEmail(email);
+  }
+  @Post('/verify-code')
+  veryfyCode(@Body() sendCodeDTO: SendCodeDTO) {
+    return this.usersService.verifyResetCode(sendCodeDTO);
+  }
+  @Post('/reset-password')
+  async resetPassword(@Body() resetPasswordDTO: ResetPasswordDTO) {
+    await this.usersService.resetPassword(resetPasswordDTO);
   }
 
   @Get('/user/:userId')
   findOneById(@Param('userId') userId: number) {
-    return this.usersService.findOneById(userId)
+    return this.usersService.findOneById(userId);
   }
-  
+
   @Put('/update')
   update(@Body() updateUserDTO: UpdateUserDTO) {
-    return this.usersService.updateUser(updateUserDTO)
+    return this.usersService.updateUser(updateUserDTO);
   }
 }

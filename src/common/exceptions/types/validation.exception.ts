@@ -28,6 +28,15 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.USER_QUANTITY_EXCEEDED) {
       message = stringConstants.quantityOfUsersExceeded;
     }
+    if (type === ValidationExceptionType.RESETCODE_EXPIRED) {
+      message = stringConstants.codeExpired;
+    }
+    if (type === ValidationExceptionType.WRONG_RESET_CODE) {
+      message = stringConstants.wrongResetCode;
+    }
+    if (type === ValidationExceptionType.EMAIL_MISSING) {
+      message = stringConstants.emailIsMissing;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -40,5 +49,8 @@ export enum ValidationExceptionType {
   DUPLICATE_CARD_UUID,
   OVERWRITE_PROVISIONAL_SOLUTION,
   OVERWRITE_DEFINITIVE_SOLUTION,
-  USER_QUANTITY_EXCEEDED
+  USER_QUANTITY_EXCEEDED,
+  RESETCODE_EXPIRED,
+  WRONG_RESET_CODE,
+  EMAIL_MISSING,
 }

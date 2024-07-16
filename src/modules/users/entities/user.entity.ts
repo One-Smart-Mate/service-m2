@@ -21,9 +21,8 @@ export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
 
-
-  @OneToOne(()=> SiteEntity)
-  @JoinColumn({name: 'site_id'})
+  @OneToOne(() => SiteEntity)
+  @JoinColumn({ name: 'site_id' })
   site: SiteEntity;
 
   @Column({ name: 'site_code', type: 'varchar', length: 6, nullable: false })
@@ -83,6 +82,12 @@ export class UserEntity {
   })
   rememberToken: string;
 
+  @Exclude()
+  @Column({ name: 'reset_code', type: 'varchar', length: 30, nullable: true })
+  resetCode: string;
+  @Exclude()
+  @Column({ name: 'reset_code_expiration', type: 'timestamp', nullable: true })
+  resetCodeExpiration: Date;
 
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;

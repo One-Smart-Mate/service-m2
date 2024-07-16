@@ -17,6 +17,10 @@ import { RolesService } from '../roles/roles.service';
 import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdateUserDTO } from './models/update.user.dto';
+import { MailService } from '../mail/mail.service';
+import { generateRandomCode } from 'src/utils/general.functions';
+import { SendCodeDTO } from './models/send.code.dto';
+import { ResetPasswordDTO } from './models/reset.password.dto';
 
 @Injectable()
 export class UsersService {
@@ -25,7 +29,95 @@ export class UsersService {
     private readonly userRepository: Repository<UserEntity>,
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
+    private readonly mailService: MailService,
   ) {}
+
+  sendCodeToEmail = async (email: string) => {
+    try {
+      if (!email) {
+        throw new ValidationException(ValidationExceptionType.EMAIL_MISSING);
+      }
+
+      const user = await this.userRepository.findOneBy({ email });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const resetCode = generateRandomCode(6);
+      user.resetCode = await await bcryptjs.hash(
+        resetCode,
+        stringConstants.SALT_ROUNDS,
+      );
+      user.resetCodeExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      await this.userRepository.save(user);
+
+      await this.mailService.sendResetPasswordCode(user, resetCode);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  verifyResetCode = async (sendCodeDTO: SendCodeDTO) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { email: sendCodeDTO.email },
+      });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const isCodeValid = await bcryptjs.compare(
+        sendCodeDTO.resetCode,
+        user.resetCode,
+      );
+
+      if (!isCodeValid) {
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (new Date() > user.resetCodeExpiration) {
+        throw new ValidationException(
+          ValidationExceptionType.RESETCODE_EXPIRED,
+        );
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  resetPassword = async (resetPasswordDTO: ResetPasswordDTO) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { email: resetPasswordDTO.email },
+      });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const isCodeValid = await bcryptjs.compare(
+        resetPasswordDTO.resetCode,
+        user.resetCode,
+      );
+
+      if (!isCodeValid) {
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      user.password = await await bcryptjs.hash(
+        resetPasswordDTO.newPassword,
+        stringConstants.SALT_ROUNDS,
+      );
+      user.resetCode = null;
+      user.resetCodeExpiration = null;
+      user.updatedAt = new Date();
+      await this.userRepository.save(user);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   findOneByEmail = (email: string) => {
     return this.userRepository.findOne({
@@ -190,7 +282,7 @@ export class UsersService {
       user.updatedAt = new Date();
 
       await this.userRepository.save(user);
-      
+
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
       HandleException.exception(exception);
