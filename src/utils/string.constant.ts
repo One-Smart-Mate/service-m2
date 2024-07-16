@@ -7,6 +7,11 @@ export const stringConstants = {
   existDefinitiveSolution: 'Already exists a definitive solution',
   existProvisionalSolution: 'Already exists a provisional solution',
   quantityOfUsersExceeded: 'Quantity of site users exceeded',
+  codeExpired: 'The code has expired',
+  wrongResetCode: 'Wrong reset code',
+  emailIsMissing: 'The e-mail is missing',
+  resetPasswordEmailSubject: 'Reset Your Password - M2',
+  characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
 
   //Types of evidences
   AUCR: 'AUCR',
@@ -19,8 +24,10 @@ export const stringConstants = {
   IMPS: 'IMPS',
   IMCL: 'IMCL',
   R: 'R',
-  noteDefinitiveSoluition: 'Auto: Definitivesolution: Se agrego la solucion definitiva',
-  noteProvisionalSolution: 'Auto: Provisional solution: Se agrego la solucion provisional: userApp',
+  noteDefinitiveSoluition:
+    'Auto: Definitivesolution: Se agrego la solucion definitiva',
+  noteProvisionalSolution:
+    'Auto: Provisional solution: Se agrego la solucion provisional: userApp',
   aplico: 'Aplico:',
 
   //methodology
@@ -28,8 +35,8 @@ export const stringConstants = {
   C: 'C',
 
   //card status
-  A : 'A',
-  P : 'P',
+  A: 'A',
+  P: 'P',
   V: 'V',
 
   //status
@@ -48,7 +55,7 @@ export const stringConstants = {
   preclsassifierNotFound: 'Preclassifier not found',
   levels: 'Levels not found',
   roles: 'Roles not found',
-  cardNotFound: 'Card not found', 
+  cardNotFound: 'Card not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
