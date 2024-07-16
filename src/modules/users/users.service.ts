@@ -21,6 +21,8 @@ import { MailService } from '../mail/mail.service';
 import { generateRandomCode } from 'src/utils/general.functions';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
+import { SetAppTokenDTO } from './models/set.app.token.dto';
+import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
 export class UsersService {
@@ -30,6 +32,7 @@ export class UsersService {
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   sendCodeToEmail = async (email: string) => {
@@ -311,6 +314,32 @@ export class UsersService {
       return user;
     } catch (exception) {
       console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  firebaseAppToken = async (setAppTokenDTO: SetAppTokenDTO) => {
+    try {
+      const user = await this.userRepository.findOneBy({
+        id: setAppTokenDTO.userId,
+      });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      user.appToken = setAppTokenDTO.appToken;
+
+      return await this.userRepository.save(user);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  sendMessage = async (token: string) => {
+    try {
+      await this.firebaseService.sendNewMessage(token);
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };

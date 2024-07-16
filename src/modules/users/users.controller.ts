@@ -7,6 +7,7 @@ import { CreateUserDTO } from './models/create.user.dto';
 import { UpdateUserDTO } from './models/update.user.dto';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
+import { SetAppTokenDTO } from './models/set.app.token.dto';
 
 @Controller('users')
 @ApiTags('users')
@@ -52,5 +53,15 @@ export class UsersController {
   @Put('/update')
   update(@Body() updateUserDTO: UpdateUserDTO) {
     return this.usersService.updateUser(updateUserDTO);
+  }
+
+  @Post('/app-token')
+  setUserAppToken(@Body() setAppTokenDTO: SetAppTokenDTO) {
+    return this.usersService.firebaseAppToken(setAppTokenDTO);
+  }
+
+  @Post('/message-proof')
+  sendMessage(@Body('token') token: string) {
+    return this.usersService.sendMessage(token);
   }
 }
