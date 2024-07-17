@@ -30,7 +30,9 @@ export class LevelService {
   };
   create = async (createLevelDTO: CreateLevelDto) => {
     try {
-      const responsible = await this.usersService.findById(createLevelDTO.responsibleId);
+      const responsible = await this.usersService.findById(
+        createLevelDTO.responsibleId,
+      );
       const site = await this.siteService.findById(createLevelDTO.siteId);
       if (!responsible) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
@@ -38,64 +40,92 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      createLevelDTO.companyId = site.companyId
-      createLevelDTO.responsibleName = responsible.name
-      createLevelDTO.createdAt = new Date()
+      createLevelDTO.companyId = site.companyId;
+      createLevelDTO.responsibleName = responsible.name;
+      createLevelDTO.createdAt = new Date();
 
-      if(createLevelDTO.superiorId){
-        createLevelDTO.level = await this.getActualLevelBySuperiorId(createLevelDTO.superiorId)
+      if (createLevelDTO.superiorId) {
+        createLevelDTO.level = await this.getActualLevelBySuperiorId(
+          createLevelDTO.superiorId,
+        );
       }
 
-      return await this.levelRepository.save(createLevelDTO)
+      return await this.levelRepository.save(createLevelDTO);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
   update = async (updateLevelDTO: UpdateLevelDTO) => {
     try {
-      const level = await this.levelRepository.findOneBy({id: updateLevelDTO.id})
-      if(!level){
+      const level = await this.levelRepository.findOneBy({
+        id: updateLevelDTO.id,
+      });
+      if (!level) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
 
-      const responsible = await this.usersService.findById(updateLevelDTO.responsibleId);
+      const responsible = await this.usersService.findById(
+        updateLevelDTO.responsibleId,
+      );
       if (!responsible) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      level.name = updateLevelDTO.name
-      level.description = updateLevelDTO.description
-      level.status = updateLevelDTO.status
-      level.responsibleId = updateLevelDTO.responsibleId
-      level.responsibleName = responsible.name
-      level.updatedAt = new Date()
+      level.name = updateLevelDTO.name;
+      level.description = updateLevelDTO.description;
+      level.status = updateLevelDTO.status;
+      level.responsibleId = updateLevelDTO.responsibleId;
+      level.responsibleName = responsible.name;
+      level.updatedAt = new Date();
 
-      return await this.levelRepository.save(level)
+      return await this.levelRepository.save(level);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
   getActualLevelBySuperiorId = async (superiorId: number) => {
-    try{
-      const superiorLevel = await this.levelRepository.findOne({where: {id: superiorId}, select: ['level']})
-      if(!superiorLevel){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS)
+    try {
+      const superiorLevel = await this.levelRepository.findOne({
+        where: { id: superiorId },
+        select: ['level'],
+      });
+      if (!superiorLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
-      
-      const actualLevel = Number(superiorLevel.level)+1
 
-      return actualLevel
-    }catch(exception){
-      HandleException.exception(exception)
+      const actualLevel = Number(superiorLevel.level) + 1;
+
+      return actualLevel;
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
+  };
 
   findById = async (levelId: number) => {
-    try{
-      return await this.levelRepository.findOneBy({id: levelId})
-    }catch(exception){
-      HandleException.exception(exception)
+    try {
+      return await this.levelRepository.findOneBy({ id: levelId });
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
+  };
+
+  findAllSuperiorLevelsById = (levelId: string, levelMap: Map<string, any>) => {
+    const array: string[] = [];
+    let level = levelMap.get(levelId);
+    array.push(level.name);
+
+    while (level.superiorId > 0) {
+      level = levelMap.get(level.superiorId);
+
+      array.push(level.name);
+    }
+    return array;
+  };
+  findAllLevels = async () => {
+    const levels = await this.levelRepository.find();
+    const levelMap = new Map();
+    levels.forEach((level) => levelMap.set(level.id, level));
+    return levelMap;
+  };
 }

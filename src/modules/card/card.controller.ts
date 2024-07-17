@@ -27,7 +27,7 @@ export class CardController {
   @Get('/responsible/:responsibleId')
   @ApiParam({ name: 'responsibleId' })
   findByResponsibleId(@Param('responsibleId') responsibleId: number) {
-    return this.cardService.findSiteCards(responsibleId);
+    return this.cardService.findResponsibleCards(responsibleId);
   }
 
   @Get('/:cardId')
