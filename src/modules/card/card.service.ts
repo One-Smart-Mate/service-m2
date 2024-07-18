@@ -46,9 +46,14 @@ export class CardService {
     try {
       const cards = await this.cardRepository.findBy({ siteId: siteId });
       if (cards) {
-        cards.forEach((card) => {
+        const levelMap = await this.levelService.findAllLevels();
+        for (const card of cards) {
           card['levelName'] = card.areaName;
-        });
+          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
+            String(card.areaId),
+            levelMap,
+          );
+        }
       }
       return cards;
     } catch (exception) {
@@ -61,9 +66,14 @@ export class CardService {
         responsableId: responsibleId,
       });
       if (cards) {
-        cards.forEach((card) => {
+        const levelMap = await this.levelService.findAllLevels();
+        for (const card of cards) {
           card['levelName'] = card.areaName;
-        });
+          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
+            String(card.areaId),
+            levelMap,
+          );
+        }
       }
       return cards;
     } catch (exception) {
@@ -73,7 +83,14 @@ export class CardService {
   findCardByIDAndGetEvidences = async (cardId: number) => {
     try {
       const card = await this.cardRepository.findOneBy({ id: cardId });
-      if (card) card['levelName'] = card.areaName;
+      if (card) {
+        const levelMap = await this.levelService.findAllLevels();
+        card['levelName'] = card.areaName;
+        card['levelList'] = this.levelService.findAllSuperiorLevelsById(
+          String(card.areaId),
+          levelMap,
+        );
+      }
       const evidences = await this.evidenceRepository.findBy({
         cardId: cardId,
       });
@@ -83,6 +100,7 @@ export class CardService {
         evidences,
       };
     } catch (exception) {
+      console.log(exception);
       HandleException.exception(exception);
     }
   };
@@ -320,7 +338,7 @@ export class CardService {
   };
   getCardBySuperiorId = async (superiorId: number, siteId: number) => {
     try {
-      return await this.cardRepository.find({
+      const cards = await this.cardRepository.find({
         where: {
           superiorId: superiorId,
           siteId: siteId,
@@ -328,6 +346,18 @@ export class CardService {
           deletedAt: null,
         },
       });
+      if (cards) {
+        const levelMap = await this.levelService.findAllLevels();
+        for (const card of cards) {
+          card['levelName'] = card.areaName;
+          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
+            String(card.areaId),
+            levelMap,
+          );
+        }
+      }
+
+      return cards;
     } catch (exception) {
       HandleException.exception(exception);
     }
