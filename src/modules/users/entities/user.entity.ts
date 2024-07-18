@@ -89,6 +89,9 @@ export class UserEntity {
   @Column({ name: 'reset_code_expiration', type: 'timestamp', nullable: true })
   resetCodeExpiration: Date;
 
+  @Column({ name: 'app_token', type: 'varchar', length: 100, nullable: true })
+  appToken: string;
+
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;
 
