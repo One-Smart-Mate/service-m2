@@ -11,6 +11,7 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { UsersService } from '../users/users.service';
 import { SiteService } from '../site/site.service';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class LevelService {
@@ -21,6 +22,16 @@ export class LevelService {
     private readonly siteService: SiteService,
   ) {}
 
+  findSiteActiveLevels = async (siteId: number) => {
+    try {
+      return await this.levelRepository.findBy({
+        siteId: siteId,
+        status: stringConstants.A,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
   findSiteLevels = async (siteId: number) => {
     try {
       return await this.levelRepository.findBy({ siteId: siteId });
@@ -76,6 +87,9 @@ export class LevelService {
       level.status = updateLevelDTO.status;
       level.responsibleId = updateLevelDTO.responsibleId;
       level.responsibleName = responsible.name;
+      if (updateLevelDTO.status !== stringConstants.A) {
+        level.deletedAt = new Date();
+      }
       level.updatedAt = new Date();
 
       return await this.levelRepository.save(level);

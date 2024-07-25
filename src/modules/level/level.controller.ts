@@ -11,16 +11,21 @@ export class LevelController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findPrioritiesByCompanyId(@Param('siteId') siteId: number) {
+  findActiveLevelsByCompanyId(@Param('siteId') siteId: number) {
+    return this.levelService.findSiteActiveLevels(+siteId);
+  }
+  @Get('/site/:siteId')
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  findLevelsByCompanyId(@Param('siteId') siteId: number) {
     return this.levelService.findSiteLevels(+siteId);
   }
   @Post('/create')
-  create(@Body() createLevelDTO: CreateLevelDto){
-    return this.levelService.create(createLevelDTO)
+  create(@Body() createLevelDTO: CreateLevelDto) {
+    return this.levelService.create(createLevelDTO);
   }
   @Put('/update')
-  update(@Body() updateLevelDTO: UpdateLevelDTO){
-    return this.levelService.update(updateLevelDTO)
+  update(@Body() updateLevelDTO: UpdateLevelDTO) {
+    return this.levelService.update(updateLevelDTO);
   }
 
   @Get('/:levelId')
