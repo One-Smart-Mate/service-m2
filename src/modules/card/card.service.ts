@@ -24,6 +24,7 @@ import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solu
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { PriorityEntity } from '../priority/entities/priority.entity';
+import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 
 @Injectable()
 export class CardService {
@@ -41,6 +42,28 @@ export class CardService {
     private readonly preclassifierService: PreclassifierService,
     private readonly userService: UsersService,
   ) {}
+
+  findCardByUUID = async (uuid: string) => {
+    try {
+      const card = await this.cardRepository.findOneBy({ cardUUID: uuid });
+      if (card) {
+        const levelMap = await this.levelService.findAllLevels();
+        const cardEvidences = await this.evidenceRepository.findBy({
+          cardId: card.id,
+        });
+
+        card['levelName'] = card.areaName;
+        card['levelList'] = this.levelService.findAllSuperiorLevelsById(
+          String(card.areaId),
+          levelMap,
+        );
+        card['evidences'] = cardEvidences;
+      }
+      return card;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   findSiteCards = async (siteId: number) => {
     try {

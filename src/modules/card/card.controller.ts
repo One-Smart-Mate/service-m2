@@ -24,6 +24,11 @@ export class CardController {
   findBySiteId(@Param('siteId') siteId: number) {
     return this.cardService.findSiteCards(siteId);
   }
+  @Get('/uuid/:uuid')
+  @ApiParam({ name: 'uuid' })
+  findByCardUUID(@Param('uuid') uuid: string) {
+    return this.cardService.findCardByUUID(uuid);
+  }
   @Get('/responsible/:responsibleId')
   @ApiParam({ name: 'responsibleId' })
   findByResponsibleId(@Param('responsibleId') responsibleId: number) {
