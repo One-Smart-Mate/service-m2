@@ -12,6 +12,7 @@ import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
 import { SiteService } from '../site/site.service';
 import { CardTypesCatalogEntity } from './entities/card.types.catalog.entity';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class CardTypesService {
@@ -23,6 +24,17 @@ export class CardTypesService {
     @InjectRepository(CardTypesCatalogEntity)
     private readonly cardTypesCatalogRepository: Repository<CardTypesCatalogEntity>,
   ) {}
+
+  findSiteActiveCardTypes = async (siteId: number) => {
+    try {
+      return await this.cardTypesRepository.findBy({
+        siteId: siteId,
+        status: stringConstants.A,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   findSiteCardTypes = async (siteId: number) => {
     try {
@@ -117,6 +129,9 @@ export class CardTypesService {
       foundCardTpyes.videosDurationPs = updateCardTypesDTO.videosDurationPs;
 
       foundCardTpyes.status = updateCardTypesDTO.status;
+      if (updateCardTypesDTO.status !== stringConstants.A) {
+        foundCardTpyes.deletedAt = new Date();
+      }
       foundCardTpyes.updatedAt = new Date();
 
       return await this.cardTypesRepository.save(foundCardTpyes);

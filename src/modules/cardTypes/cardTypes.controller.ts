@@ -13,30 +13,36 @@ export class CardTypesController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findCardTypesByCompany(@Param('siteId') siteId: number) {
+  findActiveCardTypesBySite(@Param('siteId') siteId: number) {
+    return this.cardTypesService.findSiteActiveCardTypes(siteId);
+  }
+
+  @Get('/site/:siteId')
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  findCardTypesBySite(@Param('siteId') siteId: number) {
     return this.cardTypesService.findSiteCardTypes(siteId);
   }
 
   @Post('/create')
-  @ApiBody({type: CreateCardTypesDTO})
-  create(@Body() createCardTypesDTO:CreateCardTypesDTO){
-    return this.cardTypesService.create(createCardTypesDTO)
+  @ApiBody({ type: CreateCardTypesDTO })
+  create(@Body() createCardTypesDTO: CreateCardTypesDTO) {
+    return this.cardTypesService.create(createCardTypesDTO);
   }
 
   @Put('/update')
-  @ApiBody({type: UpdateCardTypesDTO})
-  update(@Body() updateCardTypesDTO: UpdateCardTypesDTO){
-    return this.cardTypesService.update(updateCardTypesDTO)
+  @ApiBody({ type: UpdateCardTypesDTO })
+  update(@Body() updateCardTypesDTO: UpdateCardTypesDTO) {
+    return this.cardTypesService.update(updateCardTypesDTO);
   }
 
   @Get('/card-type/:id')
   @ApiParam({ name: 'id', required: true, example: 1 })
   findoneById(@Param('id') id: number) {
-    return this.cardTypesService.findById(id)
+    return this.cardTypesService.findById(id);
   }
 
   @Get('/catalogs')
   findCardTypesCatalogs() {
-    return this.cardTypesService.findAllCatalogs()
+    return this.cardTypesService.findAllCatalogs();
   }
 }
