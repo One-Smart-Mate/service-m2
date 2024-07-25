@@ -21,6 +21,16 @@ export class PriorityService {
     private readonly siteService: SiteService,
   ) {}
 
+  findSiteActivePriorities = async (siteId: number) => {
+    try {
+      return await this.priorityRepository.findBy({
+        siteId: siteId,
+        status: stringConstants.A,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
   findSitePriorities = async (siteId: number) => {
     try {
       return await this.priorityRepository.findBy({ siteId: siteId });
@@ -62,6 +72,9 @@ export class PriorityService {
       foundPriority.priorityDescription = updatepriorityDTO.priorityDescription;
       foundPriority.priorityDays = updatepriorityDTO.priorityDays;
       foundPriority.status = updatepriorityDTO.status;
+      if (updatepriorityDTO.status !== stringConstants.A) {
+        foundPriority.deletedAt = new Date();
+      }
       foundPriority.updatedAt = new Date();
 
       return await this.priorityRepository.save(foundPriority);
@@ -70,15 +83,15 @@ export class PriorityService {
     }
   };
   findById = async (id: number) => {
-    try{
-      const priorityExist =  await this.priorityRepository.existsBy({id: id})
-      if(!priorityExist){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY)
+    try {
+      const priorityExist = await this.priorityRepository.existsBy({ id: id });
+      if (!priorityExist) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
       }
 
-      return await this.priorityRepository.findOneBy({id: id})
-    }catch(exception){
-      HandleException.exception(exception)
+      return await this.priorityRepository.findOneBy({ id: id });
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
+  };
 }
