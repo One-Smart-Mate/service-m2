@@ -1,5 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNotEmpty, IsNumber, IsString, Length, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  Length,
+  MaxLength,
+} from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdatePreclassifierDTO {
@@ -33,11 +40,9 @@ export class UpdatePreclassifierDTO {
   @ApiProperty({
     description: 'Status',
     required: true,
-    example: 'A or I',
     minimum: 1,
   })
   @IsNotEmpty()
   @IsString()
-  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus])
   status: string;
 }

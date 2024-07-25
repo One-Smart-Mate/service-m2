@@ -10,6 +10,7 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { UpdatePreclassifierDTO } from './models/dto/update-preclassifier.dto';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class PreclassifierService {
@@ -18,6 +19,17 @@ export class PreclassifierService {
     private readonly preclassifiersRepository: Repository<PreclassifierEntity>,
     private readonly cardTypeService: CardTypesService,
   ) {}
+
+  findCardTypesActivePreclassifiers = async (cardTypeId: number) => {
+    try {
+      return await this.preclassifiersRepository.findBy({
+        cardTypeId: cardTypeId,
+        status: stringConstants.A,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   findCardTypesPreclassifiers = async (cardTypeId: number) => {
     try {
@@ -29,15 +41,16 @@ export class PreclassifierService {
     }
   };
 
-  findSitePreclassifiers = async (siteId: number) =>{
+  findSiteActivePreclassifiers = async (siteId: number) => {
     try {
       return await this.preclassifiersRepository.findBy({
-        siteId: siteId
+        siteId: siteId,
+        status: stringConstants.A,
       });
     } catch (exception) {
       HandleException.exception(exception);
     }
-  }
+  };
 
   create = async (createPreclassifierDTO: CreatePreclassifierDTO) => {
     try {
@@ -54,29 +67,40 @@ export class PreclassifierService {
       HandleException.exception(exception);
     }
   };
-  update = async (updatePreclassifierDTO:UpdatePreclassifierDTO) => {
-    try{
-      const preclassifier = await this.preclassifiersRepository.findOneBy({id: updatePreclassifierDTO.id})
-      if(!preclassifier){
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRECLASSIFIER)
+  update = async (updatePreclassifierDTO: UpdatePreclassifierDTO) => {
+    try {
+      const preclassifier = await this.preclassifiersRepository.findOneBy({
+        id: updatePreclassifierDTO.id,
+      });
+      if (!preclassifier) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.PRECLASSIFIER,
+        );
       }
 
-      preclassifier.preclassifierCode = updatePreclassifierDTO.preclassifierCode
-      preclassifier.preclassifierDescription = updatePreclassifierDTO.preclassifierDescription
-      preclassifier.status = updatePreclassifierDTO.status
-      preclassifier.updatedAt = new Date()
+      preclassifier.preclassifierCode =
+        updatePreclassifierDTO.preclassifierCode;
+      preclassifier.preclassifierDescription =
+        updatePreclassifierDTO.preclassifierDescription;
+      preclassifier.status = updatePreclassifierDTO.status;
+      if (updatePreclassifierDTO.status !== stringConstants.A) {
+        preclassifier.deletedAt = new Date();
+      }
+      preclassifier.updatedAt = new Date();
 
-      return await this.preclassifiersRepository.save(preclassifier)
-    }catch(exception){
-      HandleException.exception(exception)
+      return await this.preclassifiersRepository.save(preclassifier);
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
+  };
 
   findById = async (preclassifierId: number) => {
-    try{
-      return await this.preclassifiersRepository.findOneBy({id: preclassifierId})
-    }catch(exception){
-      HandleException.exception(exception)
+    try {
+      return await this.preclassifiersRepository.findOneBy({
+        id: preclassifierId,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
     }
-  }
+  };
 }
