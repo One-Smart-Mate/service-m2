@@ -164,33 +164,53 @@ export class UpdateCardTypesDTO {
   @IsOptional()
   videosDurationClose?: number;
 
-  @ApiProperty({ description: 'Quantity of pictures per session', example: 5, required: false })
+  @ApiProperty({
+    description: 'Quantity of pictures per session',
+    example: 5,
+    required: false,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(255)
   quantityPicturesPs?: number;
 
-  @ApiProperty({ description: 'Quantity of audios per session', example: 3, required: false })
+  @ApiProperty({
+    description: 'Quantity of audios per session',
+    example: 3,
+    required: false,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(255)
   quantityAudiosPs?: number;
 
-  @ApiProperty({ description: 'Quantity of videos per session', example: 2, required: false })
+  @ApiProperty({
+    description: 'Quantity of videos per session',
+    example: 2,
+    required: false,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   @Max(255)
   quantityVideosPs?: number;
 
-  @ApiProperty({ description: 'Total duration of audios per session in seconds', example: 120, required: false })
+  @ApiProperty({
+    description: 'Total duration of audios per session in seconds',
+    example: 120,
+    required: false,
+  })
   @IsOptional()
   @IsInt()
   audiosDurationPs?: number;
 
-  @ApiProperty({ description: 'Total duration of videos per session in seconds', example: 300, required: false })
+  @ApiProperty({
+    description: 'Total duration of videos per session in seconds',
+    example: 300,
+    required: false,
+  })
   @IsOptional()
   @IsInt()
   videosDurationPs?: number;
@@ -198,12 +218,10 @@ export class UpdateCardTypesDTO {
   @ApiProperty({
     description: 'Status',
     required: true,
-    example: 'A or I',
     minimum: 1,
   })
   @IsNotEmpty()
   @IsString()
-  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus])
   status: string;
 
   updatedAt?: Date;
