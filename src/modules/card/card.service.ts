@@ -47,12 +47,23 @@ export class CardService {
       const cards = await this.cardRepository.findBy({ siteId: siteId });
       if (cards) {
         const levelMap = await this.levelService.findAllLevels();
+        const allEvidencesMap = await this.findAllEvidences();
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
         for (const card of cards) {
           card['levelName'] = card.areaName;
           card['levelList'] = this.levelService.findAllSuperiorLevelsById(
             String(card.areaId),
             levelMap,
           );
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
         }
       }
       return cards;
@@ -457,5 +468,12 @@ export class CardService {
     } catch (exception) {
       HandleException.exception(exception);
     }
+  };
+
+  findAllEvidences = async () => {
+    const evidences = await this.evidenceRepository.find();
+    const evidencesMap = new Map();
+    evidences.forEach((level) => evidencesMap.set(level.id, level));
+    return evidencesMap;
   };
 }
