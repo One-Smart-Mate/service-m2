@@ -45,12 +45,10 @@ export class UpdateLevelDTO {
   @ApiProperty({
     description: 'Status',
     required: true,
-    example: 'A or I',
     minimum: 1,
   })
   @IsNotEmpty()
   @IsString()
-  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus])
   status: string;
 
   updatedAt?: Date;
