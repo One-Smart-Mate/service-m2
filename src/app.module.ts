@@ -15,7 +15,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { LevelModule } from './modules/level/level.module';
 import { CardModule } from './modules/card/card.module';
 import { CurrencyModule } from './modules/currency/currency.module';
-
+import { StatusModule } from './modules/status/status.module';
 
 @Module({
   imports: [
@@ -32,6 +32,7 @@ import { CurrencyModule } from './modules/currency/currency.module';
     LevelModule,
     CardModule,
     CurrencyModule,
+    StatusModule,
   ],
   controllers: [AppController],
   providers: [AppService],
