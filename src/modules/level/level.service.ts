@@ -3,7 +3,7 @@ import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -84,13 +84,30 @@ export class LevelService {
 
       level.name = updateLevelDTO.name;
       level.description = updateLevelDTO.description;
+      if (updateLevelDTO.status !== level.status) {
+        const allLevels = await this.findAllChildLevels(level.id);
+        if (updateLevelDTO.status !== stringConstants.A) {
+          await this.levelRepository.update(
+            { id: In(allLevels) },
+            {
+              status: updateLevelDTO.status,
+              updatedAt: new Date(),
+              deletedAt: new Date(),
+            },
+          );
+        } else {
+          await this.levelRepository.update(
+            { id: In(allLevels) },
+            {
+              status: updateLevelDTO.status,
+              updatedAt: new Date(),
+            },
+          );
+        }
+      }
       level.status = updateLevelDTO.status;
       level.responsibleId = updateLevelDTO.responsibleId;
       level.responsibleName = responsible.name;
-      if (updateLevelDTO.status !== stringConstants.A) {
-        level.deletedAt = new Date();
-      }
-      level.updatedAt = new Date();
 
       return await this.levelRepository.save(level);
     } catch (exception) {
@@ -141,5 +158,24 @@ export class LevelService {
     const levelMap = new Map();
     levels.forEach((level) => levelMap.set(level.id, level));
     return levelMap;
+  };
+  findAllChildLevels = async (superiorId: number) => {
+    const query = `
+      WITH RECURSIVE LevelCTE AS (
+        SELECT id, superior_id
+        FROM levels
+        WHERE id = ?
+
+        UNION ALL
+
+        SELECT l.id, l.superior_id
+        FROM levels l
+        INNER JOIN LevelCTE lc ON lc.id = l.superior_id
+      )
+      SELECT id FROM LevelCTE;
+    `;
+
+    const result = await this.levelRepository.query(query, [superiorId]);
+    return result.map((row) => row.id);
   };
 }
