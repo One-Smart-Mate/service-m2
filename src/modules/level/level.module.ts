@@ -5,9 +5,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
 import { UsersModule } from '../users/users.module';
 import { SiteModule } from '../site/site.module';
+import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
-  imports: [UsersModule , SiteModule,TypeOrmModule.forFeature([LevelEntity])],
+  imports: [UsersModule , SiteModule, FirebaseModule,TypeOrmModule.forFeature([LevelEntity])],
   controllers: [LevelController],
   providers: [LevelService],
   exports: [LevelService]

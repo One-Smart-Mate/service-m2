@@ -12,6 +12,8 @@ import {
 import { UsersService } from '../users/users.service';
 import { SiteService } from '../site/site.service';
 import { stringConstants } from 'src/utils/string.constant';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 
 @Injectable()
 export class LevelService {
@@ -20,6 +22,7 @@ export class LevelService {
     private readonly levelRepository: Repository<LevelEntity>,
     private readonly usersService: UsersService,
     private readonly siteService: SiteService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findSiteActiveLevels = async (siteId: number) => {
@@ -60,6 +63,18 @@ export class LevelService {
           createLevelDTO.superiorId,
         );
       }
+
+      const tokens = await this.usersService.getSiteUsersTokens(
+        createLevelDTO.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
 
       return await this.levelRepository.save(createLevelDTO);
     } catch (exception) {
@@ -108,6 +123,16 @@ export class LevelService {
       level.status = updateLevelDTO.status;
       level.responsibleId = updateLevelDTO.responsibleId;
       level.responsibleName = responsible.name;
+
+      const tokens = await this.usersService.getSiteUsersTokens(level.siteId);
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
 
       return await this.levelRepository.save(level);
     } catch (exception) {

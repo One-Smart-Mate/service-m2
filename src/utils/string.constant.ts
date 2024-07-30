@@ -13,6 +13,15 @@ export const stringConstants = {
   resetPasswordEmailSubject: 'Reset Your Password - M2',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
 
+  //Notifications for catalogs
+  catalogsTitle: 'Cambio en estructura',
+  catalogsDescription: 'Es necesario actualizar los catálogos',
+  catalogsNotificationType: 'SYNC_REMOTE_CATALOGS',
+  //Notifications for cards
+  cardsTitle: 'Nueva tarjeta',
+  cardsDescription: 'Se ha agregado una nueva tarjeta de tipo:',
+  cardsNotificationType: 'SYNC_REMOTE_CARDS',
+
   //Types of evidences
   AUCR: 'AUCR',
   AUCL: 'AUCL',
