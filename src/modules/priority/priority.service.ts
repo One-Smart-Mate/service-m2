@@ -12,6 +12,9 @@ import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
 import { SiteService } from '../site/site.service';
+import { UsersService } from '../users/users.service';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 
 @Injectable()
 export class PriorityService {
@@ -19,6 +22,8 @@ export class PriorityService {
     @InjectRepository(PriorityEntity)
     private readonly priorityRepository: Repository<PriorityEntity>,
     private readonly siteService: SiteService,
+    private readonly userService: UsersService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findSiteActivePriorities = async (siteId: number) => {
@@ -52,6 +57,18 @@ export class PriorityService {
       createPriorityDTO.siteCode = foundSite.siteCode;
       createPriorityDTO.createdAt = new Date();
 
+      const tokens = await this.userService.getSiteUsersTokens(
+        createPriorityDTO.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+
       return await this.priorityRepository.save(createPriorityDTO);
     } catch (exception) {
       HandleException.exception(exception);
@@ -76,6 +93,18 @@ export class PriorityService {
         foundPriority.deletedAt = new Date();
       }
       foundPriority.updatedAt = new Date();
+
+      const tokens = await this.userService.getSiteUsersTokens(
+        foundPriority.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
 
       return await this.priorityRepository.save(foundPriority);
     } catch (exception) {

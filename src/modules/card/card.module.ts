@@ -11,6 +11,7 @@ import { PreclassifierModule } from '../preclassifier/preclassifier.module';
 import { UsersModule } from '../users/users.module';
 import { LevelModule } from '../level/level.module';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
+import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { CardNoteEntity } from '../cardNotes/card.notes.entity';
     PreclassifierModule,
     UsersModule,
     LevelModule,
+    FirebaseModule,
     TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity]),
   ],
   controllers: [CardController],

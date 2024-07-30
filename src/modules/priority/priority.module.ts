@@ -5,11 +5,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
 import { CompanyModule } from '../company/company.module';
 import { SiteModule } from '../site/site.module';
+import { UsersModule } from '../users/users.module';
+import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
-  imports: [SiteModule, TypeOrmModule.forFeature([PriorityEntity])],
+  imports: [
+    SiteModule,
+    UsersModule,
+    FirebaseModule,
+    TypeOrmModule.forFeature([PriorityEntity]),
+  ],
   controllers: [PriorityController],
   providers: [PriorityService],
-  exports: [PriorityService]
+  exports: [PriorityService],
 })
 export class PriorityModule {}

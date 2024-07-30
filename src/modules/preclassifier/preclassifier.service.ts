@@ -11,6 +11,9 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { UpdatePreclassifierDTO } from './models/dto/update-preclassifier.dto';
 import { stringConstants } from 'src/utils/string.constant';
+import { UsersService } from '../users/users.service';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 
 @Injectable()
 export class PreclassifierService {
@@ -18,6 +21,8 @@ export class PreclassifierService {
     @InjectRepository(PreclassifierEntity)
     private readonly preclassifiersRepository: Repository<PreclassifierEntity>,
     private readonly cardTypeService: CardTypesService,
+    private readonly userService: UsersService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findCardTypesActivePreclassifiers = async (cardTypeId: number) => {
@@ -62,6 +67,18 @@ export class PreclassifierService {
       createPreclassifierDTO.siteCode = existCardType.siteCode;
       createPreclassifierDTO.createdAt = new Date();
 
+      const tokens = await this.userService.getSiteUsersTokens(
+        createPreclassifierDTO.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+
       return await this.preclassifiersRepository.save(createPreclassifierDTO);
     } catch (exception) {
       HandleException.exception(exception);
@@ -87,6 +104,18 @@ export class PreclassifierService {
         preclassifier.deletedAt = new Date();
       }
       preclassifier.updatedAt = new Date();
+
+      const tokens = await this.userService.getSiteUsersTokens(
+        preclassifier.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
 
       return await this.preclassifiersRepository.save(preclassifier);
     } catch (exception) {

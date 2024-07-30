@@ -25,6 +25,8 @@ import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { PriorityEntity } from '../priority/entities/priority.entity';
 import { UUID } from 'typeorm/driver/mongodb/bson.typings';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 
 @Injectable()
 export class CardService {
@@ -41,6 +43,7 @@ export class CardService {
     private readonly cardTypeService: CardTypesService,
     private readonly preclassifierService: PreclassifierService,
     private readonly userService: UsersService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findCardByUUID = async (uuid: string) => {
@@ -267,6 +270,18 @@ export class CardService {
           });
           await this.evidenceRepository.save(evidenceToCreate);
         }),
+      );
+
+      const tokens = await this.userService.getSiteUsersTokens(
+        cardAssignEvidences.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.cardsTitle,
+          `${stringConstants.cardsDescription} ${cardAssignEvidences.cardTypeMethodologyName}`,
+          stringConstants.cardsNotificationType,
+        ),
+        tokens,
       );
 
       return await this.cardRepository.save(cardAssignEvidences);

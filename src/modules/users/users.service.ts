@@ -159,6 +159,21 @@ export class UsersService {
     }
   };
 
+  getSiteUsersTokens = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { site: { id: siteId } },
+        select: ['appToken'],
+      });
+
+      const tokens = users.map((user) => user.appToken);
+
+      return tokens;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findAllUsers = async () => {
     try {
       const users = await this.userRepository.find({

@@ -13,6 +13,8 @@ import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
 import { SiteService } from '../site/site.service';
 import { CardTypesCatalogEntity } from './entities/card.types.catalog.entity';
 import { stringConstants } from 'src/utils/string.constant';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 
 @Injectable()
 export class CardTypesService {
@@ -23,6 +25,7 @@ export class CardTypesService {
     private readonly siteService: SiteService,
     @InjectRepository(CardTypesCatalogEntity)
     private readonly cardTypesCatalogRepository: Repository<CardTypesCatalogEntity>,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findSiteActiveCardTypes = async (siteId: number) => {
@@ -68,6 +71,17 @@ export class CardTypesService {
       createCardTypesDTO.createdAt = new Date();
       createCardTypesDTO.siteCode = foundSite.siteCode;
 
+      const tokens = await this.usersService.getSiteUsersTokens(
+        createCardTypesDTO.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
       return await this.cardTypesRepository.save(createCardTypesDTO);
     } catch (exception) {
       HandleException.exception(exception);
@@ -134,6 +148,17 @@ export class CardTypesService {
       }
       foundCardTpyes.updatedAt = new Date();
 
+      const tokens = await this.usersService.getSiteUsersTokens(
+        foundCardTpyes.siteId,
+      );
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
       return await this.cardTypesRepository.save(foundCardTpyes);
     } catch (exception) {
       HandleException.exception(exception);
