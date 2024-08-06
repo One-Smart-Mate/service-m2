@@ -27,6 +27,8 @@ import { PriorityEntity } from '../priority/entities/priority.entity';
 import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { Week } from './models/card.response.dto';
+import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 
 @Injectable()
 export class CardService {
@@ -513,5 +515,122 @@ export class CardService {
     const evidencesMap = new Map();
     evidences.forEach((level) => evidencesMap.set(level.id, level));
     return evidencesMap;
+  };
+
+  findSiteCardsGroupedByPreclassifier = async (siteId: number) => {
+    try {
+      const rawPreclassifiers = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('preclassifier, methodology')
+        .getRawMany();
+
+      const preclassifiers = rawPreclassifiers.map((preclassifier) => ({
+        ...preclassifier,
+        totalCards: Number(preclassifier.totalCards),
+      }));
+
+      return preclassifiers;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByMethodology = async (siteId: number) => {
+    try {
+      const rawMethodologies = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('methodology')
+        .getRawMany();
+
+      const methodologies = rawMethodologies.map((methodology) => ({
+        ...methodology,
+        totalCards: Number(methodology.totalCards),
+      }));
+
+      return methodologies;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByArea = async (siteId: number) => {
+    try {
+      const rawAreas = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('area')
+        .getRawMany();
+
+      const areas = rawAreas.map((area) => ({
+        ...area,
+        totalCards: Number(area.totalCards),
+      }));
+
+      return areas;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByCreator = async (siteId: number) => {
+    try {
+      const rawCreators = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('creator')
+        .getRawMany();
+
+      const creators = rawCreators.map((creator) => ({
+        ...creator,
+        totalCards: Number(creator.totalCards),
+      }));
+
+      return creators;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByWeeks = async (siteId: number) => {
+    try {
+      const rawWeeks = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('year')
+        .addGroupBy('week')
+        .orderBy('year, week')
+        .getRawMany();
+
+      const weeks = rawWeeks.reduce<Week[]>((acc, week, index) => {
+        const previousWeek = acc[index - 1] || {
+          cumulativeIssued: 0,
+          cumulativeEradicated: 0,
+        };
+
+        const currentWeek: Week = {
+          ...week,
+          issued: Number(week.issued),
+          cumulativeIssued: previousWeek.cumulativeIssued + Number(week.issued),
+          eradicated: Number(week.eradicated),
+          cumulativeEradicated:
+            previousWeek.cumulativeEradicated + Number(week.eradicated),
+        };
+
+        acc.push(currentWeek);
+        return acc;
+      }, []);
+
+      return weeks;
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
   };
 }
