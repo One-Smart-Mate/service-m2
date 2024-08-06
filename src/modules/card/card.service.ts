@@ -25,6 +25,7 @@ import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { PriorityEntity } from '../priority/entities/priority.entity';
 import { UUID } from 'typeorm/driver/mongodb/bson.typings';
+import { Week } from './models/card.response.dto';
 
 @Injectable()
 export class CardService {
@@ -498,5 +499,135 @@ export class CardService {
     const evidencesMap = new Map();
     evidences.forEach((level) => evidencesMap.set(level.id, level));
     return evidencesMap;
+  };
+
+  findSiteCardsGroupedByPreclassifier = async (siteId: number) => {
+    try {
+      const rawPreclassifiers = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([
+          "CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) AS preclassifier",
+          'card.cardType_methodology_name AS methodology',
+          'COUNT(*) AS totalCards',
+        ])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('preclassifier, methodology')
+        .getRawMany();
+
+      const preclassifiers = rawPreclassifiers.map((preclassifier) => ({
+        ...preclassifier,
+        totalCards: Number(preclassifier.totalCards),
+      }));
+
+      return preclassifiers;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByMethodology = async (siteId: number) => {
+    try {
+      const rawMethodologies = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([
+          'card.cardType_methodology_name AS methodology',
+          'COUNT(*) AS totalCards',
+        ])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('methodology')
+        .getRawMany();
+
+      const methodologies = rawMethodologies.map((methodology) => ({
+        ...methodology,
+        totalCards: Number(methodology.totalCards),
+      }));
+
+      return methodologies;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByArea = async (siteId: number) => {
+    try {
+      const rawAreas = await this.cardRepository
+        .createQueryBuilder('card')
+        .select(['area_name AS area', 'COUNT(*) as totalCards'])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('area')
+        .getRawMany();
+
+      const areas = rawAreas.map((area) => ({
+        ...area,
+        totalCards: Number(area.totalCards),
+      }));
+
+      return areas;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByCreator = async (siteId: number) => {
+    try {
+      const rawCreators = await this.cardRepository
+        .createQueryBuilder('card')
+        .select(['creator_name AS creator', 'COUNT(*) as totalCards'])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('creator')
+        .getRawMany();
+
+      const creators = rawCreators.map((creator) => ({
+        ...creator,
+        totalCards: Number(creator.totalCards),
+      }));
+
+      return creators;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByWeeks = async (siteId: number) => {
+    try {
+      const rawWeeks = await this.cardRepository
+        .createQueryBuilder('card')
+        .select('YEAR(card.created_at)', 'year')
+        .addSelect('WEEK(card.created_at, 1)', 'week')
+        .addSelect('COUNT(*)', 'issued')
+        .addSelect(
+          'SUM(IF(card.user_definitive_solution_id IS NOT NULL, 1, 0))',
+          'eradicated',
+        )
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('year')
+        .addGroupBy('week')
+        .orderBy('year, week')
+        .getRawMany();
+
+      const weeks = rawWeeks.reduce<Week[]>((acc, week, index) => {
+        const previousWeek = acc[index - 1] || {
+          cumulativeIssued: 0,
+          cumulativeEradicated: 0,
+        };
+
+        const currentWeek: Week = {
+          ...week,
+          issued: Number(week.issued),
+          cumulativeIssued: previousWeek.cumulativeIssued + Number(week.issued),
+          eradicated: Number(week.eradicated),
+          cumulativeEradicated:
+            previousWeek.cumulativeEradicated + Number(week.eradicated),
+        };
+
+        acc.push(currentWeek);
+        return acc;
+      }, []);
+
+      return weeks;
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
   };
 }
