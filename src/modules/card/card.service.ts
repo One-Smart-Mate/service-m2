@@ -28,6 +28,7 @@ import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { Week } from './models/card.response.dto';
+import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 
 @Injectable()
 export class CardService {
@@ -520,11 +521,7 @@ export class CardService {
     try {
       const rawPreclassifiers = await this.cardRepository
         .createQueryBuilder('card')
-        .select([
-          "CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) AS preclassifier",
-          'card.cardType_methodology_name AS methodology',
-          'COUNT(*) AS totalCards',
-        ])
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('preclassifier, methodology')
         .getRawMany();
@@ -544,10 +541,7 @@ export class CardService {
     try {
       const rawMethodologies = await this.cardRepository
         .createQueryBuilder('card')
-        .select([
-          'card.cardType_methodology_name AS methodology',
-          'COUNT(*) AS totalCards',
-        ])
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('methodology')
         .getRawMany();
@@ -567,7 +561,7 @@ export class CardService {
     try {
       const rawAreas = await this.cardRepository
         .createQueryBuilder('card')
-        .select(['area_name AS area', 'COUNT(*) as totalCards'])
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('area')
         .getRawMany();
@@ -587,7 +581,7 @@ export class CardService {
     try {
       const rawCreators = await this.cardRepository
         .createQueryBuilder('card')
-        .select(['creator_name AS creator', 'COUNT(*) as totalCards'])
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('creator')
         .getRawMany();
@@ -607,13 +601,7 @@ export class CardService {
     try {
       const rawWeeks = await this.cardRepository
         .createQueryBuilder('card')
-        .select('YEAR(card.created_at)', 'year')
-        .addSelect('WEEK(card.created_at, 1)', 'week')
-        .addSelect('COUNT(*)', 'issued')
-        .addSelect(
-          'SUM(IF(card.user_definitive_solution_id IS NOT NULL, 1, 0))',
-          'eradicated',
-        )
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('year')
         .addGroupBy('week')
