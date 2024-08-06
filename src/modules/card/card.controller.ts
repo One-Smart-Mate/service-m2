@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Put,
 } from '@nestjs/common';
 import { CardService } from './card.service';
@@ -68,5 +66,30 @@ export class CardController {
     @Param('siteId') siteId: number,
   ) {
     return this.cardService.getCardBySuperiorId(superiorId, siteId);
+  }
+
+  @Get('/site/preclassifiers/:siteId')
+  findSiteCardsGroupedByPreclassifier(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByPreclassifier(siteId);
+  }
+
+  @Get('/site/methodologies/:siteId')
+  findSiteCardsGroupedByMethodology(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByMethodology(siteId);
+  }
+
+  @Get('/site/areas/:siteId')
+  findSiteCardsGroupedByArea(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByArea(siteId);
+  }
+
+  @Get('/site/creators/:siteId')
+  findSiteCardsGroupedByCreator(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByCreator(siteId);
+  }
+
+  @Get('/site/weeks/:siteId')
+  findSiteCardsGroupedByWeeks(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByWeeks(siteId);
   }
 }
