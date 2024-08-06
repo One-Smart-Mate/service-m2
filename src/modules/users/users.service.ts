@@ -174,6 +174,24 @@ export class UsersService {
     }
   };
 
+  getSiteUsersTokensExcludingOwnerUser = async (
+    siteId: number,
+    userId: number,
+  ) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { site: { id: siteId }, id: Not(userId) },
+        select: ['appToken'],
+      });
+
+      const tokens = users.map((user) => user.appToken);
+
+      return tokens;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findAllUsers = async () => {
     try {
       const users = await this.userRepository.find({
