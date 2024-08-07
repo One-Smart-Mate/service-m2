@@ -37,6 +37,9 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.EMAIL_MISSING) {
       message = stringConstants.emailIsMissing;
     }
+    if (type === ValidationExceptionType.DUPLICATED_LEVELMACHINEID) {
+      message = stringConstants.duplicateLevelMachineId;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -45,6 +48,7 @@ export enum ValidationExceptionType {
   WRONG_AUTH,
   DUPLICATE_RECORD,
   DUPLICATED_USER,
+  DUPLICATED_LEVELMACHINEID,
   DUPLICATE_ROLE,
   DUPLICATE_CARD_UUID,
   OVERWRITE_PROVISIONAL_SOLUTION,

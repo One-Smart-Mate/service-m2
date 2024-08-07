@@ -43,6 +43,15 @@ export class UpdateLevelDTO {
   description: string;
 
   @ApiProperty({
+    description: 'Level machineId',
+    type: 'string',
+    maxLength: 50,
+  })
+  @IsString()
+  @IsNotEmpty()
+  levelMachineId: string;
+
+  @ApiProperty({
     description: 'Status',
     required: true,
     minimum: 1,
