@@ -53,5 +53,14 @@ export class CreateLevelDto {
   @IsNotEmpty()
   description: string;
 
+  @ApiProperty({
+    description: 'Level machineId',
+    type: 'string',
+    maxLength: 50,
+  })
+  @IsString()
+  @IsNotEmpty()
+  levelMachineId: string;
+
   createdAt?: Date;
 }

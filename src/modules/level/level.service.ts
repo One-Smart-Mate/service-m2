@@ -3,7 +3,7 @@ import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -14,6 +14,10 @@ import { SiteService } from '../site/site.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import {
+  ValidationException,
+  ValidationExceptionType,
+} from 'src/common/exceptions/types/validation.exception';
 
 @Injectable()
 export class LevelService {
@@ -52,6 +56,19 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       } else if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
+      const levelMachineIdExists = await this.levelRepository.findOne({
+        where: {
+          levelMachineId: createLevelDTO.levelMachineId,
+          siteId: createLevelDTO.siteId,
+        },
+      });
+
+      if (levelMachineIdExists) {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+        );
       }
 
       createLevelDTO.companyId = site.companyId;
@@ -97,8 +114,23 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
+      const levelMachineIdExists = await this.levelRepository.findOne({
+        where: {
+          levelMachineId: updateLevelDTO.levelMachineId,
+          siteId: level.siteId,
+          id: Not(level.id),
+        },
+      });
+
+      if (levelMachineIdExists) {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+        );
+      }
+
       level.name = updateLevelDTO.name;
       level.description = updateLevelDTO.description;
+      level.levelMachineId = updateLevelDTO.levelMachineId;
       if (updateLevelDTO.status !== level.status) {
         const allLevels = await this.findAllChildLevels(level.id);
         if (updateLevelDTO.status !== stringConstants.A) {
