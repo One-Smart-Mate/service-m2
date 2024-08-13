@@ -149,7 +149,7 @@ export class UsersService {
     return await this.userRepository.findOneBy({ id: userId });
   };
 
-  findSiteUsers = async (siteId: number) => {
+  findSiteUsersResponsibleData = async (siteId: number) => {
     try {
       return await this.userRepository.find({
         where: { site: { id: siteId } },
@@ -195,6 +195,30 @@ export class UsersService {
   findAllUsers = async () => {
     try {
       const users = await this.userRepository.find({
+        relations: ['userRoles', 'userRoles.role', 'site'],
+      });
+
+      const transformedUsers = users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.userRoles.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name,
+        })),
+        site: { id: user.site.id, name: user.site.name, logo: user.site.logo },
+      }));
+
+      return transformedUsers;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteUsers = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { site: { id: siteId } },
         relations: ['userRoles', 'userRoles.role', 'site'],
       });
 

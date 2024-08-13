@@ -16,8 +16,8 @@ export class UsersController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', example: 1 })
-  findAllBySiteId(@Param('siteId') siteId: number) {
-    const users = this.usersService.findSiteUsers(siteId);
+  findAllBySiteIdResponsibleData(@Param('siteId') siteId: number) {
+    const users = this.usersService.findSiteUsersResponsibleData(siteId);
     return plainToClass(UserResponsible, users, {
       excludeExtraneousValues: true,
     });
@@ -25,6 +25,12 @@ export class UsersController {
   @Get('/all')
   findAll() {
     return this.usersService.findAllUsers();
+  }
+
+  @Get('/site/:siteId')
+  @ApiParam({ name: 'siteId', example: 1 })
+  findSiteUsers(@Param('siteId') siteId: number) {
+    return this.usersService.findSiteUsers(siteId);
   }
 
   @Post('/create')
