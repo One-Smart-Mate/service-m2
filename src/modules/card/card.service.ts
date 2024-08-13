@@ -274,9 +274,11 @@ export class CardService {
         }),
       );
 
-      const tokens = await this.userService.getSiteUsersTokens(
-        cardAssignEvidences.siteId,
-      );
+      const tokens =
+        await this.userService.getSiteUsersTokensExcludingOwnerUser(
+          cardAssignEvidences.siteId,
+          cardAssignEvidences.creatorId,
+        );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
           stringConstants.cardsTitle,
