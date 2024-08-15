@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  Put,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create-card.dto';
@@ -16,6 +9,15 @@ import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.so
 @ApiTags('card')
 export class CardController {
   constructor(private readonly cardService: CardService) {}
+
+  @Get('/all/level-machine/:siteId/:levelMachineId')
+  @ApiParam({ name: 'siteId' })
+  findByLevelMachineId(
+    @Param('siteId') siteId: number,
+    @Param('levelMachineId') levelMachineId: string,
+  ) {
+    return this.cardService.findByLevelMachineId(siteId, levelMachineId);
+  }
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId' })
