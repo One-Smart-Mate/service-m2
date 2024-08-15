@@ -48,6 +48,19 @@ export class CardService {
     private readonly firebaseService: FirebaseService,
   ) {}
 
+  findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
+    try {
+      const level = await this.levelService.findByLeveleMachineId(
+        siteId,
+        levelMachineId,
+      );
+
+      return await this.cardRepository.findBy({ areaId: level.id });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findCardByUUID = async (uuid: string) => {
     try {
       const card = await this.cardRepository.findOneBy({ cardUUID: uuid });

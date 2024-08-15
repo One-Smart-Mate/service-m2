@@ -29,6 +29,17 @@ export class LevelService {
     private readonly firebaseService: FirebaseService,
   ) {}
 
+  findByLeveleMachineId = async (siteId: number, levelMachineId: string) => {
+    try {
+      return await this.levelRepository.findOneBy({
+        siteId: siteId,
+        levelMachineId: levelMachineId,
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findSiteActiveLevels = async (siteId: number) => {
     try {
       return await this.levelRepository.findBy({
