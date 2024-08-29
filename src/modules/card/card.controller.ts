@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
-import { CreateCardDTO } from './models/dto/create-card.dto';
+import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
+import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
+import { UpdateCardReponsibleDTO } from './models/dto/upate.card.responsible.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -93,5 +95,20 @@ export class CardController {
   @Get('/site/weeks/:siteId')
   findSiteCardsGroupedByWeeks(@Param('siteId') siteId: number) {
     return this.cardService.findSiteCardsGroupedByWeeks(siteId);
+  }
+
+  @Get('/notes/:cardId')
+  findCardNotes(@Param('cardId') cardId: number) {
+    return this.cardService.findCardNotes(cardId);
+  }
+
+  @Post('/update/priority')
+  updateCardPriority(@Body() updateCardPriorityDTO: UpdateCardPriorityDTO) {
+    return this.cardService.updateCardPriority(updateCardPriorityDTO);
+  }
+
+  @Post('/update/responsible')
+  updateCardResponsible(@Body() updateCardResponsibleDTO: UpdateCardReponsibleDTO) {
+    return this.cardService.updateCardResponsible(updateCardResponsibleDTO);
   }
 }

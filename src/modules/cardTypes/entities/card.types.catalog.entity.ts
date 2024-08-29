@@ -10,4 +10,7 @@ export class CardTypesCatalogEntity {
 
   @Column({name: 'cardType_methodology_name', type: 'varchar', length: 25, nullable: true })
   cardTypeMethodologyName: string;
+
+  @Column({ type: 'char', length: 1, default: 'A' })
+  status: string;
 }

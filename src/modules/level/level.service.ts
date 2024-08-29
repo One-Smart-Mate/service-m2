@@ -209,7 +209,7 @@ export class LevelService {
     }
   };
 
-  findAllSuperiorLevelsById = (levelId: string, levelMap: Map<string, any>) => {
+  getSuperiorLevelsById = (levelId: string, levelMap: Map<string, any>) => {
     const array: string[] = [];
     let level = levelMap.get(levelId);
     array.push(level.name);
@@ -219,10 +219,18 @@ export class LevelService {
 
       array.push(level.name);
     }
-    return array;
+
+    array.reverse();
+
+    return {
+      area: level,
+      location: array.join('/'),
+    };
   };
-  findAllLevels = async () => {
-    const levels = await this.levelRepository.find();
+  findAllLevelsBySite = async (siteId: number) => {
+    const levels = await this.levelRepository.find({
+      where: { siteId: siteId },
+    });
     const levelMap = new Map();
     levels.forEach((level) => levelMap.set(level.id, level));
     return levelMap;

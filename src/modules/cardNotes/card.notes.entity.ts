@@ -1,7 +1,9 @@
+import { Exclude } from 'class-transformer';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 
 @Entity('cards_notes') // Nombre de la tabla
 export class CardNoteEntity {
+  @Exclude()
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
 

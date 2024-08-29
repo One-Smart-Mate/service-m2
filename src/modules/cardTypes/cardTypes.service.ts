@@ -174,7 +174,7 @@ export class CardTypesService {
   };
   findAllCatalogs = async () => {
     try {
-      return await this.cardTypesCatalogRepository.find();
+      return await this.cardTypesCatalogRepository.find({where: {status: stringConstants.A}});
     } catch (exception) {
       HandleException.exception(exception);
     }
