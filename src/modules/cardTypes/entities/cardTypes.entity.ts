@@ -14,8 +14,8 @@ export class CardTypesEntity {
   @Column({name: "site_code", type: 'char', length: 6 })
   siteCode: string;
 
-  @Column({name: "cardType_methodology", type: 'enum', enum: ['M', 'C'], default: 'M' })
-  cardTypeMethodology: 'M' | 'C';
+  @Column({name: "cardType_methodology", type: 'char', default: 'M' })
+  cardTypeMethodology: string;
 
   @Column({name: "cardType_methodology_name", type: 'varchar', length: 25 })
   methodology: string;

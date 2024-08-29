@@ -35,10 +35,14 @@ export const stringConstants = {
   IMCL: 'IMCL',
   R: 'R',
   noteDefinitiveSoluition:
-    'Auto: Definitivesolution: Se agrego la solucion definitiva',
+    'Auto: Definitive solution: Se agrego la solucion definitiva: userApp',
   noteProvisionalSolution:
     'Auto: Provisional solution: Se agrego la solucion provisional: userApp',
   aplico: 'Aplico:',
+  cambioLaPrioridadDe: 'cambió la prioridad de:',
+  a: 'a',
+  cambio: 'Cambio:',
+  cambioElREsponsableDe: 'cambió el responsable de:',
 
   //methodology
   M: 'M',

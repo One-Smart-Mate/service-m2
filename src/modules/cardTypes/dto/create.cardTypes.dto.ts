@@ -13,11 +13,6 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-enum CardTypeMethodology {
-  M = 'M',
-  C = 'C',
-}
-
 export class CreateCardTypesDTO {
   @ApiProperty({
     example: 1,
@@ -32,13 +27,11 @@ export class CreateCardTypesDTO {
 
   @ApiProperty({
     description: 'Card type methodology',
-    example: 'M',
-    enum: CardTypeMethodology,
-    default: CardTypeMethodology.M,
+    example: 'Mantenimiento - M',
     required: true,
   })
-  @IsEnum(CardTypeMethodology)
-  cardTypeMethodology: CardTypeMethodology;
+  @IsString()
+  cardTypeMethodology: string;
 
   @ApiProperty({
     description: 'Name of the card type methodology',

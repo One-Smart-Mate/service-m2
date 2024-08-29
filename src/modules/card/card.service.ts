@@ -4,7 +4,7 @@ import { CardEntity } from './entities/card.entity';
 import { In, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
-import { CreateCardDTO } from './models/dto/create-card.dto';
+import { CreateCardDTO } from './models/dto/create.card.dto';
 import { SiteService } from '../site/site.service';
 import {
   NotFoundCustomException,
@@ -29,6 +29,8 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
+import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
+import { UpdateCardReponsibleDTO } from './models/dto/upate.card.responsible.dto';
 
 @Injectable()
 export class CardService {
@@ -65,16 +67,10 @@ export class CardService {
     try {
       const card = await this.cardRepository.findOneBy({ cardUUID: uuid });
       if (card) {
-        const levelMap = await this.levelService.findAllLevels();
         const cardEvidences = await this.evidenceRepository.findBy({
           cardId: card.id,
         });
-
-        card['levelName'] = card.areaName;
-        card['levelList'] = this.levelService.findAllSuperiorLevelsById(
-          String(card.areaId),
-          levelMap,
-        );
+        card['levelName'] = card.nodeName;
         card['evidences'] = cardEvidences;
       }
       return card;
@@ -85,10 +81,12 @@ export class CardService {
 
   findSiteCards = async (siteId: number) => {
     try {
-      const cards = await this.cardRepository.findBy({ siteId: siteId });
+      const cards = await this.cardRepository.find({
+        where: { siteId: siteId },
+        order: { siteCardId: 'ASC' },
+      });
       if (cards) {
-        const levelMap = await this.levelService.findAllLevels();
-        const allEvidencesMap = await this.findAllEvidences();
+        const allEvidencesMap = await this.findAllEvidences(siteId);
 
         const cardEvidencesMap = new Map();
         allEvidencesMap.forEach((evidence) => {
@@ -99,11 +97,7 @@ export class CardService {
         });
 
         for (const card of cards) {
-          card['levelName'] = card.areaName;
-          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
-            String(card.areaId),
-            levelMap,
-          );
+          card['levelName'] = card.nodeName;
           card['evidences'] = cardEvidencesMap.get(card.id) || [];
         }
       }
@@ -118,13 +112,8 @@ export class CardService {
         responsableId: responsibleId,
       });
       if (cards) {
-        const levelMap = await this.levelService.findAllLevels();
         for (const card of cards) {
-          card['levelName'] = card.areaName;
-          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
-            String(card.areaId),
-            levelMap,
-          );
+          card['levelName'] = card.nodeName;
         }
       }
       return cards;
@@ -136,12 +125,7 @@ export class CardService {
     try {
       const card = await this.cardRepository.findOneBy({ id: cardId });
       if (card) {
-        const levelMap = await this.levelService.findAllLevels();
-        card['levelName'] = card.areaName;
-        card['levelList'] = this.levelService.findAllSuperiorLevelsById(
-          String(card.areaId),
-          levelMap,
-        );
+        card['levelName'] = card.nodeName;
       }
       const evidences = await this.evidenceRepository.findBy({
         cardId: cardId,
@@ -176,7 +160,7 @@ export class CardService {
           createCardDTO.priorityId,
         );
       }
-      const area = await this.levelService.findById(createCardDTO.areaId);
+      const node = await this.levelService.findById(createCardDTO.nodeId);
       const cardType = await this.cardTypeService.findById(
         createCardDTO.cardTypeId,
       );
@@ -187,7 +171,7 @@ export class CardService {
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (!area) {
+      } else if (!node) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       } else if (!priority) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
@@ -209,14 +193,23 @@ export class CardService {
         where: { siteId: site.id },
       });
 
+      const levelMap = await this.levelService.findAllLevelsBySite(site.id);
+      const { area, location } = this.levelService.getSuperiorLevelsById(
+        String(node.id),
+        levelMap,
+      );
+
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
         siteCode: site.siteCode,
         cardTypeColor: cardType.color,
+        cardLocation: location,
+        areaId: area.id,
         areaName: area.name,
-        level: area.level,
-        superiorId: Number(area.superiorId) === 0 ? area.id : area.superiorId,
+        nodeName: node.name,
+        level: node.level,
+        superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
         priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
@@ -391,7 +384,7 @@ export class CardService {
       const note = await this.cardNoteRepository.create({
         cardId: card.id,
         siteId: card.siteId,
-        note: stringConstants.noteDefinitiveSoluition,
+        note: `${stringConstants.noteDefinitiveSoluition} <${card.userAppDefinitiveSolutionId} ${card.userAppDefinitiveSolutionName}> ${stringConstants.aplico} <${card.userDefinitiveSolutionId} ${card.userDefinitiveSolutionName}>`,
         createdAt: new Date(),
       });
 
@@ -413,13 +406,8 @@ export class CardService {
         },
       });
       if (cards) {
-        const levelMap = await this.levelService.findAllLevels();
         for (const card of cards) {
-          card['levelName'] = card.areaName;
-          card['levelList'] = this.levelService.findAllSuperiorLevelsById(
-            String(card.areaId),
-            levelMap,
-          );
+          card['levelName'] = card.nodeName;
         }
       }
 
@@ -513,7 +501,7 @@ export class CardService {
       const note = await this.cardNoteRepository.create({
         cardId: card.id,
         siteId: card.siteId,
-        note: `${stringConstants.noteProvisionalSolution} ${card.userAppProvisionalSolutionId} ${card.userAppProvisionalSolutionName} ${stringConstants.aplico} ${card.userAppDefinitiveSolutionId} ${card.userAppProvisionalSolutionName}`,
+        note: `${stringConstants.noteProvisionalSolution} <${card.userAppProvisionalSolutionId} ${card.userAppProvisionalSolutionName}> ${stringConstants.aplico} <${card.userProvisionalSolutionId} ${card.userProvisionalSolutionName}>`,
         createdAt: new Date(),
       });
 
@@ -525,8 +513,10 @@ export class CardService {
     }
   };
 
-  findAllEvidences = async () => {
-    const evidences = await this.evidenceRepository.find();
+  findAllEvidences = async (siteId: number) => {
+    const evidences = await this.evidenceRepository.find({
+      where: { siteId: siteId },
+    });
     const evidencesMap = new Map();
     evidences.forEach((level) => evidencesMap.set(level.id, level));
     return evidencesMap;
@@ -645,6 +635,110 @@ export class CardService {
       return weeks;
     } catch (exception) {
       console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  updateCardPriority = async (updateCardPriorityDTO: UpdateCardPriorityDTO) => {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: updateCardPriorityDTO.cardId },
+      });
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      if (Number(card.priorityId) === updateCardPriorityDTO.priorityId) {
+        return;
+      }
+
+      const priority = await this.priorityService.findById(
+        updateCardPriorityDTO.priorityId,
+      );
+
+      if (!priority) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+
+      const user = await this.userService.findOneById(
+        updateCardPriorityDTO.idOfUpdatedBy,
+      );
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const note = new CardNoteEntity();
+      note.cardId = card.id;
+      note.siteId = card.siteId;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioLaPrioridadDe} <${card.priorityCode} - ${card.priorityDescription}> ${stringConstants.a} <${priority.priorityCode} - ${priority.priorityDescription}>`;
+      note.createdAt = new Date();
+
+      card.priorityId = priority.id;
+      card.priorityCode = priority.priorityCode;
+      card.priorityDescription = priority.priorityDescription;
+
+      await this.cardRepository.save(card);
+
+      return await this.cardNoteRepository.save(note);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateCardResponsible = async (
+    updateCardResponsibleDTO: UpdateCardReponsibleDTO,
+  ) => {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: updateCardResponsibleDTO.cardId },
+      });
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      if (
+        Number(card.responsableId) === updateCardResponsibleDTO.responsibleId
+      ) {
+        return;
+      }
+
+      const userResponsible = await this.userService.findOneById(
+        updateCardResponsibleDTO.responsibleId,
+      );
+
+      const user = await this.userService.findOneById(
+        updateCardResponsibleDTO.idOfUpdatedBy,
+      );
+
+      if (!userResponsible || !user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const note = new CardNoteEntity();
+      note.cardId = card.id;
+      note.siteId = card.siteId;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElREsponsableDe} <${card.responsableName}> ${stringConstants.a} <${userResponsible.name}>`;
+      note.createdAt = new Date();
+
+      card.responsableId = userResponsible.id;
+      card.responsableName = userResponsible.name;
+
+      await this.cardRepository.save(card);
+
+      return await this.cardNoteRepository.save(note);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findCardNotes = async (cardId: number) => {
+    try {
+      return await this.cardNoteRepository.find({
+        where: { cardId: cardId },
+        order: { createdAt: 'DESC' },
+      });
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };

@@ -58,7 +58,7 @@ export class CreateCardDTO {
   @ApiProperty({ required: false })
   @IsInt()
   @IsOptional()
-  areaId: number | null;
+  nodeId: number | null;
 
   @ApiProperty({required: false})
   @IsOptional()

@@ -52,11 +52,20 @@ export class CardEntity {
   @Column({ type: 'date', nullable: false, name: 'card_due_date' })
   cardDueDate: Date;
 
+  @Column({ type: 'varchar', nullable: true, name: 'card_location', length: 250 })
+  cardLocation: string;
+
   @Column({ type: 'int', nullable: true, name: 'area_id' })
   areaId: number | null;
 
   @Column({ type: 'varchar', length: 45, nullable: false, name: 'area_name' })
   areaName: string;
+
+  @Column({ type: 'int', nullable: true, name: 'node_id' })
+  nodeId: number | null;
+
+  @Column({ type: 'varchar', length: 45, nullable: false, name: 'node_name' })
+  nodeName: string;
 
   @Column({ type: 'int', nullable: false, name: 'level' })
   level: number;
