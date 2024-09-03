@@ -1,15 +1,22 @@
 export const QUERY_CONSTANTS = {
   findSiteCardsGroupedByPreclassifier: `
-      CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) AS preclassifier,
-      card.cardType_methodology_name AS methodology,
-      COUNT(*) AS totalCards
+        CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) AS preclassifier,
+  COUNT(*) AS totalCards,
+  card.cardType_name AS methodology,
+  card.cardType_color AS color
     `,
   findSiteCardsGroupedByMethodology: `
-      card.cardType_methodology_name AS methodology,
+      card.cardType_name AS methodology,
+      cardType_color as color,
       COUNT(*) AS totalCards
     `,
   findSiteCardsGroupedByArea: `
       area_name AS area,
+      COUNT(*) AS totalCards
+    `,
+    findSiteCardsGroupedByMachine: `
+      node_name AS machine,
+      card_location as location,
       COUNT(*) AS totalCards
     `,
   findSiteCardsGroupedByCreator: `
