@@ -87,6 +87,11 @@ export class CardController {
     return this.cardService.findSiteCardsGroupedByArea(siteId);
   }
 
+  @Get('/site/machines/:siteId')
+  findSiteCardsGroupedByMachine(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByMachine(siteId);
+  }
+
   @Get('/site/creators/:siteId')
   findSiteCardsGroupedByCreator(@Param('siteId') siteId: number) {
     return this.cardService.findSiteCardsGroupedByCreator(siteId);
@@ -108,7 +113,9 @@ export class CardController {
   }
 
   @Post('/update/responsible')
-  updateCardResponsible(@Body() updateCardResponsibleDTO: UpdateCardReponsibleDTO) {
+  updateCardResponsible(
+    @Body() updateCardResponsibleDTO: UpdateCardReponsibleDTO,
+  ) {
     return this.cardService.updateCardResponsible(updateCardResponsibleDTO);
   }
 }

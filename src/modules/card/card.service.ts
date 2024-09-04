@@ -528,7 +528,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
         .where('card.site_id = :siteId', { siteId })
-        .groupBy('preclassifier, methodology')
+        .groupBy('preclassifier, methodology, color')
         .getRawMany();
 
       const preclassifiers = rawPreclassifiers.map((preclassifier) => ({
@@ -548,7 +548,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
         .where('card.site_id = :siteId', { siteId })
-        .groupBy('methodology')
+        .groupBy('methodology, color')
         .getRawMany();
 
       const methodologies = rawMethodologies.map((methodology) => ({
@@ -569,6 +569,25 @@ export class CardService {
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
         .where('card.site_id = :siteId', { siteId })
         .groupBy('area')
+        .getRawMany();
+
+      const areas = rawAreas.map((area) => ({
+        ...area,
+        totalCards: Number(area.totalCards),
+      }));
+
+      return areas;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  findSiteCardsGroupedByMachine = async (siteId: number) => {
+    try {
+      const rawAreas = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('machine, location')
         .getRawMany();
 
       const areas = rawAreas.map((area) => ({
