@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsOptional, IsString} from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateLevelDto {
   @ApiProperty({
@@ -7,9 +13,9 @@ export class CreateLevelDto {
     example: 1,
     type: 'number',
   })
-  @IsNumber()
-  @IsNotEmpty()
-  responsibleId: number;
+  @IsInt()
+  @IsOptional()
+  responsibleId: number | null;
 
   @ApiProperty({
     description: 'Id of the site',
@@ -58,9 +64,17 @@ export class CreateLevelDto {
     type: 'string',
     maxLength: 50,
   })
-  @IsString()
+  @IsOptional()
+  levelMachineId: string | null;
+
+  @ApiProperty({
+    description: 'Notify user',
+    type: 'number',
+    maxLength: 1,
+  })
+  @IsNumber()
   @IsNotEmpty()
-  levelMachineId: string;
+  notify: number;
 
   createdAt?: Date;
 }

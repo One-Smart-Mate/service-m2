@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsIn,
+  IsInt,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -19,9 +19,9 @@ export class UpdateLevelDTO {
     example: 1,
     type: 'number',
   })
-  @IsNumber()
-  @IsNotEmpty()
-  responsibleId: number;
+  @IsInt()
+  @IsOptional()
+  responsibleId: number | null;
   responsibleName?: string;
 
   @ApiProperty({
@@ -47,9 +47,17 @@ export class UpdateLevelDTO {
     type: 'string',
     maxLength: 50,
   })
-  @IsString()
+  @IsOptional()
+  levelMachineId: string | null;
+
+  @ApiProperty({
+    description: 'Notify user',
+    type: 'number',
+    maxLength: 1,
+  })
+  @IsNumber()
   @IsNotEmpty()
-  levelMachineId: string;
+  notify: number;
 
   @ApiProperty({
     description: 'Status',
