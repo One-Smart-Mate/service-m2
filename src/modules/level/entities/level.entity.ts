@@ -43,6 +43,9 @@ export class LevelEntity {
 
   @Column({ name: 'level_machine_id', type: 'varchar', length: 50 })
   levelMachineId: string;
+
+  @Column({type: 'tinyint', default: 1})
+  notify: number;
   
   @Exclude()
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })

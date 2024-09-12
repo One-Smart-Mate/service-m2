@@ -59,31 +59,35 @@ export class LevelService {
   };
   create = async (createLevelDTO: CreateLevelDto) => {
     try {
-      const responsible = await this.usersService.findById(
-        createLevelDTO.responsibleId,
-      );
       const site = await this.siteService.findById(createLevelDTO.siteId);
-      if (!responsible) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      } else if (!site) {
+      if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      const levelMachineIdExists = await this.levelRepository.findOne({
-        where: {
-          levelMachineId: createLevelDTO.levelMachineId,
-          siteId: createLevelDTO.siteId,
-        },
-      });
-
-      if (levelMachineIdExists) {
-        throw new ValidationException(
-          ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
-        );
+      if (createLevelDTO.levelMachineId) {
+        const levelMachineIdExists = await this.levelRepository.findOne({
+          where: {
+            levelMachineId: createLevelDTO.levelMachineId,
+            siteId: createLevelDTO.siteId,
+          },
+        });
+        if (levelMachineIdExists) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+          );
+        }
       }
 
+      if (createLevelDTO.responsibleId) {
+        const responsible = await this.usersService.findById(
+          Number(createLevelDTO.responsibleId),
+        );
+        if (!responsible) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        }
+        createLevelDTO.responsibleName = responsible.name;
+      }
       createLevelDTO.companyId = site.companyId;
-      createLevelDTO.responsibleName = responsible.name;
       createLevelDTO.createdAt = new Date();
 
       if (createLevelDTO.superiorId) {
@@ -111,6 +115,7 @@ export class LevelService {
   };
   update = async (updateLevelDTO: UpdateLevelDTO) => {
     try {
+      console.log('this must be printed', updateLevelDTO);
       const level = await this.levelRepository.findOneBy({
         id: updateLevelDTO.id,
       });
@@ -118,30 +123,37 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
 
-      const responsible = await this.usersService.findById(
-        updateLevelDTO.responsibleId,
-      );
-      if (!responsible) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      level.responsibleName = null;
+
+      if (updateLevelDTO.responsibleId) {
+        const responsible = await this.usersService.findById(
+          Number(updateLevelDTO.responsibleId),
+        );
+        if (!responsible) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        }
+        level.responsibleName = responsible.name;
       }
 
-      const levelMachineIdExists = await this.levelRepository.findOne({
-        where: {
-          levelMachineId: updateLevelDTO.levelMachineId,
-          siteId: level.siteId,
-          id: Not(level.id),
-        },
-      });
-
-      if (levelMachineIdExists) {
-        throw new ValidationException(
-          ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
-        );
+      if (updateLevelDTO.levelMachineId) {
+        const levelMachineIdExists = await this.levelRepository.findOne({
+          where: {
+            levelMachineId: updateLevelDTO.levelMachineId,
+            siteId: level.siteId,
+            id: Not(level.id),
+          },
+        });
+        if (levelMachineIdExists) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+          );
+        }
       }
 
       level.name = updateLevelDTO.name;
       level.description = updateLevelDTO.description;
       level.levelMachineId = updateLevelDTO.levelMachineId;
+
       if (updateLevelDTO.status !== level.status) {
         const allLevels = await this.findAllChildLevels(level.id);
         if (updateLevelDTO.status !== stringConstants.A) {
@@ -165,7 +177,6 @@ export class LevelService {
       }
       level.status = updateLevelDTO.status;
       level.responsibleId = updateLevelDTO.responsibleId;
-      level.responsibleName = responsible.name;
 
       const tokens = await this.usersService.getSiteUsersTokens(level.siteId);
       await this.firebaseService.sendMultipleMessage(
