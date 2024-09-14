@@ -57,7 +57,11 @@ export class CardService {
         levelMachineId,
       );
 
-      return await this.cardRepository.findBy({ areaId: level.id });
+      if (!level) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      return await this.cardRepository.findBy({ nodeId: level.id });
     } catch (exception) {
       HandleException.exception(exception);
     }
