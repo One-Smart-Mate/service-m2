@@ -400,4 +400,17 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
+
+  findSiteMechanics = async (siteId: number) => {
+    try {
+      return await this.userRepository.find({
+        where: {
+          site: { id: siteId },
+          userRoles: { role: { name: stringConstants.mechanic } },
+        },
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

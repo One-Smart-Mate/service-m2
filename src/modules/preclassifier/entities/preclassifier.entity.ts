@@ -1,5 +1,6 @@
 import { Exclude } from 'class-transformer';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('preclassifiers')
 export class PreclassifierEntity {
@@ -8,6 +9,10 @@ export class PreclassifierEntity {
 
   @Column({ name: 'cardType_id', type: 'bigint', unsigned: true })
   cardTypeId: number;
+
+  @ManyToOne(() => CardTypesEntity, (cardType) => cardType.preclassifiers)
+  @JoinColumn({ name: 'cardType_id' })
+  cardType: CardTypesEntity;
 
   @Exclude()
   @Column({ name: 'site_id', type: 'bigint', unsigned: true })

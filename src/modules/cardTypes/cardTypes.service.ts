@@ -30,10 +30,16 @@ export class CardTypesService {
 
   findSiteActiveCardTypes = async (siteId: number) => {
     try {
-      return await this.cardTypesRepository.findBy({
-        siteId: siteId,
-        status: stringConstants.A,
-      });
+      const activeCardTypesWithPreclassifiers = await this.cardTypesRepository
+        .createQueryBuilder('cardTypes')
+        .leftJoin('cardTypes.preclassifiers', 'preclassifiers')
+        .where('cardTypes.siteId = :siteId', { siteId })
+        .andWhere('cardTypes.status = :status', { status: stringConstants.A })
+        .andWhere('preclassifiers.id IS NOT NULL')
+        .distinct(true)
+        .getMany();
+
+      return activeCardTypesWithPreclassifiers;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -174,7 +180,9 @@ export class CardTypesService {
   };
   findAllCatalogs = async () => {
     try {
-      return await this.cardTypesCatalogRepository.find({where: {status: stringConstants.A}});
+      return await this.cardTypesCatalogRepository.find({
+        where: { status: stringConstants.A },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

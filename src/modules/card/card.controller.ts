@@ -5,7 +5,7 @@ import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
-import { UpdateCardReponsibleDTO } from './models/dto/upate.card.responsible.dto';
+import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -112,10 +112,10 @@ export class CardController {
     return this.cardService.updateCardPriority(updateCardPriorityDTO);
   }
 
-  @Post('/update/responsible')
+  @Post('/update/mechanic')
   updateCardResponsible(
-    @Body() updateCardResponsibleDTO: UpdateCardReponsibleDTO,
+    @Body() updateCardResponsibleDTO: UpdateCardMechanicDTO,
   ) {
-    return this.cardService.updateCardResponsible(updateCardResponsibleDTO);
+    return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
   }
 }
