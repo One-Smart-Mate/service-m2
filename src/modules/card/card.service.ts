@@ -30,7 +30,7 @@ import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
-import { UpdateCardReponsibleDTO } from './models/dto/upate.card.responsible.dto';
+import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 
 @Injectable()
 export class CardService {
@@ -705,43 +705,39 @@ export class CardService {
     }
   };
 
-  updateCardResponsible = async (
-    updateCardResponsibleDTO: UpdateCardReponsibleDTO,
-  ) => {
+  updateCardMechanic = async (updateCardMechanicDTO: UpdateCardMechanicDTO) => {
     try {
       const card = await this.cardRepository.findOne({
-        where: { id: updateCardResponsibleDTO.cardId },
+        where: { id: updateCardMechanicDTO.cardId },
       });
       if (!card) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
 
-      if (
-        Number(card.responsableId) === updateCardResponsibleDTO.responsibleId
-      ) {
+      if (Number(card.mechanicId) === updateCardMechanicDTO.mechanicId) {
         return;
       }
 
-      const userResponsible = await this.userService.findOneById(
-        updateCardResponsibleDTO.responsibleId,
+      const userMechanic = await this.userService.findOneById(
+        updateCardMechanicDTO.mechanicId,
       );
 
       const user = await this.userService.findOneById(
-        updateCardResponsibleDTO.idOfUpdatedBy,
+        updateCardMechanicDTO.idOfUpdatedBy,
       );
 
-      if (!userResponsible || !user) {
+      if (!userMechanic || !user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
       const note = new CardNoteEntity();
       note.cardId = card.id;
       note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElREsponsableDe} <${card.responsableName}> ${stringConstants.a} <${userResponsible.name}>`;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElMecanicoDe} <${card.mechanicName}> ${stringConstants.a} <${userMechanic.name}>`;
       note.createdAt = new Date();
 
-      card.responsableId = userResponsible.id;
-      card.responsableName = userResponsible.name;
+      card.mechanicId = userMechanic.id;
+      card.mechanicName = userMechanic.name;
 
       await this.cardRepository.save(card);
 

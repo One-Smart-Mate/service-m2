@@ -70,4 +70,12 @@ export class UsersController {
   sendMessage(@Body('token') token: string) {
     return this.usersService.sendMessage(token);
   }
+
+  @Get('site/mechanics/:siteId')
+  findSiteMechanics(@Param('siteId') siteId: number) {
+    const users = this.usersService.findSiteMechanics(siteId);
+    return plainToClass(UserResponsible, users, {
+      excludeExtraneousValues: true,
+    });
+  }
 }
