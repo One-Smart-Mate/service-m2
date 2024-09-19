@@ -46,6 +46,11 @@ export class SiteController {
       excludeExtraneousValues: true,
     });
   }
+  @Get('user-sites/:userId')
+  @ApiParam({ name: 'userId', required: true, example: 1 })
+  async findUserSites(@Param('userId') userId: number) {
+    return this.siteService.findUserSitesId(userId);
+  }
   @Get('/all')
   findAll() {
     return this.siteService.findAll();

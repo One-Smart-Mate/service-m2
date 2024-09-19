@@ -14,6 +14,7 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
+import { UserHasSitesEntity } from './user.has.sites.entity';
 
 @Entity('users')
 @Index(['siteCode'], { unique: true })
@@ -103,4 +104,7 @@ export class UserEntity {
 
   @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
   userRoles: UserRoleEntity[];
+
+  @OneToMany(() => UserHasSitesEntity, (userHasSites) => userHasSites.user)
+  userHasSites: UserHasSitesEntity[];
 }

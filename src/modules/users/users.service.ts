@@ -125,7 +125,7 @@ export class UsersService {
   findOneByEmail = (email: string) => {
     return this.userRepository.findOne({
       where: { email: email },
-      relations: ['site'],
+      relations: { userHasSites: { site: true } },
     });
   };
   update = async (user: UserEntity) => {
@@ -152,7 +152,7 @@ export class UsersService {
   findSiteUsersResponsibleData = async (siteId: number) => {
     try {
       return await this.userRepository.find({
-        where: { site: { id: siteId } },
+        where: { userHasSites: { site: { id: siteId } } },
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -162,7 +162,7 @@ export class UsersService {
   getSiteUsersTokens = async (siteId: number) => {
     try {
       const users = await this.userRepository.find({
-        where: { site: { id: siteId } },
+        where: { userHasSites: { site: { id: siteId } } },
         select: ['appToken'],
       });
 
@@ -180,7 +180,7 @@ export class UsersService {
   ) => {
     try {
       const users = await this.userRepository.find({
-        where: { site: { id: siteId }, id: Not(userId) },
+        where: { userHasSites: { site: { id: siteId } }, id: Not(userId) },
         select: ['appToken'],
       });
 
@@ -195,7 +195,7 @@ export class UsersService {
   findAllUsers = async () => {
     try {
       const users = await this.userRepository.find({
-        relations: ['userRoles', 'userRoles.role', 'site'],
+        relations: { userRoles: { role: true }, userHasSites: { site: true } },
       });
 
       const transformedUsers = users.map((user) => ({
@@ -206,7 +206,11 @@ export class UsersService {
           id: userRole.role.id,
           name: userRole.role.name,
         })),
-        site: { id: user.site.id, name: user.site.name, logo: user.site.logo },
+        sites: user.userHasSites.map((userHasSite) => ({
+          id: userHasSite.site.id,
+          name: userHasSite.site.name,
+          logo: userHasSite.site.logo,
+        })),
       }));
 
       return transformedUsers;
@@ -218,8 +222,8 @@ export class UsersService {
   findSiteUsers = async (siteId: number) => {
     try {
       const users = await this.userRepository.find({
-        where: { site: { id: siteId } },
-        relations: ['userRoles', 'userRoles.role', 'site'],
+        where: { userHasSites: { site: { id: siteId } } },
+        relations: { userRoles: { role: true }, userHasSites: { site: true } },
       });
 
       const transformedUsers = users.map((user) => ({
@@ -230,7 +234,11 @@ export class UsersService {
           id: userRole.role.id,
           name: userRole.role.name,
         })),
-        site: { id: user.site.id, name: user.site.name, logo: user.site.logo },
+        sites: user.userHasSites.map((userHasSite) => ({
+          id: userHasSite.site.id,
+          name: userHasSite.site.name,
+          logo: userHasSite.site.logo,
+        })),
       }));
 
       return transformedUsers;
@@ -405,7 +413,7 @@ export class UsersService {
     try {
       return await this.userRepository.find({
         where: {
-          site: { id: siteId },
+          userHasSites: { site: { id: siteId } },
           userRoles: { role: { name: stringConstants.mechanic } },
         },
       });
