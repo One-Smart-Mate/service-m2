@@ -7,7 +7,6 @@ export class CardTypesEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
 
-  @Exclude()
   @Column({ name: 'site_id', type: 'bigint', unsigned: true })
   siteId: number;
 

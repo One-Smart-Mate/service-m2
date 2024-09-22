@@ -1,5 +1,10 @@
-import { SiteEntity } from 'src/modules/site/entities/site.entity';
 import { UserEntity } from '../entities/user.entity';
+
+interface Site {
+  id: number;
+  name: string;
+  logo: string;
+}
 
 export class UserResponse {
   userId: number;
@@ -9,9 +14,8 @@ export class UserResponse {
   roles: string[];
   logo: string;
   companyId: number;
-  siteId: number;
   companyName: string;
-  siteName: string;
+  sites: Site[];
 
   constructor(
     user: UserEntity,
@@ -19,15 +23,18 @@ export class UserResponse {
     roles: string[],
     companyName: string,
   ) {
-    this.userId = user.id
+    this.userId = user.id;
     this.name = user.name;
     this.email = user.email;
     this.token = token;
     this.roles = roles;
-    this.logo = user.site.logo;
-    this.companyId = user.site.companyId;
-    this.siteId = user.site.id;
+    this.logo = user.userHasSites[0].site.logo;
+    this.companyId = user.userHasSites[0].site.companyId;
     this.companyName = companyName;
-    this.siteName = user.site.name;
+    this.sites = user.userHasSites.map((userHasSite) => ({
+      id: userHasSite.site.id,
+      name: userHasSite.site.siteBusinessName,
+      logo: userHasSite.site.logo,
+    }));
   }
 }

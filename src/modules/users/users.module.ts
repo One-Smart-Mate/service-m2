@@ -7,6 +7,7 @@ import { RolesModule } from '../roles/roles.module';
 import { SiteModule } from '../site/site.module';
 import { MailModule } from '../mail/mail.module';
 import { FirebaseModule } from '../firebase/firebase.module';
+import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { FirebaseModule } from '../firebase/firebase.module';
     RolesModule,
     MailModule,
     FirebaseModule,
-    TypeOrmModule.forFeature([UserEntity]),
+    TypeOrmModule.forFeature([UserEntity, UserHasSitesEntity]),
   ],
   providers: [UsersService],
   controllers: [UsersController],

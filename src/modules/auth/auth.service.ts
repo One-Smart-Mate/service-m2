@@ -21,7 +21,7 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly usersSevice: UsersService,
-    private readonly siteService: SiteService
+    private readonly siteService: SiteService,
   ) {}
 
   login = async (data: LoginDTO): Promise<UserResponse> => {
@@ -47,11 +47,13 @@ export class AuthService {
 
       const access_token = await this.jwtService.signAsync(payload);
 
-      const companyName = await this.siteService.getCompanyName(user.site.companyId)
+      const companyName = await this.siteService.getCompanyName(
+        user.userHasSites[0].site.companyId,
+      );
 
       return new UserResponse(user, access_token, roles, companyName);
     } catch (exception) {
-      console.log(exception)
+      console.log(exception);
       HandleException.exception(exception);
     }
   };
