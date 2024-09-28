@@ -23,12 +23,15 @@ import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
+import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(UserHasSitesEntity)
+    private readonly userHasSiteRepository: Repository<UserHasSitesEntity>,
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
@@ -249,49 +252,57 @@ export class UsersService {
 
   create = async (createUserDTO: CreateUserDTO) => {
     try {
-      const emailExists = await this.userRepository.existsBy({
+      const userAlreadyExistInSite = await this.userRepository.existsBy({
         email: createUserDTO.email,
+        userHasSites: { site: { id: createUserDTO.siteId } },
       });
-      if (emailExists) {
+
+      if (userAlreadyExistInSite) {
         throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
       }
 
-      const site = await this.siteService.findById(createUserDTO.siteId);
-      const roles = await this.roleService.findRolesByIds(createUserDTO.roles);
+      const [site, roles] = await Promise.all([
+        this.siteService.findById(createUserDTO.siteId),
+        this.roleService.findRolesByIds(createUserDTO.roles),
+      ]);
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       } else if (roles.length === 0) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
-      const currentSiteUsers = await this.userRepository.findBy({
-        site: { id: createUserDTO.siteId },
+
+      const user = await this.userRepository.findOne({
+        where: { email: createUserDTO.email },
       });
-      if (currentSiteUsers.length === site.userQuantity) {
-        throw new ValidationException(
-          ValidationExceptionType.USER_QUANTITY_EXCEEDED,
-        );
+
+      const userSite = new UserHasSitesEntity();
+      userSite.site = site;
+
+      if (!user) {
+        const createUser = await this.userRepository.create({
+          name: createUserDTO.name,
+          email: createUserDTO.email,
+          password: await bcryptjs.hash(
+            createUserDTO.password,
+            stringConstants.SALT_ROUNDS,
+          ),
+          appVersion: process.env.APP_ENV,
+          siteCode: site.siteCode,
+          uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
+          uploadCardEvidenceWithDataNet:
+            createUserDTO.uploadCardEvidenceWithDataNet,
+          createdAt: new Date(),
+        });
+
+        await this.userRepository.save(createUser);
+        await this.roleService.assignUserRoles(createUser, roles);
+        userSite.user = createUser;
+      } else {
+        userSite.user = user;
       }
 
-      const user = await this.userRepository.create({
-        name: createUserDTO.name,
-        email: createUserDTO.email,
-        password: await bcryptjs.hash(
-          createUserDTO.password,
-          stringConstants.SALT_ROUNDS,
-        ),
-        site: site,
-        appVersion: process.env.APP_ENV,
-        siteCode: site.siteCode,
-        uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
-        uploadCardEvidenceWithDataNet:
-          createUserDTO.uploadCardEvidenceWithDataNet,
-        createdAt: new Date(),
-      });
-
-      await this.userRepository.save(user);
-
-      return await this.roleService.assignUserRoles(user, roles);
+      return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {
       HandleException.exception(exception);
     }

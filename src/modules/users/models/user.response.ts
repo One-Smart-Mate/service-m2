@@ -33,7 +33,7 @@ export class UserResponse {
     this.companyName = companyName;
     this.sites = user.userHasSites.map((userHasSite) => ({
       id: userHasSite.site.id,
-      name: userHasSite.site.siteBusinessName,
+      name: userHasSite.site.name,
       logo: userHasSite.site.logo,
     }));
   }
