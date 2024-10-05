@@ -31,6 +31,7 @@ import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
+import { addDaysToDate } from 'src/utils/general.functions';
 
 @Injectable()
 export class CardService {
@@ -87,7 +88,7 @@ export class CardService {
     try {
       const cards = await this.cardRepository.find({
         where: { siteId: siteId },
-        order: { siteCardId: 'ASC' },
+        order: { siteCardId: 'DESC' },
       });
       if (cards) {
         const allEvidencesMap = await this.findAllEvidences(siteId);
@@ -203,6 +204,8 @@ export class CardService {
         levelMap,
       );
 
+      const currentDate = new Date();
+
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
@@ -214,6 +217,8 @@ export class CardService {
         nodeName: node.name,
         level: node.level,
         superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
+        responsableId: node.responsibleId && node.responsibleId,
+        responsableName: node.responsibleName && node.responsibleName,
         priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
@@ -230,8 +235,9 @@ export class CardService {
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
-        createdAt: new Date(),
-        cardDueDate: new Date(),
+        createdAt: currentDate,
+        cardDueDate:
+          priority.id && addDaysToDate(currentDate, priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
       });
 
@@ -700,6 +706,7 @@ export class CardService {
       card.priorityId = priority.id;
       card.priorityCode = priority.priorityCode;
       card.priorityDescription = priority.priorityDescription;
+      card.cardDueDate = addDaysToDate(card.createdAt, priority.priorityDays);
 
       await this.cardRepository.save(card);
 

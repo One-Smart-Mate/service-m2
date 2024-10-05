@@ -16,6 +16,7 @@ import { LevelModule } from './modules/level/level.module';
 import { CardModule } from './modules/card/card.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { StatusModule } from './modules/status/status.module';
+import { FileUploadModule } from './modules/file-upload/file-upload.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StatusModule } from './modules/status/status.module';
     CardModule,
     CurrencyModule,
     StatusModule,
+    FileUploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],

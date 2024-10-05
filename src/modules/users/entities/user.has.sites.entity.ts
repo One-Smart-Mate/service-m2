@@ -1,4 +1,10 @@
-import { Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { UserEntity } from './user.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
 
@@ -14,4 +20,7 @@ export class UserHasSitesEntity {
   @ManyToOne(() => SiteEntity, (site) => site.userHasSites)
   @JoinColumn({ name: 'site_id', referencedColumnName: 'id' })
   site: SiteEntity;
+
+  @Column({ name: 'created_at', type: 'date', nullable: true })
+  createdAt: Date;
 }

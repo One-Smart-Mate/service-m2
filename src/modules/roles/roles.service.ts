@@ -15,6 +15,7 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { UsersAndRolesDTO } from '../file-upload/dto/users.and.roles.dto';
 
 @Injectable()
 export class RolesService {
@@ -36,6 +37,29 @@ export class RolesService {
   findRolesByIds = async (rolesIds: number[]) => {
     try {
       return await this.rolesRepository.findBy({ id: In(rolesIds) });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getRolesMap = async (): Promise<Map<string, RoleEntity>> => {
+    try {
+      const roles = await this.rolesRepository.find();
+      const rolesMap = new Map<string, RoleEntity>();
+
+      roles.forEach((role) => {
+        rolesMap.set(role.name.toLowerCase(), role);
+      });
+
+      return rolesMap;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  assignRoleToImportedUsers = async (usersAndSites: UsersAndRolesDTO[]) => {
+    try {
+      return await this.userRoleRepository.save(usersAndSites);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -144,9 +168,9 @@ export class RolesService {
     }
   };
 
-  findOneById = async (roleId: number) =>{
+  findOneById = async (roleId: number) => {
     try {
-      return await this.rolesRepository.findOneBy({id: roleId})
+      return await this.rolesRepository.findOneBy({ id: roleId });
     } catch (exception) {
       HandleException.exception(exception);
     }

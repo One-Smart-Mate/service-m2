@@ -1,4 +1,4 @@
-import { Not, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BadRequestException, Injectable } from '@nestjs/common';
@@ -23,12 +23,17 @@ import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
+import { UserHasSitesEntity } from './entities/user.has.sites.entity';
+import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
+import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(UserHasSitesEntity)
+    private readonly userHasSiteRepository: Repository<UserHasSitesEntity>,
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
@@ -249,49 +254,57 @@ export class UsersService {
 
   create = async (createUserDTO: CreateUserDTO) => {
     try {
-      const emailExists = await this.userRepository.existsBy({
+      const userAlreadyExistInSite = await this.userRepository.existsBy({
         email: createUserDTO.email,
+        userHasSites: { site: { id: createUserDTO.siteId } },
       });
-      if (emailExists) {
+
+      if (userAlreadyExistInSite) {
         throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
       }
 
-      const site = await this.siteService.findById(createUserDTO.siteId);
-      const roles = await this.roleService.findRolesByIds(createUserDTO.roles);
+      const [site, roles] = await Promise.all([
+        this.siteService.findById(createUserDTO.siteId),
+        this.roleService.findRolesByIds(createUserDTO.roles),
+      ]);
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       } else if (roles.length === 0) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
-      const currentSiteUsers = await this.userRepository.findBy({
-        site: { id: createUserDTO.siteId },
+
+      const user = await this.userRepository.findOne({
+        where: { email: createUserDTO.email },
       });
-      if (currentSiteUsers.length === site.userQuantity) {
-        throw new ValidationException(
-          ValidationExceptionType.USER_QUANTITY_EXCEEDED,
-        );
+
+      const userSite = new UserHasSitesEntity();
+      userSite.site = site;
+
+      if (!user) {
+        const createUser = await this.userRepository.create({
+          name: createUserDTO.name,
+          email: createUserDTO.email,
+          password: await bcryptjs.hash(
+            createUserDTO.password,
+            stringConstants.SALT_ROUNDS,
+          ),
+          appVersion: process.env.APP_ENV,
+          siteCode: site.siteCode,
+          uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
+          uploadCardEvidenceWithDataNet:
+            createUserDTO.uploadCardEvidenceWithDataNet,
+          createdAt: new Date(),
+        });
+
+        await this.userRepository.save(createUser);
+        await this.roleService.assignUserRoles(createUser, roles);
+        userSite.user = createUser;
+      } else {
+        userSite.user = user;
       }
 
-      const user = await this.userRepository.create({
-        name: createUserDTO.name,
-        email: createUserDTO.email,
-        password: await bcryptjs.hash(
-          createUserDTO.password,
-          stringConstants.SALT_ROUNDS,
-        ),
-        site: site,
-        appVersion: process.env.APP_ENV,
-        siteCode: site.siteCode,
-        uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
-        uploadCardEvidenceWithDataNet:
-          createUserDTO.uploadCardEvidenceWithDataNet,
-        createdAt: new Date(),
-      });
-
-      await this.userRepository.save(user);
-
-      return await this.roleService.assignUserRoles(user, roles);
+      return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -301,7 +314,7 @@ export class UsersService {
       const [user, emailIsNotUnique, site, roles] = await Promise.all([
         this.userRepository.findOne({
           where: { id: updateUserDTO.id },
-          relations: ['site'],
+          relations: { userHasSites: { site: true } },
         }),
         this.userRepository.exists({
           where: { email: updateUserDTO.email, id: Not(updateUserDTO.id) },
@@ -322,17 +335,6 @@ export class UsersService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
 
-      if (site.id !== user.site.id) {
-        const currentSiteUsers = await this.userRepository.find({
-          where: { site: { id: updateUserDTO.siteId } },
-        });
-        if (currentSiteUsers.length === site.userQuantity) {
-          throw new ValidationException(
-            ValidationExceptionType.USER_QUANTITY_EXCEEDED,
-          );
-        }
-      }
-
       user.name = updateUserDTO.name;
       user.email = updateUserDTO.email;
       if (updateUserDTO.password) {
@@ -341,7 +343,7 @@ export class UsersService {
           stringConstants.SALT_ROUNDS,
         );
       }
-      user.site = site;
+
       user.appVersion = process.env.APP_ENV;
       user.siteCode = site.siteCode;
       user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet;
@@ -353,6 +355,7 @@ export class UsersService {
 
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
+      console.log(exception);
       HandleException.exception(exception);
     }
   };
@@ -361,7 +364,7 @@ export class UsersService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
-        relations: ['site', 'userRoles', 'userRoles.role'],
+        relations: { userRoles: { role: true }, userHasSites: { site: true } },
       });
       if (user) {
         const transformedUser = {
@@ -369,7 +372,11 @@ export class UsersService {
           name: user.name,
           email: user.email,
           roles: user.userRoles.map((userRoles) => userRoles.role.id),
-          siteId: user.site.id,
+          sites: user.userHasSites.map((userHasSite) => ({
+            id: userHasSite.site.id,
+            name: userHasSite.site.name,
+            logo: userHasSite.site.logo,
+          })),
           uploadCardDataWithDataNet: user.uploadCardDataWithDataNet,
           uploadCardEvidenceWithDataNet: user.uploadCardEvidenceWithDataNet,
           status: user.status,
@@ -417,6 +424,42 @@ export class UsersService {
           userRoles: { role: { name: stringConstants.mechanic } },
         },
       });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getExistingUsersInSite = async (data: any, siteId: number) => {
+    const existingUsers = await this.userRepository.find({
+      where: {
+        email: In(data.map((user) => user.Email.toLowerCase())),
+        userHasSites: { site: { id: siteId } },
+      },
+    });
+    return existingUsers;
+  };
+  getExistingUsersMap = async (data: any): Promise<Map<string, UserEntity>> => {
+    const existingUsers = await this.userRepository.find({
+      where: {
+        email: In(data.map((user) => user.Email.toLowerCase())),
+      },
+    });
+
+    const userMap = new Map(existingUsers.map((user) => [user.email, user]));
+    return userMap;
+  };
+
+  saveImportedNewUsers = async (users: CreateUsersDTO[]) => {
+    try {
+      return await this.userRepository.save(users);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  assignSiteToImportedUsers = async (usersAndSites: UsersAndSitesDTO[]) => {
+    try {
+      return await this.userHasSiteRepository.save(usersAndSites);
     } catch (exception) {
       HandleException.exception(exception);
     }
