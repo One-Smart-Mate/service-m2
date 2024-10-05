@@ -6,10 +6,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  Index,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
   OneToMany,
   OneToOne,
   JoinColumn,
@@ -17,14 +13,9 @@ import {
 import { UserHasSitesEntity } from './user.has.sites.entity';
 
 @Entity('users')
-@Index(['siteCode'], { unique: true })
 export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
-
-  @OneToOne(() => SiteEntity)
-  @JoinColumn({ name: 'site_id' })
-  site: SiteEntity;
 
   @Column({ name: 'site_code', type: 'varchar', length: 6, nullable: false })
   siteCode: string;

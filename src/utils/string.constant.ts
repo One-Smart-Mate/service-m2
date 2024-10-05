@@ -1,7 +1,13 @@
 export const stringConstants = {
+  noFileUploaded: 'No file uploaded',
+  invalidFileType: 'Invalid file type',
+  duplicatedEmailAtRow: 'Duplicated email in excel row ',
+  missingFieldsAtRow: 'Missing fields in excel row ',
+  invalidRoleAtRow: 'Invalid role at row ',
   incorrectAuth: 'Incorrect e-mail or password.',
   duplicateRecord: 'This record already exists.',
   duplicateUser: 'This user already exists',
+  duplicateUserAtRow: 'User already exists in excel row ',
   duplicateRole: 'This role already exists',
   duplicateCardUUID: 'The UUID already exists',
   existDefinitiveSolution: 'Already exists a definitive solution',

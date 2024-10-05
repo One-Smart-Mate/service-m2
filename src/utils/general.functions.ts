@@ -7,6 +7,12 @@ const capitalizeAndJoinWords = (value: string[]): string => {
 };
 export { capitalizeAndJoinWords };
 
+export const addDaysToDate = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
 export const generateRandomCode = (length: number) => {
   let result = '';
   const charactersLength = stringConstants.characters.length;

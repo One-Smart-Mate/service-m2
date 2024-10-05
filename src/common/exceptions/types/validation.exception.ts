@@ -2,7 +2,9 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class ValidationException extends HttpException {
-  constructor(type: ValidationExceptionType) {
+  constructor(type: ValidationExceptionType);
+  constructor(type: ValidationExceptionType, info: string);
+  constructor(type: ValidationExceptionType, info?: string) {
     let message;
     if (type === ValidationExceptionType.WRONG_AUTH) {
       message = stringConstants.incorrectAuth;
@@ -40,6 +42,24 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATED_LEVELMACHINEID) {
       message = stringConstants.duplicateLevelMachineId;
     }
+    if (type === ValidationExceptionType.NO_FILE_UPLOADED) {
+      message = stringConstants.noFileUploaded;
+    }
+    if (type === ValidationExceptionType.INVALID_FILE_TYPE) {
+      message = stringConstants.invalidFileType;
+    }
+    if (type === ValidationExceptionType.DUPLICATED_EMAIL) {
+      message = stringConstants.duplicatedEmailAtRow + info;
+    }
+    if (type === ValidationExceptionType.MISSING_FIELDS) {
+      message = stringConstants.missingFieldsAtRow + info;
+    }
+    if (type === ValidationExceptionType.INVALID_ROLE) {
+      message = stringConstants.invalidRoleAtRow + info;
+    }
+    if (type === ValidationExceptionType.DUPLICATED_USER_AT_IMPORTATION) {
+      message = stringConstants.duplicateUserAtRow + info;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -48,6 +68,7 @@ export enum ValidationExceptionType {
   WRONG_AUTH,
   DUPLICATE_RECORD,
   DUPLICATED_USER,
+  DUPLICATED_USER_AT_IMPORTATION,
   DUPLICATED_LEVELMACHINEID,
   DUPLICATE_ROLE,
   DUPLICATE_CARD_UUID,
@@ -57,4 +78,9 @@ export enum ValidationExceptionType {
   RESETCODE_EXPIRED,
   WRONG_RESET_CODE,
   EMAIL_MISSING,
+  NO_FILE_UPLOADED,
+  INVALID_FILE_TYPE,
+  DUPLICATED_EMAIL,
+  MISSING_FIELDS,
+  INVALID_ROLE,
 }
