@@ -7,18 +7,18 @@ export const firebaseProvider = {
   useFactory: (configService: ConfigService) => {
     const firebaseConfig = {
       type: 'service_account',
-      project_id: 'android-m2-app',
-      private_key_id: 'ea8a821779186f24afbec3270b71a6da730f8a4f',
+      project_id: 'osm-android-app',
+      private_key_id: '2954ad10cf2d9a985fde909d2eb848e0f99e9f07',
       private_key:
-        '-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDM44lmOJzdJNWO\nonME///tODNfTyZ+coidGrAOisVW2fSUA/gNIfWqvqPLnsmphxisoisvsHDRZMNb\nyms0tjuWFP4yvqhhDEesnvAWij8u9m1lQU5ciXHAkPWtNGtBy4AMMutR0G9dLg88\nTQ6fyAUKtuvbeB8elFuKTBRu43GKxuupue3g6jlUJ6G1vtjhY1i8WYPyOj6k9Vsf\nIzBonnMIhPyxYZnvpK/JdT3/EVVhuAVcp1zjp44FyQ8xYz59hHPA9frWp0dR3S5r\nzs6ONp7ULQmV/ihD7FithWEVw758wc/7Gx6ZH9uSneYqWVMKeZYPfzfoj3zrH/LX\nKiZpXq8hAgMBAAECggEALEMjla+5Q5UHha7Whkf/s/GmN3rT6BE6LiZrzlhwVVj0\nm11YIw4pEl/o5r5A9py22eSWy9CkLrhD8/qAunx71upmF/RUT9LlUQds+pGXIMAf\n1fYLxbXzmxQ13tsqKKab3QbLC3up80lWBULoW+BMJopp3ZnPrz2BoRjaeTItfzsi\n8sn3oBkOaEZGFFV+z26w5SifbL/pD5e/K47IMJ16dLDg1uR8gZsg57livUcyJVfJ\nGfwrnGLvvIAfnF9nzZKxkRhPXdBgcmWMdtld+4kaqAQQfycWyq3Tmj4KBuxHAwH0\n5poEW+4p7dOiFFCX6JRWwtH6NHOJ2sszNxOD5zLQGQKBgQDv5TaXbv3CS4Jhsv6d\nVnA47faAqc7q26FIQY7JHvqex7I6Zfb7fKvhuDwfy17UGje2qqsUzLvPtNwXGaN8\niXzVf/QoqaLWjjLuka6PIpgAS5D57oBQChoAPj4bcy6pD5kEccbnvnLOrskGb70n\n4/IYtVJFC66wrme6d46P6MxsIwKBgQDapLV9GjciD+bqi77D7xhLUDjDd0yFA4Ak\nmR+ZvxF09blhfVWCrIzrq2sNFa7TpklUxlvL0oazcO7Gd76GX+VZ1jgYAUOvdR5R\na5PrScmKqOPxzCstJDiS8hZpGAkGQDDcc2W8cUAhCHkOmPdLyOXjRo/M9LbhBmtf\nf0YLQrgZ6wKBgQDVv6wmvhSIvHMNzkkjs9MGRrFu7t6ZUNyh3xf0iA/Szig19Ihe\niDU2R8v6oGB8KGgf8G3DeLCXX5UDWCrdWjvKl9nbKVsYRVeITnH0w2QgTzR8HVBj\nAL0uHkeEedrHdEhpN199OapeEkq323P1SRt7fIQzVTdv4dY2xTRXcZxDdQKBgD3t\n92YW/dTNEkgPCxquZ4A1mc5rxSXL5wj2wkenIgex7i9Z89WOkF/Ubv8GzD0w1YaI\npMmnuPWsoEVg93tSQEFg9wR9nzFciBjh0sULYmW/DsmXXgdsQgYFQinEYBIALpbS\nrNdicJqqrrdexnUV01+7xdF04zP7wIANKcbYwBK/AoGBALWklaAnPwPLD0x9q6Cv\nD0zl8fHRSfGoEMa4q5aDfu9vHDnrVwL/CuHGMM/+Fx5pf3MiA9M5GxV53t81axyz\nUdyYufzvylg6NyajPS+4kE4JE6sKdEI1A/1uq9ZLiTGHCR+bMpy65SRqPtOUrtty\noK0ebPRmAf7sSE71GccLieME\n-----END PRIVATE KEY-----\n',
+        '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCsHP6sU0PwsMFv\nPsQdUy+XEtgaYOXTo9Gwa7kNGS2SO/J6KAlhgVYVYysckVl6buo/57KAwbIPyU0z\n0qPxk8jlYlqQ/lWevGz9XyWiQzlinFkhq9qa3hIt1G/BHLUREUeDjsQlyjrfuO7j\n2f3IhDpH1muX3ZXPB8KZRJo5ZLd7A8R/nD3PCnmoP4E1+Sj9OElMihmg1ws+/De1\nMf8ABkDzEqyIy7YrkVkhbnPUFRLLIUsIsk8ptM0FYOemP76p2JmlW3844GgIDBe9\n3uitQ8wKMkast36pbq6+RHL5Tkr6C5VK+T9/sETfggE5xGmOIOJuaotfWDXmZPJ0\nlPI4t9OVAgMBAAECggEACxeZ84HbmLvQ1kTln2eIuKQhQ0nyuzoNPeEjaExdcIA7\n4f2J5TvQUB6NB7v3rU6lUCsJiQdysgEXivsh+mQQ3XUCQI1I+ABNceLblQ00ueiO\nTKo7s3a+ay+2vWuxNla2aixy8xCJIiP+rraSMYW8D9HU1fu/jOaDdxyXEpMtdAMG\nFwwVddm3dC+UktWFtGBau7rcpk1DwExyxo2u5YedQoXCOkHdwrf4d2M2cT/hvbPR\npI9j3rYqvnBB9OJdNpXGfvoIxBokMHpXOw9dYkLN3EJ0VcbO3vKnv/1rBO6KCgPp\nuRLOX4W9GcX2UYv/P+eOqwzo/yVG9V8v4Ovw/9PHXQKBgQDUeFA0+BwwUXe4UPCe\nWwMoGcMNu3s4NN2BQNQZPjipi5LRD3jvqmV4uI5/qYx+djDePQXV4O5Kj8aweynw\nq7oLyHFW7XToK9yFyMjsKhHDA1jcGj1CqG4pGUMZf7DktZAaJbhXjKuKD0YnpTYV\n8kpDrGIY0EEcsHQZ2qIE+GN4ewKBgQDPYAp7wv/TMbRnYxkdwzJLZgnWOadC7vRH\n1vPsJhAYIijV1g1f+ed/ETC89kma9qzxtmCK76KFAj1bH0ROtoS4Cvy4TDamOsmU\nawn1YhIBU0fahs+yZEVal4obcu8ayymclVTR6E3EuPnCIioHKgsItZKd/ktmOltI\npN6q1fiPLwKBgEYllq12QLA/JVyH9HkDqU4i+z/cZvkOkxbqVVwkK8bmGsnE5vOR\neUDbBcjmLElQMiAdW4DaazHYuAtqDlW0DI95VNoTOaaxXHQa7yLxXL3arAq26wTH\n4N7WxU101+0aeIH5dBwLiFLjahEKvYmPXa9sCVMR5n1XUG18vkMP0p9jAoGABbIV\nl6Cbdil/Uved0Ptzfi6nRoL+3Q/DFdYJjQrelksZ5AWlCGXMveiy9f2tt9velCT2\nMdqzFAQju0T4k1DgBE4I8ubk+VvT/YeTFnJDHFY1OwNI4RVv8jUHTgmyF4JM+kf/\ntGQ0/po2Aeb+UIQPGYYjKMO7PmuL5krg8sA9u3ECgYEAm48LrAtHFUtoyJVtqz/V\nkCn6BXlPQg8SGN0VIn0e+qzG9PXPL8ULLgB4GBn8D6h2Vvm7HZGFFnLPw4ZihGgj\nSYcsDyD1s5b4VpgPU0lWHKQLZW4iDaWB3eCcVebNrcUSFrRuVt0ABvLIk1cwIa7r\nYzePhUARgnP6do6yfrjGnm0=\n-----END PRIVATE KEY-----\n',
       client_email:
-        'firebase-adminsdk-hh3ok@android-m2-app.iam.gserviceaccount.com',
-      client_id: '105991354377365784805',
+        'firebase-adminsdk-xcv15@osm-android-app.iam.gserviceaccount.com',
+      client_id: '102889421744026304690',
       auth_uri: 'https://accounts.google.com/o/oauth2/auth',
       token_uri: 'https://oauth2.googleapis.com/token',
       auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
       client_x509_cert_url:
-        'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-hh3ok%40android-m2-app.iam.gserviceaccount.com',
+        'https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-xcv15%40osm-android-app.iam.gserviceaccount.com',
       universe_domain: 'googleapis.com',
     } as admin.ServiceAccount;
 

@@ -67,8 +67,8 @@ export class UsersController {
   }
 
   @Post('/message-proof')
-  sendMessage(@Body('token') token: string) {
-    return this.usersService.sendMessage(token);
+  sendMessage(@Body() body: any) {
+    return this.usersService.sendMessage(body.token);
   }
 
   @Get('site/mechanics/:siteId')
