@@ -1,11 +1,15 @@
+<<<<<<< HEAD
 import { stringConstants } from './string.constant';
 
+=======
+>>>>>>> main
 const capitalizeAndJoinWords = (value: string[]): string => {
   return value
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join('. ');
 };
 export { capitalizeAndJoinWords };
+<<<<<<< HEAD
 
 export const addDaysToDate = (date: Date, days: number): Date => {
   const result = new Date(date);
@@ -25,3 +29,5 @@ export const generateRandomCode = (length: number) => {
   }
   return result;
 };
+=======
+>>>>>>> main

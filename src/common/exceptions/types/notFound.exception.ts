@@ -7,6 +7,7 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.COMPANY) {
       message = stringConstants.companyNotFound;
     }
+<<<<<<< HEAD
     if (type === NotFoundCustomExceptionType.PRIORITY) {
       message = stringConstants.priorityNotFound;
     }
@@ -31,11 +32,14 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.CARD) {
       message = stringConstants.cardNotFound;
     }
+=======
+>>>>>>> main
     super(message, HttpStatus.NOT_FOUND);
   }
 }
 
 export enum NotFoundCustomExceptionType {
+<<<<<<< HEAD
   COMPANY,
   PRIORITY,
   USER,
@@ -45,4 +49,7 @@ export enum NotFoundCustomExceptionType {
   LEVELS,
   ROLES,
   CARD,
+=======
+  COMPANY
+>>>>>>> main
 }

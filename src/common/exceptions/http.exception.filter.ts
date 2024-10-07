@@ -28,8 +28,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
         string,
         any
       >;
+<<<<<<< HEAD
       responseBody.message = badRequestResponseData.message
       
+=======
+      responseBody.message = capitalizeAndJoinWords(
+        badRequestResponseData.message,
+      );
+>>>>>>> main
     }
 
     response.status(status).json(responseBody);

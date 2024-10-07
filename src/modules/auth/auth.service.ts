@@ -14,7 +14,10 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
+<<<<<<< HEAD
 import { SiteService } from '../site/site.service';
+=======
+>>>>>>> main
 
 @Injectable()
 export class AuthService {
@@ -47,6 +50,7 @@ export class AuthService {
 
       const access_token = await this.jwtService.signAsync(payload);
 
+<<<<<<< HEAD
       const companyName = await this.siteService.getCompanyName(
         user.userHasSites[0].site.companyId,
       );
@@ -54,6 +58,10 @@ export class AuthService {
       return new UserResponse(user, access_token, roles, companyName);
     } catch (exception) {
       console.log(exception);
+=======
+      return new UserResponse(user, access_token, roles);
+    } catch (exception) {
+>>>>>>> main
       HandleException.exception(exception);
     }
   };

@@ -2,9 +2,13 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class ValidationException extends HttpException {
+<<<<<<< HEAD
   constructor(type: ValidationExceptionType);
   constructor(type: ValidationExceptionType, info: string);
   constructor(type: ValidationExceptionType, info?: string) {
+=======
+  constructor(type: ValidationExceptionType) {
+>>>>>>> main
     let message;
     if (type === ValidationExceptionType.WRONG_AUTH) {
       message = stringConstants.incorrectAuth;
@@ -12,6 +16,7 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATE_RECORD) {
       message = stringConstants.duplicateRecord;
     }
+<<<<<<< HEAD
     if (type === ValidationExceptionType.DUPLICATED_USER) {
       message = stringConstants.duplicateUser;
     }
@@ -60,6 +65,8 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATED_USER_AT_IMPORTATION) {
       message = stringConstants.duplicateUserAtRow + info;
     }
+=======
+>>>>>>> main
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -67,6 +74,7 @@ export class ValidationException extends HttpException {
 export enum ValidationExceptionType {
   WRONG_AUTH,
   DUPLICATE_RECORD,
+<<<<<<< HEAD
   DUPLICATED_USER,
   DUPLICATED_USER_AT_IMPORTATION,
   DUPLICATED_LEVELMACHINEID,
@@ -83,4 +91,6 @@ export enum ValidationExceptionType {
   DUPLICATED_EMAIL,
   MISSING_FIELDS,
   INVALID_ROLE,
+=======
+>>>>>>> main
 }
