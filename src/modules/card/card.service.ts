@@ -574,38 +574,28 @@ export class CardService {
 
   findSiteCardsGroupedByArea = async (siteId: number) => {
     try {
-      const rawAreas = await this.cardRepository
+      const result = await this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
         .where('card.site_id = :siteId', { siteId })
-        .groupBy('area')
+        .groupBy('cardTypeName, area')
         .getRawMany();
 
-      const areas = rawAreas.map((area) => ({
-        ...area,
-        totalCards: Number(area.totalCards),
-      }));
-
-      return areas;
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
   findSiteCardsGroupedByMachine = async (siteId: number) => {
     try {
-      const rawAreas = await this.cardRepository
+      const result = await this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
         .where('card.site_id = :siteId', { siteId })
-        .groupBy('machine, location')
+        .groupBy('cardTypeName, nodeName, location')
         .getRawMany();
 
-      const areas = rawAreas.map((area) => ({
-        ...area,
-        totalCards: Number(area.totalCards),
-      }));
-
-      return areas;
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -613,19 +603,44 @@ export class CardService {
 
   findSiteCardsGroupedByCreator = async (siteId: number) => {
     try {
-      const rawCreators = await this.cardRepository
+      const result = await this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
         .where('card.site_id = :siteId', { siteId })
-        .groupBy('creator')
+        .groupBy('creator, cardTypeName')
         .getRawMany();
 
-      const creators = rawCreators.map((creator) => ({
-        ...creator,
-        totalCards: Number(creator.totalCards),
-      }));
+      return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
-      return creators;
+  findSiteCardsGroupedByMechanic = async (siteId: number) => {
+    try {
+      const result = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMechanic])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('cardTypeName, mechanic')
+        .getRawMany();
+
+      return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteCardsGroupedByDefinitiveUser = async (siteId: number) => {
+    try {
+      const result = await this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
+        .where('card.site_id = :siteId', { siteId })
+        .groupBy('cardTypeName, definitiveUser')
+        .getRawMany();
+
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -767,5 +782,98 @@ export class CardService {
     } catch (exception) {
       HandleException.exception(exception);
     }
+  };
+
+  getCards = async (params: {
+    siteId: number;
+    area?: string;
+    nodeName?: string;
+    preclassifier?: string;
+    mechanic?: string;
+    creator?: string;
+    definitiveUser?: string;
+    cardTypeName: string;
+  }) => {
+    const {
+      siteId,
+      area,
+      nodeName,
+      mechanic,
+      creator,
+      definitiveUser,
+      cardTypeName,
+      preclassifier,
+    } = params;
+
+    const queryBuilder = this.cardRepository
+      .createQueryBuilder('card')
+      .where('card.siteId = :siteId', { siteId })
+      .andWhere('card.cardTypeName = :cardTypeName', { cardTypeName });
+
+    switch (true) {
+      case !!area:
+        queryBuilder.andWhere('card.areaName = :area', { area });
+        break;
+      case !!mechanic:
+        if (mechanic === stringConstants.none) {
+          queryBuilder.andWhere('card.mechanicName IS NULL');
+        } else {
+          queryBuilder.andWhere('card.mechanicName = :mechanic', { mechanic });
+        }
+        break;
+      case !!creator:
+        queryBuilder.andWhere('card.creatorName = :creator', { creator });
+        break;
+      case !!definitiveUser:
+        if (definitiveUser === stringConstants.none) {
+          queryBuilder.andWhere('card.userDefinitiveSolutionName IS NULL');
+        } else {
+          queryBuilder.andWhere(
+            'card.userDefinitiveSolutionName = :definitiveUser',
+            { definitiveUser },
+          );
+        }
+        break;
+      case !!nodeName:
+        queryBuilder.andWhere('card.nodeName = :nodeName', { nodeName });
+        break;
+      default:
+        break;
+    }
+
+    if (preclassifier) {
+      queryBuilder.andWhere(
+        "CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) LIKE :preclassifier",
+        { preclassifier: `%${preclassifier}%` },
+      );
+    }
+
+    if (preclassifier) {
+      queryBuilder.andWhere(
+        "CONCAT(card.preclassifier_code, ' ', card.preclassifier_description) LIKE :preclassifier",
+        { preclassifier: `%${preclassifier}%` },
+      );
+    }
+
+    queryBuilder.orderBy('card.siteCardId', 'DESC');
+
+    const cards = await queryBuilder.getMany();
+
+    if (cards) {
+      const allEvidencesMap = await this.findAllEvidences(siteId);
+
+      const cardEvidencesMap = new Map();
+      allEvidencesMap.forEach((evidence) => {
+        if (!cardEvidencesMap.has(evidence.cardId)) {
+          cardEvidencesMap.set(evidence.cardId, []);
+        }
+        cardEvidencesMap.get(evidence.cardId).push(evidence);
+      });
+
+      for (const card of cards) {
+        card['evidences'] = cardEvidencesMap.get(card.id) || [];
+      }
+    }
+    return cards;
   };
 }
