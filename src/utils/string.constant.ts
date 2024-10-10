@@ -27,7 +27,9 @@ export const stringConstants = {
   catalogsNotificationType: 'SYNC_REMOTE_CATALOGS',
   //Notifications for cards
   cardsTitle: 'Nueva tarjeta',
+  cardAssignmentTitle: 'Asignación de tarjeta',
   cardsDescription: 'Se ha agregado una nueva tarjeta de tipo:',
+  mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
 
   //Types of evidences

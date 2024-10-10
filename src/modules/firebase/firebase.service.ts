@@ -7,13 +7,14 @@ import { NotificationDTO } from './models/firebase.request.dto';
 export class FirebaseService {
   constructor(@Inject('FIREBASE_APP') private readonly firebaseApp: app.App) {}
 
-  sendNewMessage = async (token: string): Promise<boolean> => {
+  sendNewMessage = async (
+    notificationDTO: NotificationDTO,
+    userToken: string,
+  ) => {
     try {
       const message = {
-        data: {
-          hello: 'world',
-        },
-        token: token,
+        data: notificationDTO.toData(),
+        token: userToken,
       };
       const messaging = this.firebaseApp.messaging();
       await messaging.send(message);
