@@ -19,6 +19,7 @@ export const stringConstants = {
   duplicateLevelMachineId: 'A record with that level machine id already exists',
   resetPasswordEmailSubject: 'Reset Your Password - M2',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  none: 'None',
 
   //Notifications for catalogs
   catalogsTitle: 'Cambio en estructura',

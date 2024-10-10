@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -97,6 +97,16 @@ export class CardController {
     return this.cardService.findSiteCardsGroupedByCreator(siteId);
   }
 
+  @Get('/site/mechanics/:siteId')
+  findSiteCardsGroupedByMechanic(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByMechanic(siteId);
+  }
+
+  @Get('/site/definitive-user/:siteId')
+  findSiteCardsGroupedByDefinitveUser(@Param('siteId') siteId: number) {
+    return this.cardService.findSiteCardsGroupedByDefinitiveUser(siteId);
+  }
+
   @Get('/site/weeks/:siteId')
   findSiteCardsGroupedByWeeks(@Param('siteId') siteId: number) {
     return this.cardService.findSiteCardsGroupedByWeeks(siteId);
@@ -117,5 +127,28 @@ export class CardController {
     @Body() updateCardResponsibleDTO: UpdateCardMechanicDTO,
   ) {
     return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
+  }
+
+  @Get()
+  getCards(
+    @Query('siteId') siteId: number,
+    @Query('area') area?: string,
+    @Query('nodeName') nodeName?: string,
+    @Query('preclassifier') preclassifier?: string,
+    @Query('mechanic') mechanic?: string,
+    @Query('creator') creator?: string,
+    @Query('definitiveUser') definitiveUser?: string,
+    @Query('cardTypeName') cardTypeName?: string,
+  ) {
+    return this.cardService.getCards({
+      siteId,
+      area,
+      nodeName,
+      preclassifier,
+      mechanic,
+      creator,
+      definitiveUser,
+      cardTypeName,
+    });
   }
 }

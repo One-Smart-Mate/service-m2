@@ -12,17 +12,30 @@ export const QUERY_CONSTANTS = {
     `,
   findSiteCardsGroupedByArea: `
       area_name AS area,
-      COUNT(*) AS totalCards
+      COUNT(*) AS totalCards,
+      cardType_name AS cardTypeName
     `,
-    findSiteCardsGroupedByMachine: `
-      node_name AS machine,
+  findSiteCardsGroupedByMachine: `
+      node_name AS nodeName,
       card_location as location,
-      COUNT(*) AS totalCards
+      COUNT(*) AS totalCards,
+      cardType_name AS cardTypeName
     `,
   findSiteCardsGroupedByCreator: `
       creator_name AS creator,
-      COUNT(*) AS totalCards
+      COUNT(*) AS totalCards,
+      cardType_name AS cardTypeName
     `,
+    findSiteCardsGroupedByMechanic: `
+    mechanic_name AS mechanic,
+    COUNT(*) AS totalCards,
+    cardType_name AS cardTypeName
+  `,
+  findSiteCardsGroupedByDefinitiveUser: `
+    user_definitive_solution_name AS definitiveUser,
+    COUNT(*) AS totalCards,
+    cardType_name AS cardTypeName
+  `,
   findSiteCardsGroupedByWeeks: `
       YEAR(card.created_at) AS year,
       WEEK(card.created_at, 1) AS week,
