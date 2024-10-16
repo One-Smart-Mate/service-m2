@@ -92,4 +92,14 @@ export class CreateCardDTO {
   @ValidateNested({ each: true })
   @Type(() => Evidence)
   evidences: Evidence[];
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  appSo: string | null;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  appVersion: string | null;
 }

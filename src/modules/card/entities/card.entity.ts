@@ -428,4 +428,22 @@ export class CardEntity {
     name: 'evidence_imps',
   })
   evidenceImps: number;
+
+
+
+  @Column({
+    type: 'varchar',
+    length: 45,
+    nullable: true,
+    name: 'app_version',
+  })
+  appVersion: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 45,
+    nullable: true,
+    name: 'app_so',
+  })
+  appSo: string | null;
 }
