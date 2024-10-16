@@ -66,11 +66,6 @@ export class UsersController {
     return this.usersService.firebaseAppToken(setAppTokenDTO);
   }
 
-  @Post('/message-proof')
-  sendMessage(@Body() body: any) {
-    return this.usersService.sendMessage(body.token);
-  }
-
   @Get('site/mechanics/:siteId')
   findSiteMechanics(@Param('siteId') siteId: number) {
     const users = this.usersService.findSiteMechanics(siteId);

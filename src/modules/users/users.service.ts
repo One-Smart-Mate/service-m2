@@ -197,6 +197,21 @@ export class UsersService {
     }
   };
 
+  getUserToken = async (userId: number) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        select: ['appToken'],
+      });
+
+      const token = user.appToken;
+
+      return token;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findAllUsers = async () => {
     try {
       const users = await this.userRepository.find({
@@ -403,14 +418,6 @@ export class UsersService {
       user.appToken = setAppTokenDTO.appToken;
 
       return await this.userRepository.save(user);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  sendMessage = async (token: string) => {
-    try {
-      await this.firebaseService.sendNewMessage(token);
     } catch (exception) {
       HandleException.exception(exception);
     }
