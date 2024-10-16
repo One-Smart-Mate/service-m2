@@ -767,6 +767,18 @@ export class CardService {
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;
 
+      const token = await this.userService.getUserToken(
+        updateCardMechanicDTO.mechanicId,
+      );
+      await this.firebaseService.sendNewMessage(
+        new NotificationDTO(
+          stringConstants.cardAssignmentTitle,
+          `<${user.name}> ${stringConstants.mechanicAssignmentMessage} <#${card.siteCardId} ${card.cardTypeName}>`,
+          stringConstants.cardsNotificationType,
+        ),
+        token,
+      );
+
       await this.cardRepository.save(card);
 
       return await this.cardNoteRepository.save(note);
