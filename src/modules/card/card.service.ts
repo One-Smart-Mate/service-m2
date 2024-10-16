@@ -239,6 +239,8 @@ export class CardService {
         cardDueDate:
           priority.id && addDaysToDate(currentDate, priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
+        appVersion: createCardDTO.appVersion,
+        appSo: createCardDTO.appSo
       });
 
       await this.cardRepository.save(card);
