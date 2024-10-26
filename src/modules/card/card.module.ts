@@ -26,5 +26,6 @@ import { FirebaseModule } from '../firebase/firebase.module';
   ],
   controllers: [CardController],
   providers: [CardService],
+  exports: [CardService],
 })
 export class CardModule {}

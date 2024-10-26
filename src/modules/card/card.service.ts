@@ -240,7 +240,7 @@ export class CardService {
           priority.id && addDaysToDate(currentDate, priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
-        appSo: createCardDTO.appSo
+        appSo: createCardDTO.appSo,
       });
 
       await this.cardRepository.save(card);
@@ -534,12 +534,28 @@ export class CardService {
     return evidencesMap;
   };
 
-  findSiteCardsGroupedByPreclassifier = async (siteId: number) => {
+  findSiteCardsGroupedByPreclassifier = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const rawPreclassifiers = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const rawPreclassifiers = await queryBuilder
         .groupBy('preclassifier, methodology, color')
         .getRawMany();
 
@@ -554,12 +570,28 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByMethodology = async (siteId: number) => {
+  findSiteCardsGroupedByMethodology = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const rawMethodologies = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const rawMethodologies = await queryBuilder
         .groupBy('methodology, color')
         .getRawMany();
 
@@ -574,12 +606,28 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByArea = async (siteId: number) => {
+  findSiteCardsGroupedByArea = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const result = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
         .groupBy('cardTypeName, area')
         .getRawMany();
 
@@ -588,12 +636,28 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  findSiteCardsGroupedByMachine = async (siteId: number) => {
+  findSiteCardsGroupedByMachine = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const result = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
         .groupBy('cardTypeName, nodeName, location')
         .getRawMany();
 
@@ -603,12 +667,28 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByCreator = async (siteId: number) => {
+  findSiteCardsGroupedByCreator = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const result = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
         .groupBy('creator, cardTypeName')
         .getRawMany();
 
@@ -618,12 +698,28 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByMechanic = async (siteId: number) => {
+  findSiteCardsGroupedByMechanic = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const result = await this.cardRepository
+      const queryBuilder = await this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMechanic])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
         .groupBy('cardTypeName, mechanic')
         .getRawMany();
 
@@ -633,12 +729,28 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByDefinitiveUser = async (siteId: number) => {
+  findSiteCardsGroupedByDefinitiveUser = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
     try {
-      const result = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
-        .where('card.site_id = :siteId', { siteId })
+        .where('card.site_id = :siteId', { siteId });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = queryBuilder
         .groupBy('cardTypeName, definitiveUser')
         .getRawMany();
 
@@ -889,5 +1001,13 @@ export class CardService {
       }
     }
     return cards;
+  };
+
+  findbySiteId = async (siteId: number) => {
+    try {
+      return await this.cardRepository.find({ where: { siteId: siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
   };
 }

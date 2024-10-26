@@ -163,4 +163,16 @@ export class SiteService {
       HandleException.exception(exceptino);
     }
   };
+
+  getSiteNameById = async (siteId: number) => {
+    try {
+      const { siteBusinessName } = await this.siteRepository.findOne({
+        where: { id: siteId },
+        select: { siteBusinessName: true },
+      });
+      return siteBusinessName;
+    } catch (exceptino) {
+      HandleException.exception(exceptino);
+    }
+  };
 }
