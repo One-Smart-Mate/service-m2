@@ -17,6 +17,7 @@ import { CardModule } from './modules/card/card.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { StatusModule } from './modules/status/status.module';
 import { FileUploadModule } from './modules/file-upload/file-upload.module';
+import { ExportModule } from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
     CurrencyModule,
     StatusModule,
     FileUploadModule,
+    ExportModule,
   ],
   controllers: [AppController],
   providers: [AppService],
