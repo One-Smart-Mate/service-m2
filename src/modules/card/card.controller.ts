@@ -73,38 +73,94 @@ export class CardController {
   }
 
   @Get('/site/preclassifiers/:siteId')
-  findSiteCardsGroupedByPreclassifier(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByPreclassifier(siteId);
+  findSiteCardsGroupedByPreclassifier(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByPreclassifier(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/methodologies/:siteId')
-  findSiteCardsGroupedByMethodology(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByMethodology(siteId);
+  findSiteCardsGroupedByMethodology(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByMethodology(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/areas/:siteId')
-  findSiteCardsGroupedByArea(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByArea(siteId);
+  findSiteCardsGroupedByArea(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByArea(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/machines/:siteId')
-  findSiteCardsGroupedByMachine(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByMachine(siteId);
+  findSiteCardsGroupedByMachine(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByMachine(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/creators/:siteId')
-  findSiteCardsGroupedByCreator(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByCreator(siteId);
+  findSiteCardsGroupedByCreator(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByCreator(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/mechanics/:siteId')
-  findSiteCardsGroupedByMechanic(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByMechanic(siteId);
+  findSiteCardsGroupedByMechanic(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByMechanic(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/definitive-user/:siteId')
-  findSiteCardsGroupedByDefinitveUser(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByDefinitiveUser(siteId);
+  findSiteCardsGroupedByDefinitveUser(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByDefinitiveUser(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('/site/weeks/:siteId')
