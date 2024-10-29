@@ -12,7 +12,7 @@ export class ExportController {
     private readonly siteService: SiteService,
   ) {}
 
-  @ApiTags('exports')
+  @ApiTags('card-data')
   @Get('card-data/site/:siteId')
   async exportXLS(@Param('siteId') siteId: number, @Res() res: Response) {
     const cards = await this.cardService.findbySiteId(siteId);
@@ -148,5 +148,11 @@ export class ExportController {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     );
     res.send(buffer);
+  }
+
+  @ApiTags("test-exports")
+  @Get("test-exports")
+  async testExports() {
+    return 200;
   }
 }
