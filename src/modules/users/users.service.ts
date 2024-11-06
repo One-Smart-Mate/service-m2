@@ -1,7 +1,7 @@
 import { In, Not, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { CreateUserDTO } from './models/create.user.dto';
 import {
@@ -201,9 +201,8 @@ export class UsersService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
-        select: ['appToken'],
       });
-
+      
       const token = user.appToken;
 
       return token;

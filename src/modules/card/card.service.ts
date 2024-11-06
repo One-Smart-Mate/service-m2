@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
 import { In, Repository } from 'typeorm';
@@ -32,6 +32,7 @@ import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { addDaysToDate } from 'src/utils/general.functions';
+import { stringify } from 'querystring';
 
 @Injectable()
 export class CardService {
@@ -880,8 +881,9 @@ export class CardService {
       card.mechanicName = userMechanic.name;
 
       const token = await this.userService.getUserToken(
-        updateCardMechanicDTO.mechanicId,
+        userMechanic.id,
       );
+      
       await this.firebaseService.sendNewMessage(
         new NotificationDTO(
           stringConstants.cardAssignmentTitle,
