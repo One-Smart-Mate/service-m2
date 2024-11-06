@@ -31,6 +31,7 @@ export const stringConstants = {
   cardsDescription: 'Se ha agregado una nueva tarjeta de tipo:',
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
+  updateAppNotificationType: 'UPDATE_APP',
 
   //Types of evidences
   AUCR: 'AUCR',
