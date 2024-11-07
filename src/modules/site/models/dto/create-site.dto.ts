@@ -136,7 +136,7 @@ export class CreateSiteDTO {
   longitud?: string;
 
   @ApiProperty({
-    type: 'date',
+    type: 'string',
     description: 'Due date',
     required: true,
     example: '2020-09-07',

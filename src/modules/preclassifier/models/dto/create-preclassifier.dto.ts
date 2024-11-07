@@ -22,7 +22,7 @@ export class CreatePreclassifierDTO {
 
   @ApiProperty({
     description: 'Card type ID',
-    type: 'bigint',
+    type: 'number',
   })
   @IsInt()
   @IsNotEmpty()
