@@ -28,7 +28,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
         string,
         any
       >;
-      responseBody.message = badRequestResponseData.message
+      if (Array.isArray(badRequestResponseData.message)) {
+        responseBody.message = badRequestResponseData.message[0];
+      } else {
+        responseBody.message = badRequestResponseData.message
+      }
     }
 
     response.status(status).json(responseBody);
