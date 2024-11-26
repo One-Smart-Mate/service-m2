@@ -17,7 +17,8 @@ export const stringConstants = {
   wrongResetCode: 'Wrong reset code',
   emailIsMissing: 'The e-mail is missing',
   duplicateLevelMachineId: 'A record with that level machine id already exists',
-  resetPasswordEmailSubject: 'Reset Your Password - M2',
+  resetPasswordEmailSubject: 'Reset Your Password - OSM',
+  welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
   none: 'None',
 
