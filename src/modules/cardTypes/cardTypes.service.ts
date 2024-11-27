@@ -120,8 +120,7 @@ export class CardTypesService {
         foundCardTypes.responsableName = foundUser.name;
         foundCardTypes.email = foundUser.email;
       }
-  
-      // Actualizar los datos del CardType
+
       foundCardTypes.methodology = updateCardTypesDTO.methodology;
       foundCardTypes.name = updateCardTypesDTO.name;
       foundCardTypes.description = updateCardTypesDTO.description;
@@ -148,20 +147,18 @@ export class CardTypesService {
       foundCardTypes.updatedAt = new Date();
   
       let affectedRows = 0;
-  
-      // Actualizar el color de las tarjetas relacionadas si cambia el color del CardType
+
       if (updateCardTypesDTO.color !== foundCardTypes.color) {
         foundCardTypes.color = updateCardTypesDTO.color;
   
-        // Usar QueryBuilder para actualizar tarjetas relacionadas
+
         const result = await this.cardsRepository
           .createQueryBuilder()
           .update()
-          .set({ cardTypeColor: updateCardTypesDTO.color }) // Campo a actualizar
-          .where('cardTypeId = :cardTypeId', { cardTypeId: foundCardTypes.id }) // Filtro por cardTypeId
+          .set({ cardTypeColor: updateCardTypesDTO.color }) 
+          .where('cardTypeId = :cardTypeId', { cardTypeId: foundCardTypes.id }) 
           .execute();
   
-        // Guardar el número de filas afectadas
         affectedRows = result.affected;
       }
   
@@ -177,11 +174,10 @@ export class CardTypesService {
         tokens,
       );
   
-      // Retornar mensaje al cliente con la cantidad de tarjetas actualizadas
       const response = {
         message: `Card type updated successfully.`,
-        updatedCardsCount: affectedRows, // Cantidad de tarjetas actualizadas
-        updatedCardType: await this.cardTypesRepository.save(foundCardTypes), // CardType actualizado
+        updatedCardsCount: affectedRows, 
+        updatedCardType: await this.cardTypesRepository.save(foundCardTypes), 
       };
   
       return response;
