@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardTypesEntity } from './entities/cardTypes.entity';
+import { CardEntity } from '../card/entities/card.entity';
 import { Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
@@ -26,6 +27,8 @@ export class CardTypesService {
     @InjectRepository(CardTypesCatalogEntity)
     private readonly cardTypesCatalogRepository: Repository<CardTypesCatalogEntity>,
     private readonly firebaseService: FirebaseService,
+    @InjectRepository(CardEntity)
+    private readonly cardsRepository: Repository<CardEntity>,
   ) {}
 
   findSiteActiveCardTypes = async (siteId: number) => {
@@ -96,16 +99,16 @@ export class CardTypesService {
 
   update = async (updateCardTypesDTO: UpdateCardTypesDTO) => {
     try {
-      const foundCardTpyes = await this.cardTypesRepository.findOneBy({
+      const currentCardType = await this.cardTypesRepository.findOneBy({
         id: updateCardTypesDTO.id,
       });
-
-      if (!foundCardTpyes) {
+  
+      if (!currentCardType) {
         throw new NotFoundCustomException(
           NotFoundCustomExceptionType.CARDTYPES,
         );
       }
-
+  
       if (updateCardTypesDTO.responsableId) {
         const foundUser = await this.usersService.findById(
           updateCardTypesDTO.responsableId,
@@ -113,49 +116,53 @@ export class CardTypesService {
         if (!foundUser) {
           throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
         }
-        foundCardTpyes.responsableId = updateCardTypesDTO.responsableId;
-        foundCardTpyes.responsableName = foundUser.name;
-        foundCardTpyes.email = foundUser.email;
+        currentCardType.responsableId = updateCardTypesDTO.responsableId;
+        currentCardType.responsableName = foundUser.name;
+        currentCardType.email = foundUser.email;
       }
-
-      foundCardTpyes.methodology = updateCardTypesDTO.methodology;
-      foundCardTpyes.name = updateCardTypesDTO.name;
-      foundCardTpyes.description = updateCardTypesDTO.description;
-      foundCardTpyes.color = updateCardTypesDTO.color;
-      foundCardTpyes.quantityPicturesCreate =
-        updateCardTypesDTO.quantityPicturesCreate;
-      foundCardTpyes.quantityAudiosCreate =
-        updateCardTypesDTO.quantityAudiosCreate;
-      foundCardTpyes.quantityVideosCreate =
-        updateCardTypesDTO.quantityVideosCreate;
-      foundCardTpyes.audiosDurationCreate =
-        updateCardTypesDTO.audiosDurationCreate;
-      foundCardTpyes.videosDurationCreate =
-        updateCardTypesDTO.videosDurationCreate;
-      foundCardTpyes.quantityPicturesClose =
-        updateCardTypesDTO.quantityPicturesClose;
-      foundCardTpyes.quantityAudiosClose =
-        updateCardTypesDTO.quantityAudiosClose;
-      foundCardTpyes.quantityVideosClose =
-        updateCardTypesDTO.quantityVideosClose;
-      foundCardTpyes.audiosDurationClose =
-        updateCardTypesDTO.audiosDurationClose;
-      foundCardTpyes.videosDurationClose =
-        updateCardTypesDTO.videosDurationClose;
-      foundCardTpyes.quantityPicturesPs = updateCardTypesDTO.quantityPicturesPs;
-      foundCardTpyes.quantityAudiosPs = updateCardTypesDTO.quantityAudiosPs;
-      foundCardTpyes.audiosDurationPs = updateCardTypesDTO.audiosDurationPs;
-      foundCardTpyes.quantityVideosPs = updateCardTypesDTO.quantityVideosPs;
-      foundCardTpyes.videosDurationPs = updateCardTypesDTO.videosDurationPs;
-
-      foundCardTpyes.status = updateCardTypesDTO.status;
+  
+      currentCardType.methodology = updateCardTypesDTO.methodology;
+      currentCardType.name = updateCardTypesDTO.name;
+      currentCardType.description = updateCardTypesDTO.description;
+      currentCardType.quantityPicturesCreate = updateCardTypesDTO.quantityPicturesCreate;
+      currentCardType.quantityAudiosCreate = updateCardTypesDTO.quantityAudiosCreate;
+      currentCardType.quantityVideosCreate = updateCardTypesDTO.quantityVideosCreate;
+      currentCardType.audiosDurationCreate = updateCardTypesDTO.audiosDurationCreate;
+      currentCardType.videosDurationCreate = updateCardTypesDTO.videosDurationCreate;
+      currentCardType.quantityPicturesClose = updateCardTypesDTO.quantityPicturesClose;
+      currentCardType.quantityAudiosClose = updateCardTypesDTO.quantityAudiosClose;
+      currentCardType.quantityVideosClose = updateCardTypesDTO.quantityVideosClose;
+      currentCardType.audiosDurationClose = updateCardTypesDTO.audiosDurationClose;
+      currentCardType.videosDurationClose = updateCardTypesDTO.videosDurationClose;
+      currentCardType.quantityPicturesPs = updateCardTypesDTO.quantityPicturesPs;
+      currentCardType.quantityAudiosPs = updateCardTypesDTO.quantityAudiosPs;
+      currentCardType.audiosDurationPs = updateCardTypesDTO.audiosDurationPs;
+      currentCardType.quantityVideosPs = updateCardTypesDTO.quantityVideosPs;
+      currentCardType.videosDurationPs = updateCardTypesDTO.videosDurationPs;
+      currentCardType.status = updateCardTypesDTO.status;
+  
       if (updateCardTypesDTO.status !== stringConstants.A) {
-        foundCardTpyes.deletedAt = new Date();
+        currentCardType.deletedAt = new Date();
       }
-      foundCardTpyes.updatedAt = new Date();
-
+      currentCardType.updatedAt = new Date();
+  
+      let affectedRows = 0;
+  
+      if (updateCardTypesDTO.color !== currentCardType.color) {
+        currentCardType.color = updateCardTypesDTO.color;
+  
+        const result = await this.cardsRepository
+          .createQueryBuilder()
+          .update()
+          .set({ cardTypeColor: updateCardTypesDTO.color }) 
+          .where('cardTypeId = :cardTypeId', { cardTypeId: currentCardType.id }) 
+          .execute();
+  
+        affectedRows = result.affected;
+      }
+  
       const tokens = await this.usersService.getSiteUsersTokens(
-        foundCardTpyes.siteId,
+        currentCardType.siteId,
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
@@ -165,11 +172,18 @@ export class CardTypesService {
         ),
         tokens,
       );
-      return await this.cardTypesRepository.save(foundCardTpyes);
+  
+      const response = {
+        message: stringConstants.cardTypeUpdate,
+        updatedCardsCount: affectedRows, 
+        updatedCardType: await this.cardTypesRepository.save(currentCardType), 
+      };
+  
+      return response;
     } catch (exception) {
       HandleException.exception(exception);
     }
-  };
+  };   
 
   findById = async (id: number) => {
     try {
