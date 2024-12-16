@@ -358,6 +358,7 @@ export class UsersService {
         );
       }
 
+      user.status = updateUserDTO.status;
       user.appVersion = process.env.APP_ENV;
       user.siteCode = site.siteCode;
       user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet;
