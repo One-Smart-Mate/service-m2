@@ -1,4 +1,6 @@
 export const stringConstants = {
+  primaryColor: '#FF5A5F',
+  
   noFileUploaded: 'No file uploaded',
   invalidFileType: 'Invalid file type',
   duplicatedEmailAtRow: 'Duplicated email in excel row ',

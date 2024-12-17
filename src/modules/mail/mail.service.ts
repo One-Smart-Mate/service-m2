@@ -14,24 +14,25 @@ export class MailService {
       await this.mailerService.sendMail({
         to: user.email,
         subject: stringConstants.resetPasswordEmailSubject,
-        html: sendCodeMessage(user.name, code),
+        html: sendCodeMessage(user.name, code, stringConstants.primaryColor),
       });
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
-  }
+  }  
 
   async sendWelcomeEmail(user: UserEntity, appUrl: string) {
     try {
       await this.mailerService.sendMail({
         to: user.email,
         subject: stringConstants.welcomeEmailSubject,
-        html: sendWelcomeMessage(user.name, appUrl),
+        html: sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
       });
     } catch (exception) {
       console.error('Failed to send welcome email:', exception);
       HandleException.exception(exception);
     }
   }
+  
 }
