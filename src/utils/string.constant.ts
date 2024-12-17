@@ -33,8 +33,11 @@ export const stringConstants = {
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
   updateAppNotificationType: 'UPDATE_APP',
   cardAssignedTitle: 'Card [card_id] has been assigned to you.',
-  cardAssignedBody: 'You have a new card assigned',
+  cardAssignedDescription: 'You have a new card assigned',
   emptyNotificationType: '',
+  closeSessionTitle: 'Session Closed',
+  closeSessionDescription: 'Your session has been closed.',
+  closeSessionType: 'CLOSE_SESSION',
 
   //Types of evidences
   AUCR: 'AUCR',
