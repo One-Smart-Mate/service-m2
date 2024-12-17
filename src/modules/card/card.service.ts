@@ -886,9 +886,9 @@ export class CardService {
       
       await this.firebaseService.sendNewMessage(
         new NotificationDTO(
-          stringConstants.cardAssignmentTitle,
-          `<${user.name}> ${stringConstants.mechanicAssignmentMessage} <#${card.siteCardId} ${card.cardTypeName}>`,
-          stringConstants.cardsNotificationType,
+          stringConstants.cardAssignedTitle.replace('[card_id]', card.id.toString()),
+          stringConstants.cardAssignedDescription,
+          stringConstants.emptyNotificationType,
         ),
         token,
       );
