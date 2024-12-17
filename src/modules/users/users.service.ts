@@ -317,6 +317,9 @@ export class UsersService {
       } else {
         userSite.user = user;
       }
+      const appUrl = process.env.APP_URL;
+
+      await this.mailService.sendWelcomeEmail(userSite.user, appUrl);
 
       return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {

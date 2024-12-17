@@ -2,7 +2,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
 import { UserEntity } from '../users/entities/user.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { sendCodeMessage } from './templates/email.templates';
+import { sendCodeMessage, sendWelcomeMessage } from './templates/email.templates';
 import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
@@ -14,11 +14,25 @@ export class MailService {
       await this.mailerService.sendMail({
         to: user.email,
         subject: stringConstants.resetPasswordEmailSubject,
-        html: sendCodeMessage(user.name, code),
+        html: sendCodeMessage(user.name, code, stringConstants.primaryColor),
       });
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
+  }  
+
+  async sendWelcomeEmail(user: UserEntity, appUrl: string) {
+    try {
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: stringConstants.welcomeEmailSubject,
+        html: sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
+      });
+    } catch (exception) {
+      console.error('Failed to send welcome email:', exception);
+      HandleException.exception(exception);
+    }
   }
+  
 }
