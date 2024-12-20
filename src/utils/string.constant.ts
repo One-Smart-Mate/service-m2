@@ -35,7 +35,7 @@ export const stringConstants = {
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
   updateAppNotificationType: 'UPDATE_APP',
-
+  cardTypeUpdate: 'Tipo de tarjeta actualizado con éxito.',
   //Types of evidences
   AUCR: 'AUCR',
   AUCL: 'AUCL',
