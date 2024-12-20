@@ -371,7 +371,7 @@ export class UsersService {
 
       await this.userRepository.save(user);
 
-      if (updateUserDTO.status === 'I') {
+      if (updateUserDTO.status === stringConstants.inactiveStatus) {
         const token = await this.getUserToken(user.id);
         await this.firebaseService.sendNewMessage(
           new NotificationDTO(
