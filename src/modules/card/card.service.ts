@@ -149,15 +149,20 @@ export class CardService {
 
   create = async (createCardDTO: CreateCardDTO) => {
     try {
-      const cardUUIDisNotUnique = await this.cardRepository.exists({
-        where: { cardUUID: createCardDTO.cardUUID },
+
+      let cardUUID = createCardDTO.cardUUID;
+      let cardUUIDisNotUnique = await this.cardRepository.exists({
+        where: { cardUUID: cardUUID },
       });
 
-      if (cardUUIDisNotUnique) {
-        throw new ValidationException(
-          ValidationExceptionType.DUPLICATE_CARD_UUID,
-        );
+      while (cardUUIDisNotUnique) {
+        cardUUID = require('crypto').randomUUID();
+        cardUUIDisNotUnique = await this.cardRepository.exists({
+          where: { cardUUID: cardUUID },
+        });
       }
+
+      createCardDTO.cardUUID = cardUUID;
 
       const site = await this.siteService.findById(createCardDTO.siteId);
       var priority = new PriorityEntity();
