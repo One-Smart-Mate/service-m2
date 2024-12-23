@@ -35,6 +35,12 @@ export const stringConstants = {
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
   updateAppNotificationType: 'UPDATE_APP',
+  cardAssignedTitle: 'Card [card_id] has been assigned to you.',
+  cardAssignedDescription: 'You have a new card assigned',
+  emptyNotificationType: '',
+  closeSessionTitle: 'Session Closed',
+  closeSessionDescription: 'Your session has been closed.',
+  closeSessionType: 'CLOSE_SESSION',
   cardTypeUpdate: 'Tipo de tarjeta actualizado con éxito.',
   //Types of evidences
   AUCR: 'AUCR',
