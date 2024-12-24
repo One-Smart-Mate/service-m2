@@ -14,7 +14,6 @@ export class NotificationsService {
     private readonly firebaseService: FirebaseService,
     private readonly userService: UsersService,
   ) {}
-  Ò;
 
   appUpdateNotification = async (body: UpdateAppRequestDTO) => {
     try {
@@ -60,7 +59,7 @@ export class NotificationsService {
         body.description,
         stringConstants.customNotificationType,
       );
-  
+
       for (const token of validTokens) {
         try {
           await this.firebaseService.sendNewMessage(firebaseData, token);
@@ -70,7 +69,6 @@ export class NotificationsService {
           );
         }
       }
-  
       Logger.log(stringConstants.notificationSentSuccessfully);
       return { message: stringConstants.notificationSentSuccessfully };
     } catch (error) {
@@ -78,5 +76,4 @@ export class NotificationsService {
       HandleException.exception(error);
     }
   };
-  
 }
