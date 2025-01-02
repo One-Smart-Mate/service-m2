@@ -10,10 +10,10 @@ async function main() {
   const reflector = app.get(Reflector)
 
   const config = new DocumentBuilder()
-    .setTitle('M2 example')
-    .setDescription('M2 API description')
+    .setTitle('OSM example')
+    .setDescription('OSM API description')
     .setVersion('1.0')
-    .addTag('M2')
+    .addTag('OSM')
     .addBearerAuth()
     .build();
   app.enableCors();
