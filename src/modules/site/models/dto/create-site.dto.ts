@@ -136,10 +136,11 @@ export class CreateSiteDTO {
   longitud?: string;
 
   @ApiProperty({
-    type: 'date',
+    type: 'string',
+    format: 'date',
     description: 'Due date',
     required: true,
-    example: '2020-09-07',
+    example: '2023-06-20',
   })
   @IsNotEmpty()
   @IsISO8601()
