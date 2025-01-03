@@ -11,6 +11,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { UserHasSitesEntity } from './user.has.sites.entity';
+import { UsersPositionsEntity } from './users.positions.entity';
 
 @Entity('users')
 export class UserEntity {
@@ -98,4 +99,8 @@ export class UserEntity {
 
   @OneToMany(() => UserHasSitesEntity, (userHasSites) => userHasSites.user)
   userHasSites: UserHasSitesEntity[];
+
+  @OneToMany(() => UsersPositionsEntity, (usersPositions) => usersPositions.user)
+  usersPositions: UsersPositionsEntity[];
+
 }
