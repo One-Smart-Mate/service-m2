@@ -1,4 +1,6 @@
 export const stringConstants = {
+  primaryColor: '#FF5A5F',
+  
   noFileUploaded: 'No file uploaded',
   invalidFileType: 'Invalid file type',
   duplicatedEmailAtRow: 'Duplicated email in excel row ',
@@ -17,7 +19,8 @@ export const stringConstants = {
   wrongResetCode: 'Wrong reset code',
   emailIsMissing: 'The e-mail is missing',
   duplicateLevelMachineId: 'A record with that level machine id already exists',
-  resetPasswordEmailSubject: 'Reset Your Password - M2',
+  resetPasswordEmailSubject: 'Reset Your Password - OSM',
+  welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
   none: 'None',
 
@@ -32,7 +35,13 @@ export const stringConstants = {
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
   updateAppNotificationType: 'UPDATE_APP',
-
+  cardAssignedTitle: 'Card [card_id] has been assigned to you.',
+  cardAssignedDescription: 'You have a new card assigned',
+  emptyNotificationType: '',
+  closeSessionTitle: 'Session Closed',
+  closeSessionDescription: 'Your session has been closed.',
+  closeSessionType: 'CLOSE_SESSION',
+  cardTypeUpdate: 'Tipo de tarjeta actualizado con éxito.',
   //Types of evidences
   AUCR: 'AUCR',
   AUCL: 'AUCL',
@@ -88,4 +97,24 @@ export const stringConstants = {
   UNHANDLED_SQL_ERROR: 'UNHANDLED_SQL_ERROR',
 
   SALT_ROUNDS: 10,
+
+  customNotificationType: "CUSTOM_NOTIFICATION",
+  notificationSentSuccessfully: "Notifications sent successfully.",
+  noValidUsersForNotification: "No valid users found to send notifications.",
+  sendingNotification: "Sending notification:",
+  notificationBodyLog: "Body ->",
+  errorSendingNotification: "Error sending notification:",
+  noValidTokensFound: "No valid tokens found.",
+  firebaseSendError: "Error sending notification to token:",
+  errorSendingToToken: "Error sending notification to token",
+
+  siteIdDescription: "ID of the site from which the notification will be sent",
+  siteIdExample: 1,
+  userIdsDescription: "List of IDs of the users selected to receive the notification",
+  userIdsExample: [2,4],
+  titleDescription: "Title of the notification",
+  titleExample: "Custom Notification",
+  descriptionDescription: "Description of the notification",
+  descriptionExample: "This is a custom notification for specific users.",
+
 };

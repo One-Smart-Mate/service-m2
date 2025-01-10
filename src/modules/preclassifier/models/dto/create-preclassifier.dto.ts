@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString, Length, MaxLength } from 'class-validator';
+import {
+  IsInt,
+  IsNotEmpty,
+  IsString,
+  Length,
+  MaxLength,
+} from 'class-validator';
 
 export class CreatePreclassifierDTO {
   @ApiProperty({
@@ -22,7 +28,8 @@ export class CreatePreclassifierDTO {
 
   @ApiProperty({
     description: 'Card type ID',
-    type: 'bigint',
+    type: 'integer',
+    example: '1234567890123456789',
   })
   @IsInt()
   @IsNotEmpty()

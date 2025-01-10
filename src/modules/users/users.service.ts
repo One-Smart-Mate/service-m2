@@ -23,6 +23,7 @@ import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
 import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
@@ -133,6 +134,7 @@ export class UsersService {
       relations: { userHasSites: { site: true } },
     });
   };
+  
   update = async (user: UserEntity) => {
     const exists = await this.userRepository.existsBy({ email: user.email });
     if (!exists) {
@@ -317,12 +319,16 @@ export class UsersService {
       } else {
         userSite.user = user;
       }
+      const appUrl = process.env.APP_URL;
+
+      await this.mailService.sendWelcomeEmail(userSite.user, appUrl);
 
       return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+  
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
       const [user, emailIsNotUnique, site, roles] = await Promise.all([
@@ -358,15 +364,29 @@ export class UsersService {
         );
       }
 
+      user.status = updateUserDTO.status;
       user.appVersion = process.env.APP_ENV;
       user.siteCode = site.siteCode;
       user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet;
       user.uploadCardEvidenceWithDataNet =
         updateUserDTO.uploadCardEvidenceWithDataNet;
+      user.status = updateUserDTO.status;  
       user.updatedAt = new Date();
 
       await this.userRepository.save(user);
 
+      if (updateUserDTO.status === stringConstants.inactiveStatus) {
+        const token = await this.getUserToken(user.id);
+        await this.firebaseService.sendNewMessage(
+          new NotificationDTO(
+            stringConstants.closeSessionTitle,
+            stringConstants.closeSessionDescription,
+            stringConstants.closeSessionType,
+          ),
+          token,
+        );
+      }
+      
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
       console.log(exception);
