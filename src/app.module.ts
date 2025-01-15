@@ -19,6 +19,7 @@ import { StatusModule } from './modules/status/status.module';
 import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PositionModule } from './modules/position/position.module';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     StatusModule,
     FileUploadModule,
     ExportModule,
-    NotificationsModule
+    NotificationsModule,
+    PositionModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -90,6 +90,8 @@ export const stringConstants = {
   levels: 'Levels not found',
   roles: 'Roles not found',
   cardNotFound: 'Card not found',
+  positionNotFound: 'Position not found',
+
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
