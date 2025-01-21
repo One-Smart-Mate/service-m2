@@ -187,17 +187,23 @@ export class UsersService {
   ) => {
     try {
       const users = await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } }, id: Not(userId) },
+        where: {
+          userHasSites: { site: { id: siteId } },
+          id: Not(userId),
+        },
         select: ['appToken'],
       });
 
-      const tokens = users.map((user) => user.appToken);
-
+      const tokens = users
+        .map((user) => user.appToken)
+        .filter((token) => token);
+  
       return tokens;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+  
 
   getUserToken = async (userId: number) => {
     try {
