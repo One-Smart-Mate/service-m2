@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity('positions')
 export class PositionEntity {
@@ -29,6 +30,18 @@ export class PositionEntity {
 
   @Column({ name: 'name', type: 'varchar', length: 45, nullable: true })
   name: string;
+
+  @Exclude()
+  @Column({ name: 'created_at', type: 'timestamp', nullable: true })
+  createdAt: Date;
+
+  @Exclude()
+  @Column({ name: 'updated_at', type: 'timestamp', nullable: true })
+  updatedAt: Date;
+
+  @Exclude()
+  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  deletedAt: Date;
 
   @OneToMany(
     () => UsersPositionsEntity,
