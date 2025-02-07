@@ -10,7 +10,7 @@ import {
   
   @Entity('users_positions')
   export class UsersPositionsEntity {
-    @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
+    @PrimaryGeneratedColumn({ type: 'int',name:'ID'})
     id: number;
   
     @ManyToOne(() => UserEntity, (user) => user.usersPositions)
