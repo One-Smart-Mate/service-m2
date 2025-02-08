@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  IsDate
 } from 'class-validator';
 
 export class UpdatePositionDto {
@@ -81,4 +82,23 @@ export class UpdatePositionDto {
   @IsDecimal({ decimal_digits: '2', force_decimal: true })
   @IsOptional()
   hourCost: number | null;
+  @ApiProperty({
+    description: 'Updated at timestamp',
+    example: '2023-02-07T12:00:00Z',
+    type: 'string',
+    format: 'date-time',
+  })
+  @IsDate()
+  @IsOptional()
+  updatedAt: Date | null;
+
+  @ApiProperty({
+    description: 'Deleted at timestamp',
+    example: '2023-02-07T12:30:00Z',
+    type: 'string',
+    format: 'date-time',
+  })
+  @IsDate()
+  @IsOptional()
+  deletedAt: Date | null;
 }

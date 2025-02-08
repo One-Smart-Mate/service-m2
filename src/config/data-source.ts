@@ -2,10 +2,10 @@ import { DataSource } from 'typeorm';
 
 const AppDataSource = new DataSource({
   type: 'mysql', // O el tipo de base de datos que estés usando
-  host: 'localhost',
-  port: 3306,
+  host: 'autorack.proxy.rlwy.net',
+  port: parseInt('25045'),
   username: 'root',
-  password: 'root',
+  password: 'nJpPjMXrgTVYAfgYmwoiusECdFSPSCEm',
   database: 'railway',
   synchronize: false, // Evita sincronización automática
   dropSchema: false, // Asegura que no elimine el esquema

@@ -2,11 +2,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 const typeOrmConfig = TypeOrmModule.forRoot({
   type: 'mysql',
-  username: 'root',
-  password: 'root',
-  port: parseInt('3306'),
-  database: 'railway',
-  host: 'localhost',
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  port: parseInt(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  host: process.env.DB_HOST,
   entities: [__dirname + '/**/*.entity{.ts,.js}'],
   synchronize: false,
   autoLoadEntities: true,

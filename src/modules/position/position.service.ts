@@ -95,16 +95,16 @@ export class PositionService {
     }
   };
 
-  delete = async (id: number) => {
-    try {
-      const position = await this.positionRepository.findOneBy({ id });
-      if (!position) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-      }
-      await this.positionRepository.delete(id);
-      return { message: 'Position deleted successfully' };
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
+  // delete = async (id: number) => {
+  //   try {
+  //     const position = await this.positionRepository.findOneBy({ id });
+  //     if (!position) {
+  //       throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
+  //     }
+  //     await this.positionRepository.delete(id);
+  //     return { message: 'Position deleted successfully' };
+  //   } catch (exception) {
+  //     HandleException.exception(exception);
+  //   }
+  // };
 }

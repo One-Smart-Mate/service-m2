@@ -50,9 +50,9 @@ export class PositionController {
     return this.positionService.update(updatePositionDto);
   }
 
-  @Delete('/:id')
-  @ApiParam({ name: 'id', required: true, example: 1 })
-  delete(@Param('id') id: number) {
-    return this.positionService.delete(+id);
-  }
+  // @Delete('/:id')
+  // @ApiParam({ name: 'id', required: true, example: 1 })
+  // delete(@Param('id') id: number) {
+  //   return this.positionService.delete(+id);
+  // }
 }

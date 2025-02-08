@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  IsDate
 } from 'class-validator';
 
 export class CreatePositionDto {
@@ -71,4 +72,14 @@ export class CreatePositionDto {
   @IsDecimal({ decimal_digits: '2', force_decimal: true })
   @IsOptional()
   hourCost: number | null;
+
+  @ApiProperty({
+    description: 'Created at timestamp',
+    example: '2023-02-07T10:00:00Z',
+    type: 'string',
+    format: 'date-time',
+  })
+  @IsDate()
+  @IsOptional()
+  createdAt: Date | null;
 }
