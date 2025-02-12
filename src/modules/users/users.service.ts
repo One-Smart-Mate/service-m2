@@ -496,4 +496,23 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
+  async findUsersByRole(siteId: number, roleName: string) {
+    try {
+      const users = await this.userRepository.find({
+        where: {
+          userHasSites: { site: { id: siteId } },
+          userRoles: { role: { name: roleName } },
+        },
+      });
+  
+      return users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+  
 }

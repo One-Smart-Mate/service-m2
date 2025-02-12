@@ -116,5 +116,10 @@ export const stringConstants = {
   titleExample: "Custom Notification",
   descriptionDescription: "Description of the notification",
   descriptionExample: "This is a custom notification for specific users.",
+  asignationCard: "You have been assigned the card",
+
+  sendMailAssignamentSummary: "Send an email assignament ",
+  sendMailAssignamentEmailSent: "Email Sent Successfully",
+  sendMailAssignamentUserNotFound: "User not found"
 
 };
