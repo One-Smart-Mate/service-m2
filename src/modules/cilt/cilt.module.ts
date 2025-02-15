@@ -10,8 +10,8 @@ import { RepositoryEntity } from '../repository/entities/repository.entity';
   imports: [
     TypeOrmModule.forFeature([
       CiltEntity, 
-      PositionsCiltEntity,  // 👈 Agregar tabla intersección con Position
-      RepositoryEntity       // 👈 Agregar tabla intersección con Repository
+      PositionsCiltEntity,  
+      RepositoryEntity    
     ]),
   ],
   controllers: [CiltController],
