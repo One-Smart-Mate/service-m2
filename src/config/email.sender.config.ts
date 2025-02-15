@@ -3,8 +3,8 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { join } from 'path';
 
 const mailConfig = MailerModule.forRoot({
-  // transport: 'smtps://user@example.com:topsecret@smtp.example.com',
-  // or
+  
+  
   transport: {
     host: 'cdentalcaregroup.com',
     secure: false,
@@ -18,7 +18,7 @@ const mailConfig = MailerModule.forRoot({
   },
   template: {
     dir: join(__dirname, 'templates'),
-    adapter: new HandlebarsAdapter(), // or new PugAdapter() or new EjsAdapter()
+    adapter: new HandlebarsAdapter(), 
     options: {
       strict: true,
     },

@@ -73,4 +73,13 @@ export class UsersController {
       excludeExtraneousValues: true,
     });
   }
+
+  @Get('/site/:siteId/role/:roleName')
+@ApiParam({ name: 'siteId', type: 'number', description: 'ID del sitio' })
+@ApiParam({ name: 'roleName', type: 'string', description: 'Nombre del rol (Ejemplo: mechanic, external_provider)' })
+async getUsersByRole(@Param('siteId') siteId: string, @Param('roleName') roleName: string) {
+  const users = await this.usersService.findUsersByRole(parseInt(siteId), roleName);
+  return users;
+}
+
 }
