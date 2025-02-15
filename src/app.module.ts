@@ -20,6 +20,7 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PositionModule } from './modules/position/position.module';
+import { CiltModule } from './modules/cilt/cilt.module';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { PositionModule } from './modules/position/position.module';
     FileUploadModule,
     ExportModule,
     NotificationsModule,
-    PositionModule
+    PositionModule,
+    CiltModule
   ],
   controllers: [AppController],
   providers: [AppService],

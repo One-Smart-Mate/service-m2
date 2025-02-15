@@ -34,6 +34,9 @@ export class NotFoundCustomException extends HttpException {
     if (type === NotFoundCustomExceptionType.POSITION) {
       message = stringConstants.positionNotFound;
     }
+    if (type === NotFoundCustomExceptionType.CILT) {
+      message = stringConstants.ciltNotFound;
+    }
     super(message, HttpStatus.NOT_FOUND);
   }
 }
@@ -48,5 +51,6 @@ export enum NotFoundCustomExceptionType {
   LEVELS,
   ROLES,
   CARD,
-  POSITION
+  POSITION,
+  CILT
 }

@@ -91,6 +91,7 @@ export const stringConstants = {
   roles: 'Roles not found',
   cardNotFound: 'Card not found',
   positionNotFound: 'Position not found',
+  ciltNotFound: 'Cilt not found',
 
 
   //sql errors

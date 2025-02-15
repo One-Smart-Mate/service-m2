@@ -1,6 +1,13 @@
 import { Exclude } from 'class-transformer';
 import { UserHasSitesEntity } from 'src/modules/users/entities/user.has.sites.entity';
-import { Entity, PrimaryGeneratedColumn, Column, Index, OneToMany } from 'typeorm';
+import { SitePositionsEntity } from 'src/modules/site/entities/site.positions.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Index,
+  OneToMany,
+} from 'typeorm';
 
 @Entity('sites')
 @Index('idx_site_code', ['siteCode'], { unique: true })
@@ -109,4 +116,7 @@ export class SiteEntity {
 
   @OneToMany(() => UserHasSitesEntity, (userHasSites) => userHasSites.site)
   userHasSites: UserHasSitesEntity[];
+
+  @OneToMany(() => SitePositionsEntity, (sitePositions) => sitePositions.site)
+  sitePositions: SitePositionsEntity[];
 }

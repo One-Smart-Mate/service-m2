@@ -1,5 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
+import { PositionsCiltEntity } from 'src/modules/cilt/entities/cilts.positions.entity';
+import { SitePositionsEntity } from 'src/modules/site/entities/site.positions.entity';
 import { Exclude } from 'class-transformer';
 
 @Entity('positions')
@@ -48,4 +50,12 @@ export class PositionEntity {
     (usersPositions) => usersPositions.position,
   )
   usersPositions: UsersPositionsEntity[];
+  @OneToMany(
+    () => PositionsCiltEntity,
+    (positionsCilt) => positionsCilt.position,
+  )
+  positionsCilt: PositionsCiltEntity[];
+  @OneToMany(() => SitePositionsEntity, (sitePositions) => sitePositions.position)
+sitePositions: SitePositionsEntity[];
+
 }
