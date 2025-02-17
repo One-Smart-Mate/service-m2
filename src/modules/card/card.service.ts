@@ -149,7 +149,6 @@ export class CardService {
 
   create = async (createCardDTO: CreateCardDTO) => {
     try {
-
       let cardUUID = createCardDTO.cardUUID;
       let cardUUIDisNotUnique = await this.cardRepository.exists({
         where: { cardUUID: cardUUID },
@@ -163,7 +162,7 @@ export class CardService {
       }
 
       createCardDTO.cardUUID = cardUUID;
-      
+
       const site = await this.siteService.findById(createCardDTO.siteId);
       var priority = new PriorityEntity();
       if (createCardDTO.priorityId && createCardDTO.priorityId !== 0) {
@@ -179,7 +178,7 @@ export class CardService {
         createCardDTO.preclassifierId,
       );
       const creator = await this.userService.findById(createCardDTO.creatorId);
-  
+
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       } else if (!node) {
@@ -197,21 +196,21 @@ export class CardService {
       } else if (!creator) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
-  
+
       var lastInsertedCard;
       lastInsertedCard = await this.cardRepository.findOne({
         order: { id: 'DESC' },
         where: { siteId: site.id },
       });
-  
+
       const levelMap = await this.levelService.findAllLevelsBySite(site.id);
       const { area, location } = this.levelService.getSuperiorLevelsById(
         String(node.id),
         levelMap,
       );
-  
+
       const createdAt = new Date(createCardDTO.cardCreationDate);
-  
+
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
@@ -248,14 +247,14 @@ export class CardService {
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
       });
-      
+
       await this.cardRepository.save(card);
       lastInsertedCard = await this.cardRepository.find({
         order: { id: 'DESC' },
         take: 1,
       });
       const cardAssignEvidences = lastInsertedCard[0];
-  
+
       await Promise.all(
         createCardDTO.evidences.map(async (evidence) => {
           switch (evidence.type) {
@@ -297,7 +296,7 @@ export class CardService {
           await this.evidenceRepository.save(evidenceToCreate);
         }),
       );
-  
+
       const tokens =
         await this.userService.getSiteUsersTokensExcludingOwnerUser(
           cardAssignEvidences.siteId,
@@ -311,13 +310,13 @@ export class CardService {
         ),
         tokens,
       );
-  
+
       return await this.cardRepository.save(cardAssignEvidences);
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
-  };  
+  };
   updateDefinitivesolution = async (
     updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO,
   ) => {
@@ -885,13 +884,14 @@ export class CardService {
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;
 
-      const token = await this.userService.getUserToken(
-        userMechanic.id,
-      );
-      
+      const token = await this.userService.getUserToken(userMechanic.id);
+
       await this.firebaseService.sendNewMessage(
         new NotificationDTO(
-          stringConstants.cardAssignedTitle.replace('[card_id]', card.id.toString()),
+          stringConstants.cardAssignedTitle.replace(
+            '[card_id]',
+            card.id.toString(),
+          ),
           stringConstants.cardAssignedDescription,
           stringConstants.emptyNotificationType,
         ),
@@ -1017,4 +1017,12 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
+  async getCardsByLevelId(siteId: number, levelId: number) {
+    const cards = await this.cardRepository.find({
+      where: { siteId, nodeId: levelId, deletedAt: null },
+      order: { siteCardId: 'DESC' },
+    });
+    return cards;
+  }
 }
