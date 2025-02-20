@@ -6,8 +6,10 @@ export class AppService {
   getAppInfo(): { app_version: string } {
     console.log("ENV")
     console.log(process.env)
-    return {
+    const serviceObjc = {
       app_version: process.env.APP_ENV,
-    };
+      service_message: "working..."
+    }
+    return serviceObjc
   }
 }
