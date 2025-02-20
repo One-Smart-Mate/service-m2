@@ -207,4 +207,11 @@ export class CardController {
       cardTypeName,
     });
   }
+  @Get('by-level/:levelId')
+  async getCardsByLevel(
+    @Param('levelId') levelId: number,
+    @Query('siteId') siteId: number,
+  ) {
+    return await this.cardService.getCardsByLevelId(siteId, levelId);
+  }
 }
