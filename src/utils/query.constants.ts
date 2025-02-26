@@ -15,6 +15,12 @@ export const QUERY_CONSTANTS = {
       COUNT(*) AS totalCards,
       cardType_name AS cardTypeName
     `,
+  findSiteCardsGroupedByAreaMore: `
+      area_name AS area,
+      area_id AS areaId,
+      COUNT(*) AS totalCards,
+      cardType_name AS cardTypeName
+    `,
   findSiteCardsGroupedByMachine: `
       node_name AS nodeName,
       card_location as location,

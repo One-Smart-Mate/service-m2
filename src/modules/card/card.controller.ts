@@ -110,6 +110,18 @@ export class CardController {
       endDate,
     );
   }
+  @Get('/site/areas/more/:siteId')
+  findSiteCardsGroupedByAreaMore(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByAreaMore(
+      siteId,
+      startDate,
+      endDate,
+    );
+  }
 
   @Get('/site/machines/:siteId')
   findSiteCardsGroupedByMachine(
@@ -119,6 +131,21 @@ export class CardController {
   ) {
     return this.cardService.findSiteCardsGroupedByMachine(
       siteId,
+      startDate,
+      endDate,
+    );
+  }
+
+  @Get('/site/area/machines/:siteId/:areaId')
+  findAreaCardsGroupedByMachine(
+    @Param('siteId') siteId: number,
+    @Param('areaId') areaId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findAreaCardsGroupedByMachine(
+      siteId,
+      areaId,
       startDate,
       endDate,
     );
