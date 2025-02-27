@@ -701,33 +701,20 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  findAreaCardsGroupedByMachine = async (
+  public findAreaCardsGroupedByMachine = async (
     siteId: number,
     areaId: number,
     startDate?: string,
     endDate?: string,
   ) => {
     try {
-      const queryBuilder = this.cardRepository
-        .createQueryBuilder('card')
-        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.area_id = :areaId', { areaId }); 
-      if (startDate && endDate) {
-        queryBuilder.andWhere(
-          'card.created_at BETWEEN :startDate AND :endDate',
-          {
-            startDate,
-            endDate: `${endDate} 23:59:59`,
-          },
-        );
-      }
-
-      const result = await queryBuilder
-        .groupBy('cardTypeName, nodeName, location')
-        .getRawMany();
-
-      return result;
+      const useStartDate = startDate || null;
+      const useEndDate = endDate || null;
+      const result = await this.cardRepository.query(
+        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
+        [siteId, areaId, useStartDate, useEndDate],
+      );
+      return result[0];
     } catch (exception) {
       HandleException.exception(exception);
     }
