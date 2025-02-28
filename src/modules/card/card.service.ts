@@ -641,6 +641,36 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+  findSiteCardsGroupedByAreaMore = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+      
+      const result = await queryBuilder
+        .groupBy('cardTypeName, area, areaId')
+        .getRawMany();
+      
+      return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
   findSiteCardsGroupedByMachine = async (
     siteId: number,
     startDate?: string,
@@ -667,6 +697,24 @@ export class CardService {
         .getRawMany();
 
       return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  public findAreaCardsGroupedByMachine = async (
+    siteId: number,
+    areaId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const useStartDate = startDate || null;
+      const useEndDate = endDate || null;
+      const result = await this.cardRepository.query(
+        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
+        [siteId, areaId, useStartDate, useEndDate],
+      );
+      return result[0];
     } catch (exception) {
       HandleException.exception(exception);
     }
