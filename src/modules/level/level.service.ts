@@ -265,4 +265,35 @@ export class LevelService {
     const result = await this.levelRepository.query(query, [superiorId]);
     return result.map((row) => row.id);
   };
+  async findActiveLevelsWithCardLocation(siteId: number) {
+    try {
+      const levels = await this.findSiteActiveLevels(siteId);
+      const levelMap = new Map<number, any>();
+      levels.forEach(level => levelMap.set(level.id, level));
+      return levels.map(level => ({
+        ...level,
+        levelLocation: this.buildLevelLocation(level.id, levelMap),
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+  
+  private buildLevelLocation(levelId: number, levelMap: Map<number, any>): string {
+    const path: string[] = [];
+    let currentLevel = levelMap.get(levelId);
+    if (!currentLevel) {
+      return '';
+    }
+    while (currentLevel) {
+      path.unshift(currentLevel.name); 
+      if (!currentLevel.superiorId || currentLevel.superiorId === "0") {
+        break; 
+      }
+      currentLevel = levelMap.get(currentLevel.superiorId);
+    }
+  
+    return path.join('/'); 
+  }
+  
 }
