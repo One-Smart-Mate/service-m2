@@ -37,13 +37,29 @@ export class PositionService {
     }
   };
 
-//   findAllBySite = async (siteId: number) => {
-//     try {
-//       return await this.positionRepository.findBy({ siteId:  siteId  });
-//     } catch (exception) {
-//       HandleException.exception(exception);
-//     }
-//   };
+  findBySiteId = async (siteId: number) => {
+    try {
+      return await this.positionRepository.find({ where: { siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  
+  findBySiteIdAndLevelId = async (siteId: number, levelId: number) => {
+    try {
+      return await this.positionRepository.find({ where: { siteId, levelId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByAreaId = async (areaId: number) => {
+    try {
+      return await this.positionRepository.find({ where: { areaId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   findAllByUser = async (userId: number) => {
     try {
@@ -57,22 +73,25 @@ export class PositionService {
     }
   };
 
-//   findAllBySiteWithUsers = async (siteId: number) => {
-//     try {
-//       return await this.positionRepository
-//         .createQueryBuilder('position')
-//         .leftJoinAndSelect('users_positions', 'up', 'up.position_id = position.id')
-//         .leftJoinAndSelect('users', 'user', 'user.id = up.user_id')
-//         .where('position.siteId = :siteId', { siteId })
-//         .getMany();
-//     } catch (exception) {
-//       HandleException.exception(exception);
-//     }
-//   };
+  //   findAllBySiteWithUsers = async (siteId: number) => {
+  //     try {
+  //       return await this.positionRepository
+  //         .createQueryBuilder('position')
+  //         .leftJoinAndSelect('users_positions', 'up', 'up.position_id = position.id')
+  //         .leftJoinAndSelect('users', 'user', 'user.id = up.user_id')
+  //         .where('position.siteId = :siteId', { siteId })
+  //         .getMany();
+  //     } catch (exception) {
+  //       HandleException.exception(exception);
+  //     }
+  //   };
 
   create = async (createPositionDto: CreatePositionDto) => {
     try {
-      const position = this.positionRepository.create(createPositionDto);
+      const position = this.positionRepository.create({
+        ...createPositionDto,
+        createdAt: new Date(),
+      });
       return await this.positionRepository.save(position);
     } catch (exception) {
       HandleException.exception(exception);
@@ -89,22 +108,11 @@ export class PositionService {
       }
 
       Object.assign(position, updatePositionDto);
+      position.updatedAt = new Date();
+
       return await this.positionRepository.save(position);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-
-  // delete = async (id: number) => {
-  //   try {
-  //     const position = await this.positionRepository.findOneBy({ id });
-  //     if (!position) {
-  //       throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-  //     }
-  //     await this.positionRepository.delete(id);
-  //     return { message: 'Position deleted successfully' };
-  //   } catch (exception) {
-  //     HandleException.exception(exception);
-  //   }
-  // };
 }

@@ -1,7 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
 import { PositionsCiltEntity } from 'src/modules/cilt/entities/cilts.positions.entity';
-import { SitePositionsEntity } from 'src/modules/site/entities/site.positions.entity';
 import { Exclude } from 'class-transformer';
 
 @Entity('positions')
@@ -9,29 +8,38 @@ export class PositionEntity {
   @PrimaryGeneratedColumn({ name: 'ID', type: 'int', unsigned: true })
   id: number;
 
-  @Column({ name: 'category', type: 'varchar', length: 45, nullable: true })
-  category: string;
+  @Column({ name: 'site_id', type: 'int', nullable: true })
+  siteId: number;
 
-  @Column({ name: 'currency_id', type: 'int', nullable: true })
-  currencyId: number;
+  @Column({ name: 'site_name', type: 'varchar', length: 100, nullable: true })
+  siteName: string;
 
-  @Column({ name: 'currency_symbol', type: 'char', length: 3, nullable: true })
-  currencySymbol: string;
+  @Column({ name: 'site_type', type: 'varchar', length: 20, nullable: true })
+  siteType: string;
+
+  @Column({ name: 'area_id', type: 'int', nullable: true })
+  areaId: number;
+
+  @Column({ name: 'area_name', type: 'varchar', length: 100, nullable: true })
+  areaName: string;
+
+  @Column({ name: 'level_id', type: 'int', nullable: true })
+  levelId: number;
+
+  @Column({ name: 'level_name', type: 'varchar', length: 45, nullable: true })
+  levelName: string;
+
+  @Column({ name: 'route', type: 'varchar', length: 250, nullable: true })
+  route: string;
+
+  @Column({ name: 'name', type: 'varchar', length: 45, nullable: true })
+  name: string;
 
   @Column({ name: 'description', type: 'varchar', length: 100, nullable: true })
   description: string;
 
-  @Column({
-    name: 'hour_cost',
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-    nullable: true,
-  })
-  hourCost: number;
-
-  @Column({ name: 'name', type: 'varchar', length: 45, nullable: true })
-  name: string;
+  @Column({ name: 'status', type: 'char', length: 1, nullable: true, default: 'A' })
+  status: string;
 
   @Exclude()
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
@@ -50,12 +58,10 @@ export class PositionEntity {
     (usersPositions) => usersPositions.position,
   )
   usersPositions: UsersPositionsEntity[];
+
   @OneToMany(
     () => PositionsCiltEntity,
     (positionsCilt) => positionsCilt.position,
   )
   positionsCilt: PositionsCiltEntity[];
-  @OneToMany(() => SitePositionsEntity, (sitePositions) => sitePositions.position)
-sitePositions: SitePositionsEntity[];
-
 }

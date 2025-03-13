@@ -25,9 +25,6 @@ export class SchemaUpdate1739589809746 implements MigrationInterface {
       `CREATE TABLE \`positions_cilt\` (\`ID\` int NOT NULL AUTO_INCREMENT, \`position_id\` int UNSIGNED NULL, \`cilt_id\` int UNSIGNED NULL, PRIMARY KEY (\`ID\`)) ENGINE=InnoDB`,
     );
     await queryRunner.query(
-      `CREATE TABLE \`site_positions\` (\`ID\` int NOT NULL AUTO_INCREMENT, \`site_id\` bigint UNSIGNED NULL, \`position_id\` int UNSIGNED NULL, PRIMARY KEY (\`ID\`)) ENGINE=InnoDB`,
-    );
-    await queryRunner.query(
       `ALTER TABLE \`repository\` ADD CONSTRAINT \`FK_6153d9c5b413a4054c35dfbf01d\` FOREIGN KEY (\`cilt_id\`) REFERENCES \`cilt\`(\`ID\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
     await queryRunner.query(`ALTER TABLE \`positions_cilt\` ADD CONSTRAINT \`FK_07cdc7bced09d6fbaebaa4f28a9\` 
@@ -38,21 +35,9 @@ export class SchemaUpdate1739589809746 implements MigrationInterface {
             FOREIGN KEY (\`cilt_id\`) REFERENCES \`cilt\`(\`ID\`) 
             ON DELETE CASCADE ON UPDATE NO ACTION`);
 
-    await queryRunner.query(
-      `ALTER TABLE \`site_positions\` ADD CONSTRAINT \`FK_2be7ad4808068770206cce5ecca\` FOREIGN KEY (\`site_id\`) REFERENCES \`sites\`(\`id\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`site_positions\` ADD CONSTRAINT \`FK_87f279be7d14897bd1897fa7bec\` FOREIGN KEY (\`position_id\`) REFERENCES \`positions\`(\`ID\`) ON DELETE CASCADE ON UPDATE NO ACTION`,
-    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE \`site_positions\` DROP FOREIGN KEY \`FK_87f279be7d14897bd1897fa7bec\``,
-    );
-    await queryRunner.query(
-      `ALTER TABLE \`site_positions\` DROP FOREIGN KEY \`FK_2be7ad4808068770206cce5ecca\``,
-    );
     await queryRunner.query(
       `ALTER TABLE \`positions_cilt\` DROP FOREIGN KEY \`FK_dc9e0d05c22d076e2de5e1becb1\``,
     );
@@ -62,7 +47,6 @@ export class SchemaUpdate1739589809746 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE \`repository\` DROP FOREIGN KEY \`FK_6153d9c5b413a4054c35dfbf01d\``,
     );
-    await queryRunner.query(`DROP TABLE \`site_positions\``);
     await queryRunner.query(`DROP TABLE \`positions_cilt\``);
     await queryRunner.query(`DROP TABLE \`cilt\``);
     await queryRunner.query(`DROP TABLE \`repository\``);

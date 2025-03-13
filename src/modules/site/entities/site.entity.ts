@@ -1,6 +1,5 @@
 import { Exclude } from 'class-transformer';
 import { UserHasSitesEntity } from 'src/modules/users/entities/user.has.sites.entity';
-import { SitePositionsEntity } from 'src/modules/site/entities/site.positions.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -116,7 +115,4 @@ export class SiteEntity {
 
   @OneToMany(() => UserHasSitesEntity, (userHasSites) => userHasSites.site)
   userHasSites: UserHasSitesEntity[];
-
-  @OneToMany(() => SitePositionsEntity, (sitePositions) => sitePositions.site)
-  sitePositions: SitePositionsEntity[];
 }

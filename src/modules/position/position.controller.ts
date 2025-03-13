@@ -13,18 +13,30 @@ export class PositionController {
   findAll() {
     return this.positionService.findAll();
   }
-// This endpoint needs a relationship between the positions and site.
-// Until then, this endpoint has been commented out to avoid potential errors.
-//   @Get('/site/:siteId')
-//   @ApiParam({ name: 'siteId', required: true, example: 1 })
-//   findAllBySite(@Param('siteId') siteId: number) {
-//     return this.positionService.findAllBySite(+siteId);
-//   }
+
+  @Get('/site/:siteId')
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  findBySiteId(@Param('siteId') siteId: number) {
+    return this.positionService.findBySiteId(+siteId);
+  }
+
+  @Get('/site/:siteId/level/:levelId')
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  @ApiParam({ name: 'levelId', required: true, example: 2 })
+  findBySiteIdAndLevelId(@Param('siteId') siteId: number, @Param('levelId') levelId: number) {
+    return this.positionService.findBySiteIdAndLevelId(+siteId, +levelId);
+  }
 
   @Get('/user/:userId')
   @ApiParam({ name: 'userId', required: true, example: 1 })
   findAllByUser(@Param('userId') userId: number) {
     return this.positionService.findAllByUser(+userId);
+  }
+  
+  @Get('/area/:areaId')
+  @ApiParam({ name: 'areaId', required: true, example: 3 })
+  findByAreaId(@Param('areaId') areaId: number) {
+    return this.positionService.findByAreaId(+areaId);
   }
 // This endpoint needs a relationship between the positions and site.
 // Until then, this endpoint has been commented out to avoid potential errors.
