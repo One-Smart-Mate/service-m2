@@ -10,95 +10,71 @@ import {
 } from 'class-validator';
 
 export class UpdatePositionDto {
-  @ApiProperty({
-    description: 'Id of the position',
-    required: true,
-    example: 1,
-    type: 'number',
-  })
+  @ApiProperty({ description: 'ID of the position', required: true, example: 1, type: 'number' })
   @IsNotEmpty()
   @IsInt()
   id: number;
 
-  @ApiProperty({
-    description: 'Name of the position',
-    type: 'string',
-    maxLength: 45,
-    example: 'Software Engineer',
-  })
+  @ApiProperty({ description: 'Site ID', example: 1, type: 'number' })
+  @IsInt()
+  @IsOptional()
+  siteId: number | null;
+
+  @ApiProperty({ description: 'Site Name', example: 'Main Office', type: 'string', maxLength: 100 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  siteName: string | null;
+
+  @ApiProperty({ description: 'Site Type', example: 'Headquarters', type: 'string', maxLength: 20 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  siteType: string | null;
+
+  @ApiProperty({ description: 'Area ID', example: 2, type: 'number' })
+  @IsInt()
+  @IsOptional()
+  areaId: number | null;
+
+  @ApiProperty({ description: 'Area Name', example: 'Development', type: 'string', maxLength: 100 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  areaName: string | null;
+
+  @ApiProperty({ description: 'Level ID', example: 3, type: 'number' })
+  @IsInt()
+  @IsOptional()
+  levelId: number | null;
+
+  @ApiProperty({ description: 'Level Name', example: 'Senior', type: 'string', maxLength: 45 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(45)
+  levelName: string | null;
+
+  @ApiProperty({ description: 'Route', example: '/engineering/software', type: 'string', maxLength: 250 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(250)
+  route: string | null;
+
+  @ApiProperty({ description: 'Name of the position', example: 'Software Engineer', type: 'string', maxLength: 45 })
   @IsString()
   @IsNotEmpty()
   @MaxLength(45)
   name: string;
 
-  @ApiProperty({
-    description: 'Category of the position in the organization',
-    type: 'string',
-    maxLength: 45,
-    example: 'Engineering',
-  })
-  @IsString()
-  @IsOptional()
-  @MaxLength(45)
-  category: string | null;
-
-  @ApiProperty({
-    description: 'Currency ID for the hourly cost',
-    type: 'number',
-    example: 1,
-  })
-  @IsInt()
-  @IsOptional()
-  currencyId: number | null;
-
-  @ApiProperty({
-    description: 'Currency symbol for the hourly cost',
-    type: 'string',
-    maxLength: 3,
-    example: 'USD',
-  })
-  @IsString()
-  @IsOptional()
-  @MaxLength(3)
-  currencySymbol: string | null;
-
-  @ApiProperty({
-    description: 'Description of the position',
-    type: 'string',
-    maxLength: 100,
-    example: 'This position involves designing and developing software solutions.',
-  })
+  @ApiProperty({ description: 'Description of the position', example: 'Responsible for software development.', type: 'string', maxLength: 100 })
   @IsString()
   @IsOptional()
   @MaxLength(100)
   description: string | null;
 
-  @ApiProperty({
-    description: 'Hourly cost for the position in the specified currency',
-    type: 'number',
-    format: 'decimal',
-    example: 50.75,
-  })
-  @IsDecimal({ decimal_digits: '2', force_decimal: true })
+  @ApiProperty({ description: 'Status', example: 'A', type: 'string', maxLength: 1 })
+  @IsString()
   @IsOptional()
-  hourCost: number | null;
-  @ApiProperty({
-    description: 'Updated at timestamp',
-    example: '2023-02-07T12:00:00Z',
-    type: 'string',
-    format: 'date-time',
-  })
-  @IsDate()
-  @IsOptional()
-  updatedAt: Date | null;
-
-  @ApiProperty({
-    description: 'Deleted at timestamp',
-    example: '2023-02-07T12:30:00Z',
-    type: 'string',
-    format: 'date-time',
-  })
-  @IsDate()
-  @IsOptional()
-  deletedAt: Date | null;
+  @MaxLength(1)
+  status: string | null;
 }
