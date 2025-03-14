@@ -14,6 +14,11 @@ export class LevelController {
   findActiveLevelsByCompanyId(@Param('siteId') siteId: number) {
     return this.levelService.findSiteActiveLevels(+siteId);
   }
+  @Get('/all/:siteId/location')
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  async findActiveLevelsByCompanyIdWithLocation(@Param('siteId') siteId: number) {
+    return await this.levelService.findActiveLevelsWithCardLocation(+siteId);
+  }
   @Get('/site/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
   findLevelsByCompanyId(@Param('siteId') siteId: number) {
