@@ -26,12 +26,12 @@ export class CreatePositionDto {
   @MaxLength(20)
   siteType: string | null;
 
-  @ApiProperty({ description: 'Area ID', example: 2, type: 'number' })
+  @ApiProperty({ description: 'The service generate this', example: 2, type: 'number' })
   @IsInt()
   @IsOptional()
   areaId: number | null;
 
-  @ApiProperty({ description: 'Area Name', example: 'Development', type: 'string', maxLength: 100 })
+  @ApiProperty({ description: 'The service generate this', example: 'Development', type: 'string', maxLength: 100 })
   @IsString()
   @IsOptional()
   @MaxLength(100)

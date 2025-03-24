@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PositionEntity } from './entities/position.entity';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { LevelService } from '../level/level.service';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -15,6 +16,7 @@ export class PositionService {
   constructor(
     @InjectRepository(PositionEntity)
     private readonly positionRepository: Repository<PositionEntity>,
+    private readonly levelService: LevelService,
   ) {}
 
   findAll = async () => {
@@ -44,7 +46,7 @@ export class PositionService {
       HandleException.exception(exception);
     }
   };
-  
+
   findBySiteIdAndLevelId = async (siteId: number, levelId: number) => {
     try {
       return await this.positionRepository.find({ where: { siteId, levelId } });
@@ -88,10 +90,19 @@ export class PositionService {
 
   create = async (createPositionDto: CreatePositionDto) => {
     try {
+      // Obtén el último nivel usando la función de LevelService
+      const lastLevel = await this.levelService.findLastLevelFromNode(
+        createPositionDto.levelId,
+      );
+
+      createPositionDto.areaId = lastLevel.area_id;
+      createPositionDto.areaName = lastLevel.area_name;
+
       const position = this.positionRepository.create({
         ...createPositionDto,
         createdAt: new Date(),
       });
+
       return await this.positionRepository.save(position);
     } catch (exception) {
       HandleException.exception(exception);
@@ -103,16 +114,23 @@ export class PositionService {
       const position = await this.positionRepository.findOneBy({
         id: updatePositionDto.id,
       });
+  
       if (!position) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
       }
+  
+      const lastLevel = await this.levelService.findLastLevelFromNode(updatePositionDto.levelId);
+  
+      updatePositionDto.areaId = lastLevel.area_id;
+      updatePositionDto.areaName = lastLevel.area_name;
 
       Object.assign(position, updatePositionDto);
       position.updatedAt = new Date();
-
+  
       return await this.positionRepository.save(position);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+  
 }

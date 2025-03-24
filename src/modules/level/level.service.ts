@@ -295,5 +295,29 @@ export class LevelService {
   
     return path.join('/'); 
   }
+  findLastLevelFromNode =  async (levelId: number) => {
+    try {
+      let currentLevel = await this.levelRepository.findOneBy({ id: levelId });
+      if (!currentLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+  
+      // Subimos hasta encontrar el nodo raíz (superiorId === 0)
+      while (currentLevel.superiorId && Number(currentLevel.superiorId) !== 0) {
+        const parent = await this.levelRepository.findOneBy({ id: currentLevel.superiorId });
+        if (!parent) {
+          break; // En caso de datos corruptos o corte inesperado
+        }
+        currentLevel = parent;
+      }
+  
+      return {
+        area_id: currentLevel.id,
+        area_name: currentLevel.name,
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
   
 }

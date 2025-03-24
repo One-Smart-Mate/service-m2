@@ -40,7 +40,7 @@ export class MailService {
     cardName: string
   ) {
     try {
-      const link = `${process.env.APP_WEB_URL}/external/card/${cardId}/details?cardName=${encodeURIComponent(cardName)}`;
+      const link = `${process.env.URL_WEB}/external/card/${cardId}/details?cardName=${encodeURIComponent(cardName)}`;
       await this.mailerService.sendMail({
         to: user.email,
         subject: `${stringConstants.asignationCard} ${cardName}`,
