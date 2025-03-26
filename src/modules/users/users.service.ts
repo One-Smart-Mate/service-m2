@@ -27,6 +27,7 @@ import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
 import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 
 @Injectable()
 export class UsersService {
@@ -39,8 +40,37 @@ export class UsersService {
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
     private readonly firebaseService: FirebaseService,
+    @InjectRepository(UsersPositionsEntity)
+    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
   ) {}
 
+  findUsersByPositionId = async (positionId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { usersPositions: { position: { id: positionId } } },
+        relations: { userRoles: { role: true }, usersPositions: { position: true } },
+      });
+
+      const transformedUsers = users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.userRoles.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name,
+        })),
+        positions: user.usersPositions.map((usersPosition) => ({
+          id: usersPosition.position.id,
+          name: usersPosition.position.name,
+        })),
+      }));
+
+      return transformedUsers;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  
   sendCodeToEmail = async (email: string) => {
     try {
       if (!email) {

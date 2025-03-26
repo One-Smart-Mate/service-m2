@@ -3,11 +3,12 @@ import { PositionService } from './position.service';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { UsersService } from '../users/users.service';
 
 @Controller('position')
 @ApiTags('position')
 export class PositionController {
-  constructor(private readonly positionService: PositionService) {}
+  constructor(private readonly positionService: PositionService,private readonly usersService: UsersService) {}
 
   @Get('/all')
   findAll() {
@@ -38,13 +39,12 @@ export class PositionController {
   findByAreaId(@Param('areaId') areaId: number) {
     return this.positionService.findByAreaId(+areaId);
   }
-// This endpoint needs a relationship between the positions and site.
-// Until then, this endpoint has been commented out to avoid potential errors.
-//   @Get('/site-with-users/:siteId')
-//   @ApiParam({ name: 'siteId', required: true, example: 1 })
-//   findAllBySiteWithUsers(@Param('siteId') siteId: number) {
-//     return this.positionService.findAllBySiteWithUsers(+siteId);
-//   }
+
+  @Get('/:positionId/users')
+  @ApiParam({ name: 'positionId', required: true, example: 1 })
+  async findUsersByPosition(@Param('positionId') positionId: number) {
+    return this.usersService.findUsersByPositionId(positionId);
+  }
 
   @Get('/:id')
   @ApiParam({ name: 'id', required: true, example: 1 })
@@ -62,9 +62,4 @@ export class PositionController {
     return this.positionService.update(updatePositionDto);
   }
 
-  // @Delete('/:id')
-  // @ApiParam({ name: 'id', required: true, example: 1 })
-  // delete(@Param('id') id: number) {
-  //   return this.positionService.delete(+id);
-  // }
 }

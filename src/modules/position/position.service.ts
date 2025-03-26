@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { PositionEntity } from './entities/position.entity';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { LevelService } from '../level/level.service';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -15,6 +17,9 @@ export class PositionService {
   constructor(
     @InjectRepository(PositionEntity)
     private readonly positionRepository: Repository<PositionEntity>,
+    @InjectRepository(UsersPositionsEntity)
+    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
+    private readonly levelService: LevelService,
   ) {}
 
   findAll = async () => {
@@ -44,7 +49,7 @@ export class PositionService {
       HandleException.exception(exception);
     }
   };
-  
+
   findBySiteIdAndLevelId = async (siteId: number, levelId: number) => {
     try {
       return await this.positionRepository.find({ where: { siteId, levelId } });
@@ -88,11 +93,29 @@ export class PositionService {
 
   create = async (createPositionDto: CreatePositionDto) => {
     try {
+      const lastLevel = await this.levelService.findLastLevelFromNode(createPositionDto.levelId);
+      createPositionDto.areaId = lastLevel.area_id;
+      createPositionDto.areaName = lastLevel.area_name;
+
       const position = this.positionRepository.create({
         ...createPositionDto,
         createdAt: new Date(),
       });
-      return await this.positionRepository.save(position);
+
+      const savedPosition = await this.positionRepository.save(position);
+
+      if (createPositionDto.userIds) {
+        const userPositions = createPositionDto.userIds.map((userId) => {
+          const userPosition = this.usersPositionsRepository.create({
+            user: { id: userId }, 
+            position: savedPosition,
+          });
+          return userPosition;
+        });
+        await this.usersPositionsRepository.save(userPositions); 
+      }
+
+      return savedPosition;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -100,19 +123,35 @@ export class PositionService {
 
   update = async (updatePositionDto: UpdatePositionDto) => {
     try {
-      const position = await this.positionRepository.findOneBy({
-        id: updatePositionDto.id,
-      });
+      const position = await this.positionRepository.findOneBy({ id: updatePositionDto.id });
       if (!position) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
       }
 
+      const lastLevel = await this.levelService.findLastLevelFromNode(updatePositionDto.levelId);
+      updatePositionDto.areaId = lastLevel.area_id;
+      updatePositionDto.areaName = lastLevel.area_name;
+
       Object.assign(position, updatePositionDto);
       position.updatedAt = new Date();
 
-      return await this.positionRepository.save(position);
+      const updatedPosition = await this.positionRepository.save(position);
+
+      if (updatePositionDto.userIds) {
+        await this.usersPositionsRepository.delete({ position: updatedPosition });
+        const userPositions = updatePositionDto.userIds.map((userId) => {
+          return this.usersPositionsRepository.create({
+            user: { id: userId },
+            position: updatedPosition,
+          });
+        });
+        await this.usersPositionsRepository.save(userPositions); 
+      }
+
+      return updatedPosition;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+
 }
