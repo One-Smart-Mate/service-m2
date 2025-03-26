@@ -302,11 +302,10 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
   
-      // Subimos hasta encontrar el nodo raíz (superiorId === 0)
       while (currentLevel.superiorId && Number(currentLevel.superiorId) !== 0) {
         const parent = await this.levelRepository.findOneBy({ id: currentLevel.superiorId });
         if (!parent) {
-          break; // En caso de datos corruptos o corte inesperado
+          break;
         }
         currentLevel = parent;
       }
