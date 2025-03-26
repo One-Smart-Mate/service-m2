@@ -77,4 +77,9 @@ export class UpdatePositionDto {
   @IsOptional()
   @MaxLength(1)
   status: string | null;
+
+  @ApiProperty({ description: 'User IDs to associate with the position', example: [1, 2], type: [Number] })
+  @IsInt({ each: true })
+  @IsOptional()
+  userIds: number[] | null;
 }
