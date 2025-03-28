@@ -149,7 +149,6 @@ export class CardService {
 
   create = async (createCardDTO: CreateCardDTO) => {
     try {
-
       let cardUUID = createCardDTO.cardUUID;
       let cardUUIDisNotUnique = await this.cardRepository.exists({
         where: { cardUUID: cardUUID },
@@ -162,8 +161,6 @@ export class CardService {
         });
       }
 
-      createCardDTO.cardUUID = cardUUID;
-      
       const site = await this.siteService.findById(createCardDTO.siteId);
       var priority = new PriorityEntity();
       if (createCardDTO.priorityId && createCardDTO.priorityId !== 0) {
@@ -209,9 +206,9 @@ export class CardService {
         String(node.id),
         levelMap,
       );
-  
+
       const createdAt = new Date(createCardDTO.cardCreationDate);
-  
+
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
@@ -642,6 +639,36 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+  findSiteCardsGroupedByAreaMore = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+      
+      const result = await queryBuilder
+        .groupBy('cardTypeName, area, areaId')
+        .getRawMany();
+      
+      return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
   findSiteCardsGroupedByMachine = async (
     siteId: number,
     startDate?: string,
@@ -668,6 +695,24 @@ export class CardService {
         .getRawMany();
 
       return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+  public findAreaCardsGroupedByMachine = async (
+    siteId: number,
+    areaId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const useStartDate = startDate || null;
+      const useEndDate = endDate || null;
+      const result = await this.cardRepository.query(
+        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
+        [siteId, areaId, useStartDate, useEndDate],
+      );
+      return result[0];
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -885,15 +930,13 @@ export class CardService {
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;
 
-      const token = await this.userService.getUserToken(
-        userMechanic.id,
-      );
-      
+      const token = await this.userService.getUserToken(userMechanic.id);
+
       await this.firebaseService.sendNewMessage(
         new NotificationDTO(
-          stringConstants.cardAssignedTitle.replace('[card_id]', card.id.toString()),
-          stringConstants.cardAssignedDescription,
-          stringConstants.emptyNotificationType,
+          stringConstants.cardAssignmentTitle,
+          `<${user.name}> ${stringConstants.mechanicAssignmentMessage} <#${card.siteCardId} ${card.cardTypeName}>`,
+          stringConstants.cardsNotificationType,
         ),
         token,
       );
@@ -1017,4 +1060,12 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
+  async getCardsByLevelId(siteId: number, levelId: number) {
+    const cards = await this.cardRepository.find({
+      where: { siteId, nodeId: levelId, deletedAt: null },
+      order: { siteCardId: 'DESC' },
+    });
+    return cards;
+  }
 }

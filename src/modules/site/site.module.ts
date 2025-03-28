@@ -6,7 +6,9 @@ import { SiteEntity } from './entities/site.entity';
 import { CompanyModule } from '../company/company.module';
 
 @Module({
-  imports: [CompanyModule, TypeOrmModule.forFeature([SiteEntity])],
+  imports: [
+    CompanyModule, 
+    TypeOrmModule.forFeature([SiteEntity])],
   controllers: [SiteController],
   providers: [SiteService],
   exports: [SiteService]

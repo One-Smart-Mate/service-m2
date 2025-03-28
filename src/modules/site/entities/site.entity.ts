@@ -1,6 +1,12 @@
 import { Exclude } from 'class-transformer';
 import { UserHasSitesEntity } from 'src/modules/users/entities/user.has.sites.entity';
-import { Entity, PrimaryGeneratedColumn, Column, Index, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  Index,
+  OneToMany,
+} from 'typeorm';
 
 @Entity('sites')
 @Index('idx_site_code', ['siteCode'], { unique: true })

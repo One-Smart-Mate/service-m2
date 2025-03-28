@@ -62,3 +62,38 @@ export const sendWelcomeMessage = (userName: string, appUrl: string, primaryColo
     </div>
   </div>`;
 };
+
+export const sendCardAssignmentMessage = (userName: string, cardName: string, link: string) => `
+  <div style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background-color: #fff;">
+    
+    <!-- Header -->
+    <div style="background-color: #007bff; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+      <h1 style="color: #fff; font-size: 24px; margin: 0;">New Card Assignment</h1>
+    </div>
+
+    <!-- Main Content -->
+    <div style="padding: 20px; text-align: center;">
+      <p style="font-size: 16px; color: #666; margin-bottom: 20px;">
+        Hello <strong>${userName}</strong>,<br />
+        You have been assigned the card <strong>${cardName}</strong>. You can view it using the following link:
+      </p>
+
+      <!-- Button with link -->
+      <div style="margin: 20px 0;">
+        <a href="${link}" 
+           style="display: inline-block; background-color:#007bff; color: white; text-decoration: none; padding: 12px 25px; border-radius: 5px; font-size: 16px; font-weight: bold; transition: background-color 0.3s ease;">
+          View Card
+        </a>
+      </div>
+
+      <p style="font-size: 14px; color: #999; margin-top: 20px;">
+        If you have any questions, please contact us.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #f9f9f9; padding: 15px; text-align: center; border-radius: 0 0 10px 10px;">
+      <p style="font-size: 14px; color: #666;">– The OSM Team</p>
+    </div>
+  </div>
+`;

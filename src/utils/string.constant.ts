@@ -90,6 +90,9 @@ export const stringConstants = {
   levels: 'Levels not found',
   roles: 'Roles not found',
   cardNotFound: 'Card not found',
+  positionNotFound: 'Position not found',
+  ciltNotFound: 'Cilt not found',
+
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
@@ -116,5 +119,10 @@ export const stringConstants = {
   titleExample: "Custom Notification",
   descriptionDescription: "Description of the notification",
   descriptionExample: "This is a custom notification for specific users.",
+  asignationCard: "You have been assigned the card",
+
+  sendMailAssignamentSummary: "Send an email assignament ",
+  sendMailAssignamentEmailSent: "Email Sent Successfully",
+  sendMailAssignamentUserNotFound: "User not found"
 
 };
