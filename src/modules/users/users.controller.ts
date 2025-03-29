@@ -81,5 +81,8 @@ async getUsersByRole(@Param('siteId') siteId: string, @Param('roleName') roleNam
   const users = await this.usersService.findUsersByRole(parseInt(siteId), roleName);
   return users;
 }
-
+  @Post('/logout/:userId')
+  logout(@Param('userId') userId: number) {
+    return this.usersService.logout(userId);
+  }
 }

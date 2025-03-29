@@ -465,19 +465,49 @@ export class UsersService {
       const user = await this.userRepository.findOneBy({
         id: setAppTokenDTO.userId,
       });
-
+  
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
-
+  
       user.appToken = setAppTokenDTO.appToken;
-
+  
+      switch (setAppTokenDTO.osName) {
+        case 'ANDROID':
+          user.androidVersion = setAppTokenDTO.osVersion;
+          break;
+        case 'IOS':
+          user.iosVersion = setAppTokenDTO.osVersion;
+          break;
+        case 'WEB':
+          user.webVersion = setAppTokenDTO.osVersion;
+          break;
+        default:
+          throw new Error('OS no reconocido');
+      }
+  
+      user.updatedAt = new Date();
+  
       return await this.userRepository.save(user);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-
+  logout = async (userId: number) => {
+    try {
+      const user = await this.userRepository.findOneBy({ id: userId });
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+  
+      user.appToken = null;
+      user.updatedAt = new Date();
+  
+      return await this.userRepository.save(user);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
   findSiteMechanics = async (siteId: number) => {
     try {
       return await this.userRepository.find({
