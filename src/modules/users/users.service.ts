@@ -460,7 +460,7 @@ export class UsersService {
     }
   };
 
-  firebaseAppToken = async (setAppTokenDTO: SetAppTokenDTO) => {
+  firebaseAppToken = async (setAppTokenDTO: SetAppTokenDTO) => { 
     try {
       const user = await this.userRepository.findOneBy({
         id: setAppTokenDTO.userId,
@@ -473,13 +473,13 @@ export class UsersService {
       user.appToken = setAppTokenDTO.appToken;
   
       switch (setAppTokenDTO.osName) {
-        case 'ANDROID':
+        case stringConstants.OS_ANDROID:
           user.androidVersion = setAppTokenDTO.osVersion;
           break;
-        case 'IOS':
+        case stringConstants.OS_IOS:
           user.iosVersion = setAppTokenDTO.osVersion;
           break;
-        case 'WEB':
+        case stringConstants.OS_WEB:
           user.webVersion = setAppTokenDTO.osVersion;
           break;
         default:
