@@ -123,6 +123,8 @@ export const stringConstants = {
 
   sendMailAssignamentSummary: "Send an email assignament ",
   sendMailAssignamentEmailSent: "Email Sent Successfully",
-  sendMailAssignamentUserNotFound: "User not found"
-
+  sendMailAssignamentUserNotFound: "User not found",
+  OS_ANDROID: 'ANDROID',
+  OS_IOS: 'IOS',
+  OS_WEB: 'WEB',
 };
