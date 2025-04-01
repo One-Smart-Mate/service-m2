@@ -31,7 +31,7 @@ import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
-import { addDaysToDate } from 'src/utils/general.functions';
+import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
 import { stringify } from 'querystring';
 
 @Injectable()
@@ -209,8 +209,6 @@ export class CardService {
         levelMap,
       );
 
-      const createdAt = new Date(createCardDTO.cardCreationDate);
-
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
@@ -240,9 +238,7 @@ export class CardService {
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
-        createdAt: createdAt,
-        cardDueDate:
-          priority.id && addDaysToDate(createdAt, priority.priorityDays),
+        cardDueDate: priority.id && addDaysToDateString(createCardDTO.cardCreationDate, priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
@@ -291,7 +287,7 @@ export class CardService {
             evidenceType: evidence.type,
             cardId: cardAssignEvidences.id,
             siteId: site.id,
-            createdAt: createdAt,
+            createdAt: card.createdAt,
           });
           await this.evidenceRepository.save(evidenceToCreate);
         }),
