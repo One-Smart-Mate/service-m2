@@ -8,7 +8,8 @@ import { UpdateUserDTO } from './models/update.user.dto';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
-
+import { PositionResponseDTO } from './models/position.response.dto';
+import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -75,14 +76,30 @@ export class UsersController {
   }
 
   @Get('/site/:siteId/role/:roleName')
-@ApiParam({ name: 'siteId', type: 'number', description: 'ID del sitio' })
-@ApiParam({ name: 'roleName', type: 'string', description: 'Nombre del rol (Ejemplo: mechanic, external_provider)' })
-async getUsersByRole(@Param('siteId') siteId: string, @Param('roleName') roleName: string) {
-  const users = await this.usersService.findUsersByRole(parseInt(siteId), roleName);
-  return users;
-}
+  @ApiParam({ name: 'siteId', type: 'number', description: 'ID del sitio' })
+  @ApiParam({
+    name: 'roleName',
+    type: 'string',
+    description: 'Nombre del rol (Ejemplo: mechanic, external_provider)',
+  })
+  async getUsersByRole(
+    @Param('siteId') siteId: string,
+    @Param('roleName') roleName: string,
+  ) {
+    const users = await this.usersService.findUsersByRole(
+      parseInt(siteId),
+      roleName,
+    );
+    return users;
+  }
   @Post('/logout/:userId')
   logout(@Param('userId') userId: number) {
     return this.usersService.logout(userId);
+  }
+  @Get('/:userId/positions')
+  @ApiParam({ name: 'userId', type: 'number' })
+  @ApiOkResponse({ type: [PositionResponseDTO] })
+  getUserPositions(@Param('userId') userId: number) {
+    return this.usersService.findPositionsByUserId(+userId);
   }
 }
