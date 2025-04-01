@@ -574,5 +574,29 @@ export class UsersService {
       HandleException.exception(exception);
     }
   }
+  findPositionsByUserId = async (userId: number) => {
+    try {
+      const userPositions = await this.usersPositionsRepository.find({
+        where: { user: { id: userId } },
+        relations: { position: true },
+      });
   
+      return userPositions.map(({ position }) => ({
+        id: position.id,
+        name: position.name,
+        description: position.description,
+        route: position.route,
+        levelId: position.levelId,
+        levelName: position.levelName,
+        areaId: position.areaId,
+        areaName: position.areaName,
+        siteId: position.siteId,
+        siteName: position.siteName,
+        siteType: position.siteType,
+        status: position.status,
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };  
 }
