@@ -932,19 +932,21 @@ export class CardService {
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;
 
-      const token = await this.userService.getUserToken(userMechanic.id);
+      const tokens = await this.userService.getUserToken(userMechanic.id);
 
-      await this.firebaseService.sendNewMessage(
-        new NotificationDTO(
-          stringConstants.cardAssignedTitle.replace(
-            '[card_id]',
-            card.id.toString(),
+      if (tokens && tokens.length > 0) {
+        await this.firebaseService.sendMultipleMessage(
+          new NotificationDTO(
+            stringConstants.cardAssignedTitle.replace(
+              '[card_id]',
+              card.id.toString(),
+            ),
+            stringConstants.cardAssignedDescription,
+            stringConstants.emptyNotificationType,
           ),
-          stringConstants.cardAssignedDescription,
-          stringConstants.emptyNotificationType,
-        ),
-        token,
-      );
+          tokens,
+        );
+      }
 
       await this.cardRepository.save(card);
 
