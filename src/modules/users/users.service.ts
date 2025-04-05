@@ -200,10 +200,14 @@ export class UsersService {
     try {
       const users = await this.userRepository.find({
         where: { userHasSites: { site: { id: siteId } } },
-        select: ['appToken'],
+        select: ['android_token', 'ios_token', 'web_token'],
       });
 
-      const tokens = users.map((user) => user.appToken);
+      const tokens = users.flatMap(user => [
+        user.android_token,
+        user.ios_token,
+        user.web_token
+      ].filter(token => token !== null));
 
       return tokens;
     } catch (exception) {
@@ -221,12 +225,14 @@ export class UsersService {
           userHasSites: { site: { id: siteId } },
           id: Not(userId),
         },
-        select: ['appToken'],
+        select: ['android_token', 'ios_token', 'web_token'],
       });
 
-      const tokens = users
-        .map((user) => user.appToken)
-        .filter((token) => token);
+      const tokens = users.flatMap(user => [
+        user.android_token,
+        user.ios_token,
+        user.web_token
+      ].filter(token => token !== null));
   
       return tokens;
     } catch (exception) {
@@ -234,16 +240,20 @@ export class UsersService {
     }
   };
   
-
   getUserToken = async (userId: number) => {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
+        select: ['android_token', 'ios_token', 'web_token'],
       });
       
-      const token = user.appToken;
+      const tokens = [
+        user.android_token,
+        user.ios_token,
+        user.web_token
+      ].filter(token => token !== null);
 
-      return token;
+      return tokens;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -412,15 +422,17 @@ export class UsersService {
       await this.userRepository.save(user);
 
       if (updateUserDTO.status === stringConstants.inactiveStatus) {
-        const token = await this.getUserToken(user.id);
-        await this.firebaseService.sendNewMessage(
-          new NotificationDTO(
-            stringConstants.closeSessionTitle,
-            stringConstants.closeSessionDescription,
-            stringConstants.closeSessionType,
-          ),
-          token,
-        );
+        const tokens = await this.getUserToken(user.id);
+        if (tokens && tokens.length > 0) {
+          await this.firebaseService.sendMultipleMessage(
+            new NotificationDTO(
+              stringConstants.closeSessionTitle,
+              stringConstants.closeSessionDescription,
+              stringConstants.closeSessionType,
+            ),
+            tokens,
+          );
+        }
       }
       
       return await this.roleService.updateUserRoles(user, roles);
@@ -470,16 +482,17 @@ export class UsersService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
   
-      user.appToken = setAppTokenDTO.appToken;
-  
       switch (setAppTokenDTO.osName) {
         case stringConstants.OS_ANDROID:
+          user.android_token = setAppTokenDTO.appToken;
           user.androidVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_IOS:
+          user.ios_token = setAppTokenDTO.appToken;
           user.iosVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_WEB:
+          user.web_token = setAppTokenDTO.appToken;
           user.webVersion = setAppTokenDTO.osVersion;
           break;
         default:
@@ -493,14 +506,27 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
-  logout = async (userId: number) => {
+  logout = async (userId: number, osName: string) => {
     try {
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
   
-      user.appToken = null;
+      switch (osName) {
+        case stringConstants.OS_ANDROID:
+          user.android_token = null;
+          break;
+        case stringConstants.OS_IOS:
+          user.ios_token = null;
+          break;
+        case stringConstants.OS_WEB:
+          user.web_token = null;
+          break;
+        default:
+          throw new Error('OS no reconocido');
+      }
+  
       user.updatedAt = new Date();
   
       return await this.userRepository.save(user);

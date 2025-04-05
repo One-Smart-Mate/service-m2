@@ -84,6 +84,15 @@ export class UserEntity {
 
   @Column({ name: 'app_token', type: 'varchar', length: 100, nullable: true })
   appToken: string;
+  
+  @Column({ name: 'ios_token', type: 'varchar', length: 100, nullable: true })
+  ios_token: string;
+
+  @Column({ name: 'android_token', type: 'varchar', length: 100, nullable: true })
+  android_token: string;
+
+  @Column({ name: 'web_token', type: 'varchar', length: 100, nullable: true })
+  web_token: string;
 
   @Column({ name: 'android_version', type: 'varchar', length: 15, nullable: true })
   androidVersion: string;
