@@ -10,6 +10,7 @@ import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { PositionResponseDTO } from './models/position.response.dto';
 import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
+import { LogoutDTO } from './models/logout.dto';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -92,9 +93,9 @@ export class UsersController {
     );
     return users;
   }
-  @Post('/logout/:userId')
-  logout(@Param('userId') userId: number) {
-    return this.usersService.logout(userId);
+  @Post('/logout')
+  logout(@Body() logoutDTO: LogoutDTO) {
+    return this.usersService.logout(logoutDTO.userId, logoutDTO.osName);
   }
   @Get('/:userId/positions')
   @ApiParam({ name: 'userId', type: 'number' })
