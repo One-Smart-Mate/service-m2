@@ -103,15 +103,6 @@ export class UserEntity {
   @Column({ name: 'web_version', type: 'varchar', length: 15, nullable: true })
   webVersion: string;
 
-  @Column({ name: 'android_version', type: 'varchar', length: 15, nullable: true })
-  androidVersion: string;
-
-  @Column({ name: 'ios_version', type: 'varchar', length: 15, nullable: true })
-  iosVersion: string;
-
-  @Column({ name: 'web_version', type: 'varchar', length: 15, nullable: true })
-  webVersion: string;
-
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;
 
