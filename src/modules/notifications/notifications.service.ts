@@ -27,9 +27,9 @@ export class NotificationsService {
       );
 
       for await (const item of users) {
-        const token = await this.userService.getUserToken(item.id);
-        if (token != null && token != undefined && token != '') {
-          await this.firebaseService.sendNewMessage(firebaseData, token);
+        const tokens = await this.userService.getUserToken(item.id);
+        if (tokens && tokens.length > 0) {
+          await this.firebaseService.sendMultipleMessage(firebaseData, tokens);
         }
       }
     } catch (error) {
@@ -41,11 +41,11 @@ export class NotificationsService {
     try {
       Logger.log(JSON.stringify(body));
   
-      const tokens = await Promise.all(
+      const tokensArrays = await Promise.all(
         body.userIds.map((userId) => this.userService.getUserToken(userId)),
       );
   
-      const validTokens = tokens.filter((token) => token && token !== '');
+      const validTokens = tokensArrays.flat().filter((token) => token && token !== '');
   
       if (!validTokens.length) {
         Logger.warn(stringConstants.noValidTokensFound);
@@ -60,15 +60,8 @@ export class NotificationsService {
         stringConstants.customNotificationType,
       );
 
-      for (const token of validTokens) {
-        try {
-          await this.firebaseService.sendNewMessage(firebaseData, token);
-        } catch (error) {
-          Logger.error(
-            `${stringConstants.errorSendingToToken} ${token}: ${error.message}`,
-          );
-        }
-      }
+      await this.firebaseService.sendMultipleMessage(firebaseData, validTokens);
+      
       Logger.log(stringConstants.notificationSentSuccessfully);
       return { message: stringConstants.notificationSentSuccessfully };
     } catch (error) {

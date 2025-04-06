@@ -61,7 +61,7 @@ export const stringConstants = {
   cambioLaPrioridadDe: 'cambió la prioridad de:',
   a: 'a',
   cambio: 'Cambio:',
-  cambioElMecanicoDe: 'cambió el mecánico de:',
+  cambioElMecanicoDe: 'cambió el responsable de:',
 
   //methodology
   M: 'M',
