@@ -209,6 +209,8 @@ export class CardService {
         levelMap,
       );
 
+      const createdAt = new Date(createCardDTO.cardCreationDate);
+
       const card = await this.cardRepository.create({
         ...createCardDTO,
         siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
@@ -238,6 +240,7 @@ export class CardService {
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
+        createdAt: createdAt,
         cardDueDate: priority.id && addDaysToDateString(createCardDTO.cardCreationDate, priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
@@ -287,7 +290,7 @@ export class CardService {
             evidenceType: evidence.type,
             cardId: cardAssignEvidences.id,
             siteId: site.id,
-            createdAt: card.createdAt,
+            createdAt: createdAt,
           });
           await this.evidenceRepository.save(evidenceToCreate);
         }),
