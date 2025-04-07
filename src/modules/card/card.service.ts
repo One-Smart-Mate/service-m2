@@ -31,7 +31,7 @@ import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
-import { addDaysToDate, addDaysToDateString, addDaysToDateString } from 'src/utils/general.functions';
+import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
 import { stringify } from 'querystring';
 
 @Injectable()
