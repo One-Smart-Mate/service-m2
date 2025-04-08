@@ -34,7 +34,7 @@ export class FirebaseService {
   };
   sendMultipleMessage = async (
     notificationDTO: NotificationDTO,
-    registrationTokens: string[],
+    registrationTokens: { token: string; type: string }[],
   ) => {
     try {
       console.log('[Firebase] Sending notifications 1x1 to tokens:', registrationTokens);
@@ -43,35 +43,49 @@ export class FirebaseService {
       const messaging = this.firebaseApp.messaging();
       const results: { token: string; success: boolean; error?: any }[] = [];
   
-      for (const token of registrationTokens) {
-         const message = {
-        notification: {
-          title: notificationDTO.notification_title,
-          body: notificationDTO.notification_description,
-        },
-        data: {
-          notification_title: notificationDTO.notification_title,
-          notification_description: notificationDTO.notification_description,
-          notification_type: notificationDTO.notification_type,
-        },
-        token: token,
-      };
+      for (const tokenObj of registrationTokens) {
+        let message;
+        
+        // Configurar el mensaje según el tipo de dispositivo
+        if (tokenObj.type === 'android') {
+          message = {
+            data: {
+              notification_title: notificationDTO.notification_title,
+              notification_description: notificationDTO.notification_description,
+              notification_type: notificationDTO.notification_type,
+            },
+            token: tokenObj.token,
+          };
+        } else if (tokenObj.type === 'ios' || tokenObj.type === 'web') {
+          message = {
+            notification: {
+              title: notificationDTO.notification_title,
+              body: notificationDTO.notification_description,
+            },
+            data: {
+              notification_title: notificationDTO.notification_title,
+              notification_description: notificationDTO.notification_description,
+              notification_type: notificationDTO.notification_type,
+            },
+            token: tokenObj.token,
+          };
+        }
   
         try {
           const response = await messaging.send(message);
-          console.log(`[Firebase] ✅ Notification sent to: ${token} | MessageId: ${response}`);
-          Logger.verbose(`[Firebase] ✅ Notification sent to: ${token} | MessageId: ${response}`)
-          results.push({ token, success: true });
+          console.log(`[Firebase] ✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`);
+          Logger.verbose(`[Firebase] ✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`)
+          results.push({ token: tokenObj.token, success: true });
         } catch (error) {
-          console.error(`[Firebase] ❌ Error sending to: ${token}`, {
+          console.error(`[Firebase] ❌ Error sending to: ${tokenObj.token} (${tokenObj.type})`, {
             code: error.code,
             message: error.message,
           });
-          Logger.error(`[Firebase] ❌ Error sending to: ${token}`, {
+          Logger.error(`[Firebase] ❌ Error sending to: ${tokenObj.token} (${tokenObj.type})`, {
             code: error.code,
             message: error.message,
           });
-          results.push({ token, success: false, error });
+          results.push({ token: tokenObj.token, success: false, error });
         }
       }
   
