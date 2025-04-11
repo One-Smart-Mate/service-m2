@@ -204,10 +204,10 @@ export class UsersService {
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token,
-        user.ios_token,
-        user.web_token
-      ].filter(token => token !== null));
+        user.android_token ? { token: user.android_token, type: 'android' } : null,
+        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
+        user.web_token ? { token: user.web_token, type: 'web' } : null
+      ].filter(item => item !== null));
 
       return tokens;
     } catch (exception) {
@@ -229,10 +229,10 @@ export class UsersService {
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token,
-        user.ios_token,
-        user.web_token
-      ].filter(token => token !== null));
+        user.android_token ? { token: user.android_token, type: 'android' } : null,
+        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
+        user.web_token ? { token: user.web_token, type: 'web' } : null
+      ].filter(item => item !== null));
   
       return tokens;
     } catch (exception) {
@@ -246,12 +246,16 @@ export class UsersService {
         where: { id: userId },
         select: ['android_token', 'ios_token', 'web_token'],
       });
-      
+
+      if (!user) {
+        return [];
+      }
+
       const tokens = [
-        user.android_token,
-        user.ios_token,
-        user.web_token
-      ].filter(token => token !== null);
+        user.android_token ? { token: user.android_token, type: 'android' } : null,
+        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
+        user.web_token ? { token: user.web_token, type: 'web' } : null
+      ].filter(item => item !== null);
 
       return tokens;
     } catch (exception) {
