@@ -45,7 +45,7 @@ export class NotificationsService {
         body.userIds.map((userId) => this.userService.getUserToken(userId)),
       );
   
-      const validTokens = tokensArrays.flat().filter((token) => token && token !== '');
+      const validTokens = tokensArrays.flat().filter((tokenObj) => tokenObj && tokenObj.token);
   
       if (!validTokens.length) {
         Logger.warn(stringConstants.noValidTokensFound);
