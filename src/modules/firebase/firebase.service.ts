@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { app } from 'firebase-admin';
 import { Message } from 'firebase-admin/lib/messaging/messaging-api';
 import { NotificationDTO } from './models/firebase.request.dto';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class FirebaseService {
@@ -45,9 +46,8 @@ export class FirebaseService {
   
       for (const tokenObj of registrationTokens) {
         let message;
-        
-        // Configurar el mensaje según el tipo de dispositivo
-        if (tokenObj.type === 'android') {
+       
+        if (tokenObj.type === stringConstants.OS_ANDROID) {
           message = {
             data: {
               notification_title: notificationDTO.notification_title,
@@ -56,7 +56,7 @@ export class FirebaseService {
             },
             token: tokenObj.token,
           };
-        } else if (tokenObj.type === 'ios' || tokenObj.type === 'web') {
+        } else if (tokenObj.type === stringConstants.OS_IOS || tokenObj.type === stringConstants.OS_WEB) {
           message = {
             notification: {
               title: notificationDTO.notification_title,

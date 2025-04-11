@@ -204,9 +204,9 @@ export class UsersService {
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: 'android' } : null,
-        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
-        user.web_token ? { token: user.web_token, type: 'web' } : null
+        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
+        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
+        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
 
       return tokens;
@@ -229,9 +229,9 @@ export class UsersService {
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: 'android' } : null,
-        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
-        user.web_token ? { token: user.web_token, type: 'web' } : null
+        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
+        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
+        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
   
       return tokens;
@@ -252,9 +252,9 @@ export class UsersService {
       }
 
       const tokens = [
-        user.android_token ? { token: user.android_token, type: 'android' } : null,
-        user.ios_token ? { token: user.ios_token, type: 'ios' } : null,
-        user.web_token ? { token: user.web_token, type: 'web' } : null
+        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
+        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
+        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null);
 
       return tokens;
