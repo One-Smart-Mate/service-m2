@@ -46,8 +46,7 @@ export class FirebaseService {
   
       for (const tokenObj of registrationTokens) {
         let message;
-        
-        // Configurar el mensaje según el tipo de dispositivo
+       
         if (tokenObj.type === stringConstants.OS_ANDROID) {
           message = {
             data: {
