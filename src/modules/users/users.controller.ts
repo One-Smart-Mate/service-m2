@@ -11,6 +11,8 @@ import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { PositionResponseDTO } from './models/position.response.dto';
 import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
 import { LogoutDTO } from './models/logout.dto';
+import { stringConstants } from 'src/utils/string.constant';
+import { SendCodeEmailDto } from './models/send.code.email.dto';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -41,8 +43,9 @@ export class UsersController {
   }
 
   @Post('/send-code')
-  sendCodeToEmail(@Body('email') email: string) {
-    return this.usersService.sendCodeToEmail(email);
+  @ApiBody({ type: SendCodeEmailDto })
+  sendCodeToEmail(@Body() sendCodeEmailDto: SendCodeEmailDto) {
+    return this.usersService.sendCodeToEmail(sendCodeEmailDto.email, sendCodeEmailDto.translation);
   }
   @Post('/verify-code')
   veryfyCode(@Body() sendCodeDTO: SendCodeDTO) {

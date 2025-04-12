@@ -5,7 +5,6 @@ import { UsersService } from '../users/users.service';
 import { SendCardAssignmentDto } from './templates/entities/SendCardAssignmentDto ';
 import { stringConstants } from 'src/utils/string.constant';
 
-
 @ApiTags('Mail')
 @Controller('mail')
 export class MailController {
@@ -24,6 +23,6 @@ export class MailController {
     if (!user) {
       throw new NotFoundException(`${stringConstants.sendMailAssignamentUserNotFound}`);
     }
-    await this.mailService.sendCardAssignmentEmail(user, body.cardId, body.cardName);
+    await this.mailService.sendCardAssignmentEmail(user, body.cardId, body.cardName, body.translation);
   }
 }
