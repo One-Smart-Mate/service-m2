@@ -10,7 +10,7 @@ export class SendCodeEmailDto {
   email: string;
 
   @ApiProperty({ 
-    description: 'Lenguaje del correo', 
+    description: 'Language of the email', 
     example: 'ES',
     enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
     default: stringConstants.LANG_ES,

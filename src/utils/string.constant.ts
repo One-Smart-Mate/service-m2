@@ -1,8 +1,11 @@
+export const LANG_ES = 'ES';
+export const LANG_EN = 'EN';
+
 export const stringConstants = {
   primaryColor: '#FF5A5F',
   
-  LANG_ES: 'ES',
-  LANG_EN: 'EN',
+  LANG_ES,
+  LANG_EN,
 
   noFileUploaded: 'No file uploaded',
   invalidFileType: 'Invalid file type',
@@ -130,4 +133,64 @@ export const stringConstants = {
   OS_ANDROID: 'ANDROID',
   OS_IOS: 'IOS',
   OS_WEB: 'WEB',
+
+  // Email templates
+  emailTemplates: {
+    [LANG_ES]: {
+      resetPassword: {
+        subject: 'Código de Restablecimiento de Contraseña',
+        greeting: 'Hola',
+        message: 'Has solicitado restablecer tu contraseña. Por favor, usa el siguiente código dentro de las próximas 24 horas para completar el proceso:',
+        warning: 'Si no solicitaste este restablecimiento de contraseña, por favor ignora este correo.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
+      },
+      welcome: {
+        subject: '¡Bienvenido al Equipo OSM! 🎉',
+        greeting: 'Hola',
+        message: '¡estamos muy emocionados de tenerte aquí! Prepárate para explorar increíbles funciones diseñadas especialmente para ti. Pero primero, aseguremos tu cuenta.',
+        button: 'Restablecer tu Contraseña',
+        footer: 'Una vez que hayas restablecido tu contraseña, comienza a explorar y aprovecha al máximo tu nueva cuenta.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
+      },
+      cardAssignment: {
+        subject: 'Nueva Asignación de Tarjeta',
+        greeting: 'Hola',
+        message: 'Se te ha asignado la tarjeta',
+        button: 'Ver Tarjeta',
+        footer: 'Si tienes alguna pregunta, por favor contáctanos.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
+      }
+    },
+    [LANG_EN]: {
+      resetPassword: {
+        subject: 'Password Reset Code',
+        greeting: 'Hello',
+        message: 'You requested to reset your password. Please use the following code within the next 24 hours to complete the process:',
+        warning: 'If you did not request this password reset, please ignore this email.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      },
+      welcome: {
+        subject: 'Welcome to OSM Team! 🎉',
+        greeting: 'Hello',
+        message: 'we\'re so excited to have you here! Get ready to explore amazing features designed just for you. But first, let\'s secure your account.',
+        button: 'Reset Your Password',
+        footer: 'Once you\'ve reset your password, dive in and make the most of your new account.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      },
+      cardAssignment: {
+        subject: 'New Card Assignment',
+        greeting: 'Hello',
+        message: 'You have been assigned the card',
+        button: 'View Card',
+        footer: 'If you have any questions, please contact us.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      }
+    }
+  },
 };

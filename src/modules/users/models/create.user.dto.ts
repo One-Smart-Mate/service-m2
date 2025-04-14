@@ -50,7 +50,7 @@ export class CreateUserDTO {
   roles: number[];
 
   @ApiProperty({ 
-    description: 'Lenguaje del correo de bienvenida', 
+    description: 'Language of the welcome email', 
     example: 'ES',
     enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
     default: stringConstants.LANG_ES,

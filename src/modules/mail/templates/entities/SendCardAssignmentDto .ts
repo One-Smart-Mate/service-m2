@@ -3,20 +3,20 @@ import { IsNumber, IsOptional, IsString } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class SendCardAssignmentDto {
-  @ApiProperty({ description: 'ID del usuario', example: 1 })
+  @ApiProperty({ description: 'User ID', example: 1 })
   @IsNumber()
   userId: number;
 
-  @ApiProperty({ description: 'ID de la tarjeta', example: 1 })
+  @ApiProperty({ description: 'Card ID', example: 1 })
   @IsNumber()
   cardId: number;
 
-  @ApiProperty({ description: 'Nombre de la tarjeta', example: 'Tarjeta de mantenimiento' })
+  @ApiProperty({ description: 'Card name', example: 'Maintenance card' })
   @IsString()
   cardName: string;
 
   @ApiProperty({ 
-    description: 'Lenguaje del correo', 
+    description: 'Language of the email', 
     example: 'ES',
     enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
     default: stringConstants.LANG_ES,
