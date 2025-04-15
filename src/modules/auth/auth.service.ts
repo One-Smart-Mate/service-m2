@@ -51,7 +51,13 @@ export class AuthService {
         user.userHasSites[0].site.companyId,
       );
 
-      return new UserResponse(user, access_token, roles, companyName);
+      const site = user.userHasSites[0].site;
+      const dueDate = new Date(site.dueDate);
+      const today = new Date();
+      const diffTime = dueDate.getTime() - today.getTime();
+      const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return new UserResponse(user, access_token, roles, companyName, app_history);
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
