@@ -1,12 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { app } from 'firebase-admin';
 import { Message } from 'firebase-admin/lib/messaging/messaging-api';
 import { NotificationDTO } from './models/firebase.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class FirebaseService {
-  constructor(@Inject('FIREBASE_APP') private readonly firebaseApp: app.App) {}
+  constructor(
+    @Inject('FIREBASE_APP') private readonly firebaseApp: app.App,
+    private readonly logger: CustomLoggerService
+  ) {}
 
   sendNewMessage = async (
     notificationDTO: NotificationDTO,
@@ -25,21 +29,23 @@ export class FirebaseService {
         },
         token: userToken,
       };
+      this.logger.logFirebase(`Sending single notification to token: ${userToken}`);
       const messaging = this.firebaseApp.messaging();
       await messaging.send(message);
+      this.logger.logFirebase(`Notification sent successfully to token: ${userToken}`);
       return Promise.resolve(true);
     } catch (error) {
-      Logger.error("[FirebaseService-sendNewMessage] ", error);
+      this.logger.logException('FirebaseService', 'sendNewMessage', error);
       return Promise.resolve(false);
     }
   };
+
   sendMultipleMessage = async (
     notificationDTO: NotificationDTO,
     registrationTokens: { token: string; type: string }[],
   ) => {
     try {
-      console.log('[Firebase] Sending notifications 1x1 to tokens:', registrationTokens);
-      Logger.debug('[Firebase] Sending notifications 1x1 to tokens:', registrationTokens);
+      this.logger.logFirebase(`Starting batch notification to ${registrationTokens.length} tokens`);
 
       const messaging = this.firebaseApp.messaging();
       const results: { token: string; success: boolean; error?: any }[] = [];
@@ -73,18 +79,10 @@ export class FirebaseService {
   
         try {
           const response = await messaging.send(message);
-          console.log(`[Firebase] ✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`);
-          Logger.verbose(`[Firebase] ✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`)
+          this.logger.logFirebase(`✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`);
           results.push({ token: tokenObj.token, success: true });
         } catch (error) {
-          console.error(`[Firebase] ❌ Error sending to: ${tokenObj.token} (${tokenObj.type})`, {
-            code: error.code,
-            message: error.message,
-          });
-          Logger.error(`[Firebase] ❌ Error sending to: ${tokenObj.token} (${tokenObj.type})`, {
-            code: error.code,
-            message: error.message,
-          });
+          this.logger.logFirebase(`❌ Error sending to: ${tokenObj.token} (${tokenObj.type}) - ${error.message}`);
           results.push({ token: tokenObj.token, success: false, error });
         }
       }
@@ -92,14 +90,12 @@ export class FirebaseService {
       const successCount = results.filter((r) => r.success).length;
       const failureCount = results.length - successCount;
   
-      console.log(`[Firebase] Sending completed. Successes: ${successCount} | Failures: ${failureCount}`);
+      this.logger.logFirebase(`Batch completed. Successes: ${successCount} | Failures: ${failureCount}`);
   
       return Promise.resolve(true);
     } catch (exception) {
-      Logger.error("[FirebaseService-sendNewMessage] ", exception);
-      console.error('[Firebase] General error when sending notifications:', exception);
+      this.logger.logException('FirebaseService', 'sendMultipleMessage', exception);
       return Promise.resolve(false);
     }
   };
-  
 }
