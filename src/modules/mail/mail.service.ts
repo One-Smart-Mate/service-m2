@@ -2,32 +2,31 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserEntity } from '../users/entities/user.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { sendCodeMessage, sendWelcomeMessage, sendCardAssignmentMessage } from './templates/email.templates';
+import { emailTemplates } from './templates/email.templates';
 import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class MailService {
-  cardRepository: any;
   constructor(private mailerService: MailerService) {}
 
-  async sendResetPasswordCode(user: UserEntity, code: string) {
+  async sendResetPasswordCode(user: UserEntity, resetCode: string, translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES) {
     try {
       await this.mailerService.sendMail({
         to: user.email,
-        subject: stringConstants.resetPasswordEmailSubject,
-        html: sendCodeMessage(user.name, code, stringConstants.primaryColor),
+        subject: stringConstants.emailTemplates[translation].resetPassword.subject,
+        html: emailTemplates[translation].sendCodeMessage(user.name, resetCode, stringConstants.primaryColor),
       });
     } catch (exception) {
       HandleException.exception(exception);
     }
   }
 
-  async sendWelcomeEmail(user: UserEntity, appUrl: string) {
+  async sendWelcomeEmail(user: UserEntity, appUrl: string, translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES) {
     try {
       await this.mailerService.sendMail({
         to: user.email,
-        subject: stringConstants.welcomeEmailSubject,
-        html: sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
+        subject: stringConstants.emailTemplates[translation].welcome.subject,
+        html: emailTemplates[translation].sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -37,16 +36,16 @@ export class MailService {
   async sendCardAssignmentEmail(
     user: Partial<UserEntity>, 
     cardId: number,
-    cardName: string
+    cardName: string,
+    translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES
   ) {
     try {
       const link = `${process.env.URL_WEB}/external/card/${cardId}/details?cardName=${encodeURIComponent(cardName)}`;
       await this.mailerService.sendMail({
         to: user.email,
-        subject: `${stringConstants.asignationCard} ${cardName}`,
-        html: sendCardAssignmentMessage(user.name, cardName, link),
+        subject: stringConstants.emailTemplates[translation].cardAssignment.subject,
+        html: emailTemplates[translation].sendCardAssignmentMessage(user.name, cardName, link, stringConstants.primaryColor),
       });
-  
     } catch (exception) { 
       HandleException.exception(exception);
     }

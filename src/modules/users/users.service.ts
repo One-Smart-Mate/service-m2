@@ -71,7 +71,7 @@ export class UsersService {
     }
   };
   
-  sendCodeToEmail = async (email: string) => {
+  sendCodeToEmail = async (email: string, translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES) => {
     try {
       if (!email) {
         throw new ValidationException(ValidationExceptionType.EMAIL_MISSING);
@@ -91,7 +91,7 @@ export class UsersService {
       user.resetCodeExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await this.userRepository.save(user);
 
-      await this.mailService.sendResetPasswordCode(user, resetCode);
+      await this.mailService.sendResetPasswordCode(user, resetCode, translation);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -371,7 +371,7 @@ export class UsersService {
       }
       const appUrl = process.env.APP_URL;
 
-      await this.mailService.sendWelcomeEmail(userSite.user, appUrl);
+      await this.mailService.sendWelcomeEmail(userSite.user, appUrl, createUserDTO.translation);
 
       return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {
