@@ -241,4 +241,10 @@ export class CardController {
   ) {
     return await this.cardService.getCardsByLevelId(siteId, levelId);
   }
+
+  @Get('/user/:userId')
+  @ApiParam({ name: 'userId' })
+  findUserCards(@Param('userId') userId: number) {
+    return this.cardService.findUserCards(userId);
+  }
 }
