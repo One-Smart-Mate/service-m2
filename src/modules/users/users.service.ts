@@ -629,4 +629,33 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };  
+
+  findUsersBySiteWithRoles = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { userHasSites: { site: { id: siteId } } },
+        relations: { 
+          userRoles: { role: true },
+          userHasSites: { site: true }
+        },
+      });
+
+      return users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.userRoles.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name
+        })),
+        sites: user.userHasSites.map((userHasSite) => ({
+          id: userHasSite.site.id,
+          name: userHasSite.site.name,
+          logo: userHasSite.site.logo
+        }))
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
