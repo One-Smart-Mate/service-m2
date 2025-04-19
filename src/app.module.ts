@@ -21,6 +21,9 @@ import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PositionModule } from './modules/position/position.module';
 import { CiltModule } from './modules/cilt/cilt.module';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggingInterceptor } from './interceptors/logging.interceptor';
+import { CustomLoggerService } from './common/logger/logger.service';
 
 @Module({
   imports: [
@@ -45,6 +48,13 @@ import { CiltModule } from './modules/cilt/cilt.module';
     CiltModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    CustomLoggerService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
 })
 export class AppModule {}

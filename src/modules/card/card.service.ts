@@ -33,6 +33,8 @@ import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
 import { stringify } from 'querystring';
+import { UserEntity } from '../users/entities/user.entity';
+import { NotFoundException } from '@nestjs/common';
 
 @Injectable()
 export class CardService {
@@ -50,6 +52,8 @@ export class CardService {
     private readonly preclassifierService: PreclassifierService,
     private readonly userService: UsersService,
     private readonly firebaseService: FirebaseService,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
 
   findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
@@ -1074,4 +1078,47 @@ export class CardService {
     });
     return cards;
   }
+
+  findUserCards = async (userId: number) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: userId },
+        relations: ['userHasSites', 'userHasSites.site']
+      });
+
+      if (!user || !user.userHasSites || user.userHasSites.length === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const userSite = user.userHasSites[0].site;
+
+      const cards = await this.cardRepository.find({
+        where: { 
+          siteId: userSite.id,
+          mechanicId: userId
+        },
+        order: { siteCardId: 'DESC' }
+      });
+
+      if (cards) {
+        const allEvidencesMap = await this.findAllEvidences(userSite.id);
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          card['levelName'] = card.nodeName;
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+      return cards;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

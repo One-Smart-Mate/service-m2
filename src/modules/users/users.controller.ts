@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
 import { plainToClass } from 'class-transformer';
@@ -11,6 +11,8 @@ import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { PositionResponseDTO } from './models/position.response.dto';
 import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
 import { LogoutDTO } from './models/logout.dto';
+import { stringConstants } from 'src/utils/string.constant';
+import { SendCodeEmailDto } from './models/send.code.email.dto';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -41,8 +43,9 @@ export class UsersController {
   }
 
   @Post('/send-code')
-  sendCodeToEmail(@Body('email') email: string) {
-    return this.usersService.sendCodeToEmail(email);
+  @ApiBody({ type: SendCodeEmailDto })
+  sendCodeToEmail(@Body() sendCodeEmailDto: SendCodeEmailDto) {
+    return this.usersService.sendCodeToEmail(sendCodeEmailDto.email, sendCodeEmailDto.translation);
   }
   @Post('/verify-code')
   veryfyCode(@Body() sendCodeDTO: SendCodeDTO) {
@@ -102,5 +105,14 @@ export class UsersController {
   @ApiOkResponse({ type: [PositionResponseDTO] })
   getUserPositions(@Param('userId') userId: number) {
     return this.usersService.findPositionsByUserId(+userId);
+  }
+
+  @Get('/site/:siteId/roles')
+  @ApiOperation({ summary: 'Get users by site with roles' })
+  @ApiParam({ name: 'siteId', type: 'number' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Site not found' })
+  async findUsersBySiteWithRoles(@Param('siteId') siteId: number) {
+    return this.usersService.findUsersBySiteWithRoles(siteId);
   }
 }

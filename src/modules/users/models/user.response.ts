@@ -16,12 +16,14 @@ export class UserResponse {
   companyId: number;
   companyName: string;
   sites: Site[];
+  app_history: number;
 
   constructor(
     user: UserEntity,
     token: string,
     roles: string[],
     companyName: string,
+    app_history: number,
   ) {
     this.userId = user.id;
     this.name = user.name;
@@ -36,5 +38,6 @@ export class UserResponse {
       name: userHasSite.site.name,
       logo: userHasSite.site.logo,
     }));
+    this.app_history = app_history;
   }
 }
