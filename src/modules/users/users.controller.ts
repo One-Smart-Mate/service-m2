@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
 import { plainToClass } from 'class-transformer';
@@ -105,5 +105,14 @@ export class UsersController {
   @ApiOkResponse({ type: [PositionResponseDTO] })
   getUserPositions(@Param('userId') userId: number) {
     return this.usersService.findPositionsByUserId(+userId);
+  }
+
+  @Get('/site/:siteId/roles')
+  @ApiOperation({ summary: 'Get users by site with roles' })
+  @ApiParam({ name: 'siteId', type: 'number' })
+  @ApiResponse({ status: 200, description: 'Users retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Site not found' })
+  async findUsersBySiteWithRoles(@Param('siteId') siteId: number) {
+    return this.usersService.findUsersBySiteWithRoles(siteId);
   }
 }
