@@ -2,34 +2,41 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { UserEntity } from '../users/entities/user.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { sendCodeMessage, sendWelcomeMessage, sendCardAssignmentMessage } from './templates/email.templates';
+import { emailTemplates } from './templates/email.templates';
 import { stringConstants } from 'src/utils/string.constant';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class MailService {
-  cardRepository: any;
-  constructor(private mailerService: MailerService) {}
+  constructor(
+    private mailerService: MailerService,
+    private readonly logger: CustomLoggerService
+  ) {}
 
-  async sendResetPasswordCode(user: UserEntity, code: string) {
+  async sendResetPasswordCode(user: UserEntity, resetCode: string, translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES) {
     try {
+      this.logger.logEmail('Sending password reset email', { email: user.email });
       await this.mailerService.sendMail({
         to: user.email,
-        subject: stringConstants.resetPasswordEmailSubject,
-        html: sendCodeMessage(user.name, code, stringConstants.primaryColor),
+        subject: stringConstants.emailTemplates[translation].resetPassword.subject,
+        html: emailTemplates[translation].sendCodeMessage(user.name, resetCode, stringConstants.primaryColor),
       });
     } catch (exception) {
+      this.logger.logException('MailService', 'sendResetPasswordCode', exception);
       HandleException.exception(exception);
     }
   }
 
-  async sendWelcomeEmail(user: UserEntity, appUrl: string) {
+  async sendWelcomeEmail(user: UserEntity, appUrl: string, translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES) {
     try {
+      this.logger.logEmail('Sending welcome email', { email: user.email });
       await this.mailerService.sendMail({
         to: user.email,
-        subject: stringConstants.welcomeEmailSubject,
-        html: sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
+        subject: stringConstants.emailTemplates[translation].welcome.subject,
+        html: emailTemplates[translation].sendWelcomeMessage(user.name, appUrl, stringConstants.primaryColor),
       });
     } catch (exception) {
+      this.logger.logException('MailService', 'sendWelcomeEmail', exception);
       HandleException.exception(exception);
     }
   }
@@ -37,17 +44,19 @@ export class MailService {
   async sendCardAssignmentEmail(
     user: Partial<UserEntity>, 
     cardId: number,
-    cardName: string
+    cardName: string,
+    translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES
   ) {
     try {
+      this.logger.logEmail('Sending card assignment email', { email: user.email, cardId, cardName });
       const link = `${process.env.URL_WEB}/external/card/${cardId}/details?cardName=${encodeURIComponent(cardName)}`;
       await this.mailerService.sendMail({
         to: user.email,
-        subject: `${stringConstants.asignationCard} ${cardName}`,
-        html: sendCardAssignmentMessage(user.name, cardName, link),
+        subject: stringConstants.emailTemplates[translation].cardAssignment.subject,
+        html: emailTemplates[translation].sendCardAssignmentMessage(user.name, cardName, link, stringConstants.primaryColor),
       });
-  
     } catch (exception) { 
+      this.logger.logException('MailService', 'sendCardAssignmentEmail', exception);
       HandleException.exception(exception);
     }
   }

@@ -5,11 +5,13 @@ import {
   IsArray,
   IsEmail,
   IsInt,
+  IsOptional,
   IsPositive,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import { stringConstants } from 'src/utils/string.constant';
 
 export class CreateUserDTO {
   @ApiProperty({ description: 'Name of the user' })
@@ -46,5 +48,14 @@ export class CreateUserDTO {
   @ArrayNotEmpty()
   @ArrayMinSize(1)
   roles: number[];
-  
+
+  @ApiProperty({ 
+    description: 'Language of the welcome email', 
+    example: 'ES',
+    enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
+    default: stringConstants.LANG_ES,
+    required: false
+  })
+  @IsString()
+  translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
 }

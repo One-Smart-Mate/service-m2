@@ -1,19 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsEmail, IsOptional, IsString } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
-export class SendCardAssignmentDto {
-  @ApiProperty({ description: 'User ID', example: 1 })
-  @IsNumber()
-  userId: number;
-
-  @ApiProperty({ description: 'Card ID', example: 1 })
-  @IsNumber()
-  cardId: number;
-
-  @ApiProperty({ description: 'Card name', example: 'Maintenance card' })
-  @IsString()
-  cardName: string;
+export class SendCodeEmailDto {
+  @ApiProperty({ description: 'email', example: 'username@domain' })
+  @Transform(({ value }) => value.trim())
+  @IsEmail()
+  email: string;
 
   @ApiProperty({ 
     description: 'Language of the email', 
@@ -25,4 +19,4 @@ export class SendCardAssignmentDto {
   @IsString()
   @IsOptional()
   translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
-}
+} 
