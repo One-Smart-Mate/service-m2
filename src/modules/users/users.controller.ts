@@ -13,6 +13,7 @@ import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.deco
 import { LogoutDTO } from './models/logout.dto';
 import { stringConstants } from 'src/utils/string.constant';
 import { SendCodeEmailDto } from './models/send.code.email.dto';
+import { UserWithPositionsResponseDTO } from './models/user.with.positions.response.dto';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -105,6 +106,13 @@ export class UsersController {
   @ApiOkResponse({ type: [PositionResponseDTO] })
   getUserPositions(@Param('userId') userId: number) {
     return this.usersService.findPositionsByUserId(+userId);
+  }
+
+  @Get('/site/:siteId/positions')
+  @ApiParam({ name: 'siteId', type: 'number' })
+  @ApiOkResponse({ type: [UserWithPositionsResponseDTO] })
+  getUsersBySiteWithPositions(@Param('siteId') siteId: number) {
+    return this.usersService.findUsersBySiteWithPositions(+siteId);
   }
 
   @Get('/site/:siteId/roles')

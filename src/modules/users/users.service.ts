@@ -658,4 +658,37 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
+
+  findUsersBySiteWithPositions = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { userHasSites: { site: { id: siteId } } },
+        relations: { 
+          usersPositions: { position: true }
+        },
+      });
+
+      return users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        positions: user.usersPositions.map((userPosition) => ({
+          id: userPosition.position.id,
+          name: userPosition.position.name,
+          description: userPosition.position.description,
+          route: userPosition.position.route,
+          levelId: userPosition.position.levelId,
+          levelName: userPosition.position.levelName,
+          areaId: userPosition.position.areaId,
+          areaName: userPosition.position.areaName,
+          siteId: userPosition.position.siteId,
+          siteName: userPosition.position.siteName,
+          siteType: userPosition.position.siteType,
+          status: userPosition.position.status
+        }))
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
