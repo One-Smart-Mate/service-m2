@@ -9,7 +9,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 export class OplDetailsController {
   constructor(private readonly oplDetailsService: OplDetailsService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all OPL details' })
   @ApiResponse({ status: 200, description: 'List of OPL details'})
   async findAll() {
@@ -24,14 +24,14 @@ export class OplDetailsController {
     return await this.oplDetailsService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new OPL detail' })
   @ApiResponse({ status: 201, description: 'OPL detail created successfully'})
   async create(@Body() createOplDetailsDto: CreateOplDetailsDTO) {
     return await this.oplDetailsService.create(createOplDetailsDto);
   }
 
-  @Put()
+  @Put("/update")
   @ApiOperation({ summary: 'Update an OPL detail' })
   @ApiResponse({ status: 200, description: 'OPL detail updated successfully'})
   @ApiResponse({ status: 404, description: 'OPL detail not found' })

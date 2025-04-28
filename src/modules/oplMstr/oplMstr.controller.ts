@@ -10,7 +10,7 @@ import { UpdateOplMstrDTO } from './models/dto/updateOplMstr.dto';
 export class OplMstrController {
   constructor(private readonly oplMstrService: OplMstrService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all OPLs' })
   @ApiResponse({ status: 200, description: 'List of OPLs'})
   async findAll() {
@@ -25,14 +25,14 @@ export class OplMstrController {
     return await this.oplMstrService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new OPL' })
   @ApiResponse({ status: 201, description: 'OPL created successfully'})
   async create(@Body() createOplDto: CreateOplMstrDTO) {
     return await this.oplMstrService.create(createOplDto);
   }
 
-  @Put()
+  @Put("/update")
   @ApiOperation({ summary: 'Update an OPL' })
   @ApiResponse({ status: 200, description: 'OPL updated successfully'})
   @ApiResponse({ status: 404, description: 'OPL not found' })

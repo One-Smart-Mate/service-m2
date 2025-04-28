@@ -9,7 +9,7 @@ import { UpdateCiltSequencesEvidenceDTO } from './models/dtos/updateCiltSequence
 export class CiltSequencesEvidencesController {
   constructor(private readonly ciltSequencesEvidencesService: CiltSequencesEvidencesService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all CILT evidences' })
   async findAll() {
     return await this.ciltSequencesEvidencesService.findAll();
@@ -22,20 +22,19 @@ export class CiltSequencesEvidencesController {
     return await this.ciltSequencesEvidencesService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new CILT evidence' })
   @ApiBody({ type: CreateCiltSequencesEvidenceDTO })
   async create(@Body() createCiltSequencesEvidenceDTO: CreateCiltSequencesEvidenceDTO) {
     return await this.ciltSequencesEvidencesService.create(createCiltSequencesEvidenceDTO);
   }
 
-  @Put(':id')
+  @Put("/update")
   @ApiOperation({ summary: 'Update a CILT evidence' })
   @ApiBody({ type: UpdateCiltSequencesEvidenceDTO })
   async update(
-    @Param('id') id: number,
     @Body() updateCiltSequencesEvidenceDTO: UpdateCiltSequencesEvidenceDTO,
   ) {
-    return await this.ciltSequencesEvidencesService.update(id, updateCiltSequencesEvidenceDTO);
+    return await this.ciltSequencesEvidencesService.update(updateCiltSequencesEvidenceDTO);
   }
 } 

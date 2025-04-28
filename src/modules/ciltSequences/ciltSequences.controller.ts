@@ -10,7 +10,7 @@ import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
 export class CiltSequencesController {
   constructor(private readonly ciltSequencesService: CiltSequencesService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all CILT sequences' })
   async findAll() {
     return await this.ciltSequencesService.findAll();
@@ -23,17 +23,17 @@ export class CiltSequencesController {
     return await this.ciltSequencesService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new CILT sequence' })
   @ApiBody({ type: CreateCiltSequenceDTO })
   async create(@Body() createCiltSequenceDto: CreateCiltSequenceDTO) {
     return await this.ciltSequencesService.create(createCiltSequenceDto);
   }
 
-  @Put(':id')
+  @Put("/update")
   @ApiOperation({ summary: 'Update a CILT sequence' })
   @ApiBody({ type: UpdateCiltSequenceDTO })
-  async update(@Param('id') id: number, @Body() updateCiltSequenceDto: UpdateCiltSequenceDTO) {
-    return await this.ciltSequencesService.update(id, updateCiltSequenceDto);
+  async update(@Body() updateCiltSequenceDto: UpdateCiltSequenceDTO) {
+    return await this.ciltSequencesService.update(updateCiltSequenceDto);
   }
 } 

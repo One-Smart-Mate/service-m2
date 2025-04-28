@@ -9,7 +9,7 @@ import { UpdateCiltTypeDTO } from './models/dto/updateCiltType.dto';
 export class CiltTypesController {
   constructor(private readonly ciltTypesService: CiltTypesService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all CILT types' })
   async findAll() {
     return await this.ciltTypesService.findAll();
@@ -22,14 +22,14 @@ export class CiltTypesController {
     return await this.ciltTypesService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new CILT type' })
   @ApiBody({ type: CreateCiltTypeDTO })
   async create(@Body() createCiltTypeDto: CreateCiltTypeDTO) {
     return await this.ciltTypesService.create(createCiltTypeDto);
   }
 
-  @Put()
+  @Put("/update")
   @ApiOperation({ summary: 'Update a CILT type' })
   @ApiBody({ type: UpdateCiltTypeDTO })
   async update(@Body() updateCiltTypeDto: UpdateCiltTypeDTO) {

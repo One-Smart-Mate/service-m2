@@ -10,7 +10,7 @@ import { UpdateCiltFrequenciesDTO } from './models/dto/updateCiltFrequencies.dto
 export class CiltFrequenciesController {
   constructor(private readonly ciltFrequenciesService: CiltFrequenciesService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all CILT frequencies' })
   async findAll() {
     return await this.ciltFrequenciesService.findAll();
@@ -23,17 +23,17 @@ export class CiltFrequenciesController {
     return await this.ciltFrequenciesService.findById(id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new CILT frequency' })
   @ApiBody({ type: CreateCiltFrequenciesDTO })
   async create(@Body() createCiltFrequencyDto: CreateCiltFrequenciesDTO) {
     return await this.ciltFrequenciesService.create(createCiltFrequencyDto);
   }
 
-  @Put(':id')
+  @Put("/update")
   @ApiOperation({ summary: 'Update a CILT frequency' })
   @ApiBody({ type: UpdateCiltFrequenciesDTO })
-  async update(@Param('id') id: number, @Body() updateCiltFrequencyDto: UpdateCiltFrequenciesDTO) {
-    return await this.ciltFrequenciesService.update(id, updateCiltFrequencyDto);
+  async update(@Body() updateCiltFrequencyDto: UpdateCiltFrequenciesDTO) {
+    return await this.ciltFrequenciesService.update(updateCiltFrequencyDto);
   }
 } 

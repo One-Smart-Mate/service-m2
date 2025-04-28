@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsBoolean, IsDate } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsBoolean, IsDateString } from 'class-validator';
 
 export class CreateCiltMstrDTO {
   @ApiProperty({ description: 'ID of the site' })
@@ -94,6 +94,6 @@ export class CreateCiltMstrDTO {
 
   @ApiProperty({ description: 'Date of last use' })
   @IsOptional()
-  @IsDate()
-  dateOfLastUsed?: Date;
+  @IsDateString()
+  dateOfLastUsed?: string | Date;
 }

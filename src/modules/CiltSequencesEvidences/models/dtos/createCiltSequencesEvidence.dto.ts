@@ -1,24 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateCiltSequencesEvidenceDTO {
-  @ApiProperty({ description: 'ID del CILT' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
   @IsNumber()
-  ciltId: number;
+  siteId?: number;
 
-  @ApiProperty({ description: 'Tipo de evidencia' })
-  @IsNotEmpty()
-  @IsString()
-  evidenceType: string;
+  @ApiProperty({ description: 'Position ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  positionId?: number;
 
-  @ApiProperty({ description: 'URL de la evidencia' })
-  @IsNotEmpty()
-  @IsString()
-  evidenceUrl: string;
+  @ApiProperty({ description: 'CILT ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  ciltId?: number;
 
-  @ApiProperty({ description: 'Descripción de la evidencia' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'CILT Executions Evidence ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  ciltExecutionsEvidencesId?: number;
+
+  @ApiProperty({ description: 'Evidence URL', required: false })
+  @IsOptional()
   @IsString()
-  description: string;
+  evidenceUrl?: string;
 } 

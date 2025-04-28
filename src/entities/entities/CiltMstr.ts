@@ -1,11 +1,7 @@
-import {
-  Column,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity('cilt_mstr')
-export class CiltMstrEntity {
+@Entity("cilt_mstr", { schema: "railway" })
+export class CiltMstr {
   @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
@@ -92,4 +88,3 @@ export class CiltMstrEntity {
   @Column("timestamp", { name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 }
-

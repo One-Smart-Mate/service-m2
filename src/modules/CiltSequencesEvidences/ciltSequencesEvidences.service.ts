@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CiltSequencesEvidencesEntity } from './entities/ciltSequencesEvidences.entity';
@@ -31,7 +31,9 @@ export class CiltSequencesEvidencesService {
         where: { id },
       });
       if (!ciltEvidence) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES,
+        );
       }
       return ciltEvidence;
     } catch (exception) {
@@ -39,22 +41,28 @@ export class CiltSequencesEvidencesService {
     }
   };
 
-  create = async (createCiltSequencesEvidenceDTO: CreateCiltSequencesEvidenceDTO) => {
+  create = async (
+    createCiltSequencesEvidenceDTO: CreateCiltSequencesEvidenceDTO,
+  ) => {
     try {
-      const ciltEvidence = this.ciltSequencesEvidencesRepository.create(createCiltSequencesEvidenceDTO);
+      const ciltEvidence = this.ciltSequencesEvidencesRepository.create(
+        createCiltSequencesEvidenceDTO,
+      );
       return await this.ciltSequencesEvidencesRepository.save(ciltEvidence);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  update = async (id: number, updateCiltSequencesEvidenceDTO: UpdateCiltSequencesEvidenceDTO) => {
+  update = async (
+    updateCiltSequencesEvidenceDTO: UpdateCiltSequencesEvidenceDTO,
+  ) => {
     try {
-      const ciltEvidence = await this.findById(id);
+      const ciltEvidence = await this.findById(updateCiltSequencesEvidenceDTO.id);
       Object.assign(ciltEvidence, updateCiltSequencesEvidenceDTO);
       return await this.ciltSequencesEvidencesRepository.save(ciltEvidence);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-} 
+}

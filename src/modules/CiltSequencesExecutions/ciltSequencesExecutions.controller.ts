@@ -9,7 +9,7 @@ import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequenc
 export class CiltSequencesExecutionsController {
   constructor(private readonly ciltSequencesExecutionsService: CiltSequencesExecutionsService) {}
 
-  @Get()
+  @Get("/all")
   @ApiOperation({ summary: 'Get all CILT sequence executions' })
   findAll() {
     return this.ciltSequencesExecutionsService.findAll();
@@ -22,18 +22,18 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findById(+id);
   }
 
-  @Post()
+  @Post("/create")
   @ApiOperation({ summary: 'Create a new CILT sequence execution' })
   @ApiBody({ type: CreateCiltSequencesExecutionDTO })
   create(@Body() createCiltSequencesExecutionDTO: CreateCiltSequencesExecutionDTO) {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
   }
 
-  @Put(':id')
+  @Put("/update")
   @ApiOperation({ summary: 'Update a CILT sequence execution' })
   @ApiBody({ type: UpdateCiltSequencesExecutionDTO })
-  update(@Param('id') id: number, @Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
-    return this.ciltSequencesExecutionsService.update(id, updateCiltSequencesExecutionDTO);
+  update(@Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.update(updateCiltSequencesExecutionDTO);
   }
   
 } 

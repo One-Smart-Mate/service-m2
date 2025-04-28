@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { CiltSequencesEntity } from './entities/ciltSequences.entity';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
-import { ResponseCiltSequenceDTO } from './models/dto/responseCiltSequence.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
@@ -17,8 +16,7 @@ export class CiltSequencesService {
 
   findAll = async () => {
     try {
-      const sequences = await this.ciltSequencesRepository.find();
-      return sequences.map(sequence => this.mapToResponseDTO(sequence));
+      return await this.ciltSequencesRepository.find();
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -30,7 +28,7 @@ export class CiltSequencesService {
       if (!sequence) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
       }
-      return this.mapToResponseDTO(sequence);
+      return sequence;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -39,53 +37,19 @@ export class CiltSequencesService {
   create = async (createDTO: CreateCiltSequenceDTO) => {
     try {
       const sequence = this.ciltSequencesRepository.create(createDTO);
-      const savedSequence = await this.ciltSequencesRepository.save(sequence);
-      return this.mapToResponseDTO(savedSequence);
+      return await this.ciltSequencesRepository.save(sequence);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  update = async (id: number, updateDTO: UpdateCiltSequenceDTO) => {
+  update = async (updateDTO: UpdateCiltSequenceDTO) => {
     try {
-      const sequence = await this.findById(id);
+      const sequence = await this.findById(updateDTO.id);
       Object.assign(sequence, updateDTO);
-      const updatedSequence = await this.ciltSequencesRepository.save(sequence);
-      return this.mapToResponseDTO(updatedSequence);
+      return await this.ciltSequencesRepository.save(sequence);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-
-
-  private mapToResponseDTO(sequence: CiltSequencesEntity): ResponseCiltSequenceDTO {
-    const responseDTO = new ResponseCiltSequenceDTO();
-    responseDTO.id = sequence.id;
-    responseDTO.siteId = sequence.siteId;
-    responseDTO.siteName = sequence.siteName;
-    responseDTO.areaId = sequence.areaId;
-    responseDTO.areaName = sequence.areaName;
-    responseDTO.positionId = sequence.positionId;
-    responseDTO.positionName = sequence.positionName;
-    responseDTO.ciltMstrId = sequence.ciltMstrId;
-    responseDTO.ciltMstrName = sequence.ciltMstrName;
-    responseDTO.levelId = sequence.levelId;
-    responseDTO.levelName = sequence.levelName;
-    responseDTO.order = sequence.order;
-    responseDTO.secuenceList = sequence.secuenceList;
-    responseDTO.secuenceColor = sequence.secuenceColor;
-    responseDTO.ciltTypeId = sequence.ciltTypeId;
-    responseDTO.ciltTypeName = sequence.ciltTypeName;
-    responseDTO.referenceOplSop = sequence.referenceOplSop;
-    responseDTO.standardTime = sequence.standardTime;
-    responseDTO.standardOk = sequence.standardOk;
-    responseDTO.remediationOplSop = sequence.remediationOplSop;
-    responseDTO.toolsRequired = sequence.toolsRequired;
-    responseDTO.stoppageReason = sequence.stoppageReason;
-    responseDTO.quantityPicturesCreate = sequence.quantityPicturesCreate;
-    responseDTO.quantityPicturesClose = sequence.quantityPicturesClose;
-    responseDTO.createdAt = sequence.createdAt;
-    responseDTO.updatedAt = sequence.updatedAt;
-    return responseDTO;
-  }
 } 
