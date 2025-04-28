@@ -6,12 +6,23 @@ import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequenc
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import { PositionEntity } from 'src/modules/position/entities/position.entity';
+import { UsersService } from 'src/modules/users/users.service';
+import { MailService } from 'src/modules/mail/mail.service';
+import { FirebaseService } from 'src/modules/firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
   constructor(
     @InjectRepository(CiltSequencesExecutionsEntity)
     private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
+    @InjectRepository(PositionEntity)
+    private readonly positionRepository: Repository<PositionEntity>,
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findAll = async () => {
@@ -79,7 +90,36 @@ export class CiltSequencesExecutionsService {
     try {
       const execution = await this.findById(updateDTO.id);
       Object.assign(execution, updateDTO);
-      return await this.ciltSequencesExecutionsRepository.save(execution);
+      const updatedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
+
+      if (updateDTO.stoppageReason === 1) {
+        const position = await this.positionRepository.findOneBy({ nodeResponsableId: execution.positionId });
+        if (position) {
+          const tokens = await this.usersService.getUserToken(position.nodeResponsableId);
+          
+          if (tokens.length > 0) {
+            await this.firebaseService.sendMultipleMessage(
+              new NotificationDTO(
+                stringConstants.ciltTitle,
+                `La posición ${position.name} ha reportado una condición de paro`,
+                stringConstants.ciltNotificationType,
+              ),
+              tokens,
+            );
+          }
+          const user = await this.usersService.findById(position.nodeResponsableId);
+
+          if (user && user.email) {
+            await this.mailService.sendCiltStoppageNotification(
+              user,
+              position.name,
+              stringConstants.LANG_ES,
+            );
+          }
+        }
+      }
+
+      return updatedExecution;
     } catch (exception) {
       HandleException.exception(exception);
     }

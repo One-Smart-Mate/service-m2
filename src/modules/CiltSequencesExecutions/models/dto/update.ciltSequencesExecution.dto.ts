@@ -67,7 +67,7 @@ export class UpdateCiltSequencesExecutionDTO {
   @IsNumber()
   evidenceAtFinal?: number;
 
-  @ApiProperty({ description: 'Stoppage reason', required: false })
+  @ApiProperty({ description: 'Stoppage reason', default: "0", required: false })
   @IsOptional()
   @IsNumber()
   stoppageReason?: number;

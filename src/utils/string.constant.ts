@@ -40,6 +40,9 @@ export const stringConstants = {
   cardsDescription: 'Se ha agregado una nueva tarjeta de tipo:',
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
+  //Notifications for CILT
+  ciltTitle: 'Notificación de Paro CILT',
+  ciltNotificationType: 'CILT_STOPPAGE',
   updateAppNotificationType: 'UPDATE_APP',
   cardAssignedTitle: 'Card [card_id] has been assigned to you.',
   cardAssignedDescription: 'You have a new card assigned',
@@ -170,6 +173,14 @@ export const stringConstants = {
         footer: 'Si tienes alguna pregunta, por favor contáctanos.',
         help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
         team: '– El Equipo OSM'
+      },
+      ciltStoppage: {
+        subject: 'Notificación de Paro CILT',
+        greeting: 'Hola',
+        message: 'Se ha reportado una condición de paro en la posición',
+        warning: 'Por favor, revisa esta situación lo antes posible.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
       }
     },
     [LANG_EN]: {
@@ -196,6 +207,14 @@ export const stringConstants = {
         message: 'You have been assigned the card',
         button: 'View Card',
         footer: 'If you have any questions, please contact us.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      },
+      ciltStoppage: {
+        subject: 'CILT Stoppage Notification',
+        greeting: 'Hello',
+        message: 'A stoppage condition has been reported in position',
+        warning: 'Please review this situation as soon as possible.',
         help: 'Need help? Reach out to us anytime—we\'re here for you!',
         team: '– The OSM Team'
       }

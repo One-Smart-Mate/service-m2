@@ -60,4 +60,22 @@ export class MailService {
       HandleException.exception(exception);
     }
   }
+
+  async sendCiltStoppageNotification(
+    user: UserEntity,
+    positionName: string,
+    translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES
+  ) {
+    try {
+      this.logger.logEmail('Sending CILT stoppage notification', { email: user.email, positionName });
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: stringConstants.emailTemplates[translation].ciltStoppage.subject,
+        html: emailTemplates[translation].sendCiltStoppageMessage(user.name, positionName, stringConstants.primaryColor),
+      });
+    } catch (exception) {
+      this.logger.logException('MailService', 'sendCiltStoppageNotification', exception);
+      HandleException.exception(exception);
+    }
+  }
 }

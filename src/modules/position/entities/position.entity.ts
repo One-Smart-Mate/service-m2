@@ -4,7 +4,7 @@ import { Exclude } from 'class-transformer';
 
 @Entity('positions')
 export class PositionEntity {
-  @PrimaryGeneratedColumn({ name: 'ID', type: 'int', unsigned: true })
+  @PrimaryGeneratedColumn({ name: 'id', type: 'int', unsigned: true })
   id: number;
 
   @Column({ name: 'site_id', type: 'int', nullable: true })
@@ -27,6 +27,12 @@ export class PositionEntity {
 
   @Column({ name: 'level_name', type: 'varchar', length: 45, nullable: true })
   levelName: string;
+
+  @Column({ name: 'node_responsable_id', type: 'int', nullable: true })
+  nodeResponsableId: number;
+
+  @Column({ name: 'node_responsable_name', type: 'varchar', length: 100, nullable: true })
+  nodeResponsableName: string;
 
   @Column({ name: 'route', type: 'varchar', length: 250, nullable: true })
   route: string;
