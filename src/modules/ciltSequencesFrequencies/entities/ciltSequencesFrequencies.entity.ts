@@ -1,21 +1,15 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('repository')
-export class Repository {
+@Entity('cilt_secuences_frecuencies')
+export class CiltSequencesFrequencies {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ name: 'name' })
-  name: string;
+  @Column({ name: 'cilt_secuence_id' })
+  ciltSecuenceId: number;
 
-  @Column({ name: 'description' })
-  description: string;
-
-  @Column({ name: 'url' })
-  url: string;
-
-  @Column({ name: 'type' })
-  type: string;
+  @Column({ name: 'frecuency_id' })
+  frecuencyId: number;
 
   @Column({ name: 'status', default: 'A' })
   status: string;
@@ -25,5 +19,4 @@ export class Repository {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-}
-  
+} 

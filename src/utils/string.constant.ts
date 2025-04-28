@@ -97,8 +97,16 @@ export const stringConstants = {
   roles: 'Roles not found',
   cardNotFound: 'Card not found',
   positionNotFound: 'Position not found',
-  ciltNotFound: 'Cilt not found',
-
+  ciltMstrNotFound: 'Cilt master not found',
+  ciltSequencesEvidencesNotFound: 'Cilt sequences evidences not found',
+  ciltSequencesExecutionsNotFound: 'Cilt sequences executions not found',
+  ciltTypesNotFound: 'Cilt types not found',
+  ciltSequencesNotFound: 'Cilt sequences not found',
+  ciltSequencesFrequenciesNotFound: 'Cilt sequences frequencies not found',
+  ciltFrequenciesNotFound: 'Cilt frequencies not found',
+  oplMstrNotFound: 'OPL master not found',
+  oplDetailsNotFound: 'OPL details not found',
+  repositoryNotFound: 'Repository not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',

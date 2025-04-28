@@ -20,7 +20,14 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PositionModule } from './modules/position/position.module';
-import { CiltModule } from './modules/cilt/cilt.module';
+import { CiltMstrModule } from './modules/ciltMstr/ciltMstr.module';
+import { CiltSequencesFrequenciesModule } from './modules/ciltSequencesFrequencies/ciltSequencesFrequencies.module';
+import { CiltSequencesModule } from './modules/ciltSequences/ciltSequences.module';
+import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
+import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
+import { OplDetailsModule } from './modules/oplDetails/oplDetails.module';
+import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
+import { RepositoryModule } from './modules/repository/repository.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
@@ -45,7 +52,14 @@ import { CustomLoggerService } from './common/logger/logger.service';
     ExportModule,
     NotificationsModule,
     PositionModule,
-    CiltModule
+    CiltMstrModule,
+    CiltSequencesModule,
+    CiltSequencesFrequenciesModule,
+    CiltSequencesExecutionsModule,
+    CiltSequencesEvidencesModule,
+    OplMstrModule,
+    OplDetailsModule,
+    RepositoryModule,
   ],
   controllers: [AppController],
   providers: [

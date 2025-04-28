@@ -1,21 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 
-@Entity('repository')
-export class Repository {
+
+@Entity('opl_details')
+export class OplDetails {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column({ name: 'opl_id' })
+  oplId: number;
 
   @Column({ name: 'name' })
   name: string;
 
   @Column({ name: 'description' })
   description: string;
-
-  @Column({ name: 'url' })
-  url: string;
-
-  @Column({ name: 'type' })
-  type: string;
 
   @Column({ name: 'status', default: 'A' })
   status: string;
@@ -25,5 +23,5 @@ export class Repository {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-}
-  
+
+} 

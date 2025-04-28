@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('repository')
-export class Repository {
+@Entity('opl_mstr')
+export class OplMstr {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -11,12 +11,6 @@ export class Repository {
   @Column({ name: 'description' })
   description: string;
 
-  @Column({ name: 'url' })
-  url: string;
-
-  @Column({ name: 'type' })
-  type: string;
-
   @Column({ name: 'status', default: 'A' })
   status: string;
 
@@ -25,5 +19,4 @@ export class Repository {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-}
-  
+} 
