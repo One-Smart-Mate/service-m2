@@ -1,39 +1,78 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsDate } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsISO8601 } from 'class-validator';
 
 export class CreateCiltSequencesExecutionDTO {
-  @ApiProperty({ description: 'ID of the CILT' })
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  siteId?: number;
+
+  @ApiProperty({ description: 'Position ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  positionId?: number;
+
+  @ApiProperty({ description: 'CILT ID', required: false })
   @IsOptional()
   @IsNumber()
   ciltId?: number;
 
-  @ApiProperty({ description: 'ID of the sequence' })
+  @ApiProperty({ description: 'CILT Details ID', required: false })
   @IsOptional()
   @IsNumber()
-  sequenceId?: number;
+  ciltDetailsId?: number;
 
-  @ApiProperty({ description: 'ID of the user' })
+  @ApiProperty({ description: 'Sequence start time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
+  @IsOptional()
+  @IsISO8601()
+  secuenceStart?: string;
+
+  @ApiProperty({ description: 'Sequence stop time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
+  @IsOptional()
+  @IsISO8601()
+  secuenceStop?: string;
+
+  @ApiProperty({ description: 'Duration in seconds', required: false })
   @IsOptional()
   @IsNumber()
-  userId?: number;
+  duration?: number;
 
-  @ApiProperty({ description: 'Name of the user' })
+  @ApiProperty({ description: 'Standard to meet', required: false })
   @IsOptional()
   @IsString()
-  userName?: string;
+  standardOk?: string;
 
-  @ApiProperty({ description: 'Status of the execution', default: 'A' })
+  @ApiProperty({ description: 'Initial parameter', required: false })
   @IsOptional()
   @IsString()
-  status?: string;
+  initialParameter?: string;
 
-  @ApiProperty({ description: 'Date of execution' })
+  @ApiProperty({ description: 'Evidence at creation', required: false })
   @IsOptional()
-  @IsDate()
-  executionDate?: Date;
+  @IsNumber()
+  evidenceAtCreation?: number;
 
-  @ApiProperty({ description: 'Notes of the execution' })
+  @ApiProperty({ description: 'Final parameter', required: false })
   @IsOptional()
   @IsString()
-  notes?: string;
+  finalParameter?: string;
+
+  @ApiProperty({ description: 'Evidence at final', required: false })
+  @IsOptional()
+  @IsNumber()
+  evidenceAtFinal?: number;
+
+  @ApiProperty({ description: 'Stoppage reason', required: false })
+  @IsOptional()
+  @IsNumber()
+  stoppageReason?: number;
+
+  @ApiProperty({ description: 'AM tag', required: false })
+  @IsOptional()
+  @IsNumber()
+  amTag?: number;
+
+  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  createdAt: string;
 } 

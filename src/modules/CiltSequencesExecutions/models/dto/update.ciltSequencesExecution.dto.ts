@@ -1,8 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsNumber, IsString, IsDate } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsNumber, IsString, IsISO8601 } from 'class-validator';
 
 export class UpdateCiltSequencesExecutionDTO {
-  @ApiProperty({ description: 'ID de la ejecución' })
+  @ApiProperty({ description: 'Execution ID' })
   @IsNotEmpty()
   @IsNumber()
   id: number;
@@ -12,68 +12,72 @@ export class UpdateCiltSequencesExecutionDTO {
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'ID de la posición', required: false })
+  @ApiProperty({ description: 'Position ID', required: false })
   @IsOptional()
   @IsNumber()
   positionId?: number;
 
-  @ApiProperty({ description: 'ID del CILT', required: false })
+  @ApiProperty({ description: 'CILT ID', required: false })
   @IsOptional()
   @IsNumber()
   ciltId?: number;
 
-  @ApiProperty({ description: 'ID del detalle del CILT', required: false })
+  @ApiProperty({ description: 'CILT Details ID', required: false })
   @IsOptional()
   @IsNumber()
   ciltDetailsId?: number;
 
-  @ApiProperty({ description: 'Momento de inicio de la secuencia', required: false })
+  @ApiProperty({ description: 'Sequence start time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
   @IsOptional()
-  @IsDate()
-  secuenceStart?: Date;
+  @IsISO8601()
+  secuenceStart?: string;
 
-  @ApiProperty({ description: 'Momento de fin de la secuencia', required: false })
+  @ApiProperty({ description: 'Sequence stop time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
   @IsOptional()
-  @IsDate()
-  secuenceStop?: Date;
+  @IsISO8601()
+  secuenceStop?: string;
 
-  @ApiProperty({ description: 'Duración en segundos', required: false })
+  @ApiProperty({ description: 'Duration in seconds', required: false })
   @IsOptional()
   @IsNumber()
   duration?: number;
 
-  @ApiProperty({ description: 'Estándar a cumplir', required: false })
+  @ApiProperty({ description: 'Standard to meet', required: false })
   @IsOptional()
   @IsString()
   standardOk?: string;
 
-  @ApiProperty({ description: 'Parámetro inicial', required: false })
+  @ApiProperty({ description: 'Initial parameter', required: false })
   @IsOptional()
   @IsString()
   initialParameter?: string;
 
-  @ApiProperty({ description: 'Evidencia al inicio', required: false })
+  @ApiProperty({ description: 'Evidence at creation', required: false })
   @IsOptional()
   @IsNumber()
   evidenceAtCreation?: number;
 
-  @ApiProperty({ description: 'Parámetro final', required: false })
+  @ApiProperty({ description: 'Final parameter', required: false })
   @IsOptional()
   @IsString()
   finalParameter?: string;
 
-  @ApiProperty({ description: 'Evidencia al final', required: false })
+  @ApiProperty({ description: 'Evidence at final', required: false })
   @IsOptional()
   @IsNumber()
   evidenceAtFinal?: number;
 
-  @ApiProperty({ description: 'Motivo de paro', required: false })
+  @ApiProperty({ description: 'Stoppage reason', required: false })
   @IsOptional()
   @IsNumber()
   stoppageReason?: number;
 
-  @ApiProperty({ description: 'Tag AM', required: false })
+  @ApiProperty({ description: 'AM tag', required: false })
   @IsOptional()
   @IsNumber()
   amTag?: number;
+
+  @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  updatedAt: string;
 } 

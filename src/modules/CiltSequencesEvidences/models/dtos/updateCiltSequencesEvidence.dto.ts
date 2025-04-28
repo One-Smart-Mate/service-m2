@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsISO8601 } from 'class-validator';
 
 export class UpdateCiltSequencesEvidenceDTO {
   @ApiProperty({ description: 'Evidence ID' })

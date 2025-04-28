@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsISO8601 } from 'class-validator';
 
 export class CreateCiltSequencesEvidenceDTO {
   @ApiProperty({ description: 'Site ID', required: false })
@@ -26,4 +26,8 @@ export class CreateCiltSequencesEvidenceDTO {
   @IsOptional()
   @IsString()
   evidenceUrl?: string;
+
+  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  createdAt: string;
 } 

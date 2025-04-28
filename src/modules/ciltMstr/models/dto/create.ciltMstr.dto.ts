@@ -1,99 +1,137 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsBoolean, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsISO8601,
+  Length,
+} from 'class-validator';
 
 export class CreateCiltMstrDTO {
-  @ApiProperty({ description: 'ID of the site' })
+  @ApiProperty({ required: false, description: 'Site ID' })
   @IsOptional()
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'ID of the position' })
+  @ApiProperty({ required: false, description: 'Position ID' })
   @IsOptional()
   @IsNumber()
   positionId?: number;
 
-  @ApiProperty({ description: 'Name of the CILT' })
+  @ApiProperty({
+    required: false,
+    description: 'CILT name',
+    maxLength: 45,
+  })
   @IsOptional()
   @IsString()
-  name?: string;
+  @Length(1, 45)
+  ciltName?: string;
 
-  @ApiProperty({ description: 'Description of the CILT' })
+  @ApiProperty({
+    required: false,
+    description: 'CILT description',
+    maxLength: 255,
+  })
   @IsOptional()
   @IsString()
-  description?: string;
+  @Length(1, 255)
+  ciltDescription?: string;
 
-  @ApiProperty({ description: 'Tools required for the CILT' })
-  @IsOptional()
-  @IsString()
-  toolsRequired?: string;
-
-  @ApiProperty({ description: 'Standard OK status' })
-  @IsOptional()
-  @IsBoolean()
-  standardOk?: boolean;
-
-  @ApiProperty({ description: 'URL of the repository' })
-  @IsOptional()
-  @IsString()
-  repositoryUrl?: string;
-
-  @ApiProperty({ description: 'ID of the creator' })
+  @ApiProperty({ required: false, description: 'Creator ID' })
   @IsOptional()
   @IsNumber()
   creatorId?: number;
 
-  @ApiProperty({ description: 'Name of the creator' })
+  @ApiProperty({
+    required: false,
+    description: 'Creator name',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 100)
   creatorName?: string;
 
-  @ApiProperty({ description: 'ID of the reviewer' })
+  @ApiProperty({ required: false, description: 'Reviewer ID' })
   @IsOptional()
   @IsNumber()
   reviewerId?: number;
 
-  @ApiProperty({ description: 'Name of the reviewer' })
+  @ApiProperty({
+    required: false,
+    description: 'Reviewer name',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 100)
   reviewerName?: string;
 
-  @ApiProperty({ description: 'ID of the approver' })
+  @ApiProperty({ required: false, description: 'Approver ID' })
   @IsOptional()
   @IsNumber()
   approvedById?: number;
 
-  @ApiProperty({ description: 'Name of the approver' })
+  @ApiProperty({
+    required: false,
+    description: 'Approver name',
+    maxLength: 100,
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 100)
   approvedByName?: string;
 
-  @ApiProperty({ description: 'Standard time in minutes' })
+  @ApiProperty({
+    required: false,
+    description: 'Standard execution time in seconds',
+  })
   @IsOptional()
   @IsNumber()
   standardTime?: number;
 
-  @ApiProperty({ description: 'Learning time' })
+  @ApiProperty({
+    required: false,
+    description: 'Learning time',
+    maxLength: 25,
+  })
   @IsOptional()
   @IsString()
-  learningTime?: string;
+  @Length(1, 25)
+  learnigTime?: string;
 
-  @ApiProperty({ description: 'URL of the layout image' })
+  @ApiProperty({
+    required: false,
+    description: 'Layout image URL',
+    maxLength: 500,
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 500)
   urlImgLayout?: string;
 
-  @ApiProperty({ description: 'Order of the CILT' })
+  @ApiProperty({ required: false, description: 'CILT order', default: 1 })
   @IsOptional()
   @IsNumber()
   order?: number;
 
-  @ApiProperty({ description: 'Status of the CILT', default: 'A' })
+  @ApiProperty({
+    required: false,
+    description: 'CILT status',
+    default: 'A',
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 1)
   status?: string;
 
-  @ApiProperty({ description: 'Date of last use' })
+  @ApiProperty({ description: 'Last used date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsOptional()
-  @IsDateString()
-  dateOfLastUsed?: string | Date;
+  @IsISO8601()
+  dateOfLastUsed: string;
+
+  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  createdAt: string;
 }

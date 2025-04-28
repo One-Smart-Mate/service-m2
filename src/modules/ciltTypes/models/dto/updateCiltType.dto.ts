@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsISO8601 } from 'class-validator';
 
 export class UpdateCiltTypeDTO {
   @ApiProperty({ description: 'ID of the CILT type' })
@@ -12,13 +12,14 @@ export class UpdateCiltTypeDTO {
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'Name of the CILT type', required: false })
+  @ApiProperty({ description: 'Name of the CILT type', default: 'CILT', required: false })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiProperty({ description: 'Status of the CILT type', required: false })
+  @ApiProperty({ description: 'Status of the CILT type', default: 'A', required: false })
   @IsOptional()
   @IsString()
   status?: string;
+
 } 

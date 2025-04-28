@@ -21,17 +21,18 @@ import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PositionModule } from './modules/position/position.module';
 import { CiltMstrModule } from './modules/ciltMstr/ciltMstr.module';
+import { CiltTypesModule } from './modules/ciltTypes/ciltTypes.module';
 import { CiltSequencesFrequenciesModule } from './modules/ciltSequencesFrequencies/ciltSequencesFrequencies.module';
 import { CiltSequencesModule } from './modules/ciltSequences/ciltSequences.module';
-import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
-import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
+import { CiltSequencesExecutionsModule } from './modules/ciltSequencesExecutions/ciltSequencesExecutions.module';
+import { CiltSequencesEvidencesModule } from './modules/ciltSequencesEvidences/ciltSequencesEvidences.module';
 import { OplDetailsModule } from './modules/oplDetails/oplDetails.module';
 import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
 import { RepositoryModule } from './modules/repository/repository.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
-
+import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -53,6 +54,8 @@ import { CustomLoggerService } from './common/logger/logger.service';
     NotificationsModule,
     PositionModule,
     CiltMstrModule,
+    CiltTypesModule,
+    CiltFrequenciesModule,
     CiltSequencesModule,
     CiltSequencesFrequenciesModule,
     CiltSequencesExecutionsModule,
