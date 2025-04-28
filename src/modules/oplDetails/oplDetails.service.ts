@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { OplDetails } from './entities/oplDetails.entity';
+import { OplDetailsEntity } from './entities/oplDetails.entity';
 import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailsDTO } from './models/dto/updateOplDetails.dto';
-import { ResponseOplDetailsDTO } from './models/dto/responseOplDetails.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -14,14 +13,13 @@ import {
 @Injectable()
 export class OplDetailsService {
   constructor(
-    @InjectRepository(OplDetails)
-    private readonly oplDetailsRepository: Repository<OplDetails>,
+    @InjectRepository(OplDetailsEntity)
+    private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
   ) {}
 
   findAll = async () => {
     try {
-      const details = await this.oplDetailsRepository.find();
-      return details.map(detail => this.mapToResponseDTO(detail));
+      return await this.oplDetailsRepository.find();
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -33,7 +31,7 @@ export class OplDetailsService {
       if (!detail) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
       }
-      return this.mapToResponseDTO(detail);
+      return detail;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -42,10 +40,7 @@ export class OplDetailsService {
   create = async (createOplDetailsDto: CreateOplDetailsDTO) => {
     try {
       const detail = this.oplDetailsRepository.create(createOplDetailsDto);
-      const savedDetail = await this.oplDetailsRepository.save(detail);212118
-      212118
-      
-      return this.mapToResponseDTO(savedDetail);
+      return await this.oplDetailsRepository.save(detail);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -61,22 +56,9 @@ export class OplDetailsService {
       }
 
       Object.assign(detail, updateOplDetailsDto);
-      const updatedDetail = await this.oplDetailsRepository.save(detail);
-      return this.mapToResponseDTO(updatedDetail);
+      return await this.oplDetailsRepository.save(detail);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-
-  private mapToResponseDTO(detail: OplDetails): ResponseOplDetailsDTO {
-    const responseDTO = new ResponseOplDetailsDTO();
-    responseDTO.id = detail.id;
-    responseDTO.oplId = detail.oplId;
-    responseDTO.name = detail.name;
-    responseDTO.description = detail.description;
-    responseDTO.status = detail.status;
-    responseDTO.createdAt = detail.createdAt;
-    responseDTO.updatedAt = detail.updatedAt;
-    return responseDTO;
-  }
 } 

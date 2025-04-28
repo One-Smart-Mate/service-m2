@@ -1,44 +1,79 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsDate } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsNumber, IsString, IsDate } from 'class-validator';
 
 export class UpdateCiltSequencesExecutionDTO {
-  @ApiProperty({ description: 'ID of the execution' })
+  @ApiProperty({ description: 'ID de la ejecución' })
   @IsNotEmpty()
   @IsNumber()
   id: number;
 
-  @ApiProperty({ description: 'ID of the CILT' })
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  siteId?: number;
+
+  @ApiProperty({ description: 'ID de la posición', required: false })
+  @IsOptional()
+  @IsNumber()
+  positionId?: number;
+
+  @ApiProperty({ description: 'ID del CILT', required: false })
   @IsOptional()
   @IsNumber()
   ciltId?: number;
 
-  @ApiProperty({ description: 'ID of the sequence' })
+  @ApiProperty({ description: 'ID del detalle del CILT', required: false })
   @IsOptional()
   @IsNumber()
-  sequenceId?: number;
+  ciltDetailsId?: number;
 
-  @ApiProperty({ description: 'ID of the user' })
-  @IsOptional()
-  @IsNumber()
-  userId?: number;
-
-  @ApiProperty({ description: 'Name of the user' })
-  @IsOptional()
-  @IsString()
-  userName?: string;
-
-  @ApiProperty({ description: 'Status of the execution' })
-  @IsOptional()
-  @IsString()
-  status?: string;
-
-  @ApiProperty({ description: 'Date of execution' })
+  @ApiProperty({ description: 'Momento de inicio de la secuencia', required: false })
   @IsOptional()
   @IsDate()
-  executionDate?: Date;
+  secuenceStart?: Date;
 
-  @ApiProperty({ description: 'Notes of the execution' })
+  @ApiProperty({ description: 'Momento de fin de la secuencia', required: false })
+  @IsOptional()
+  @IsDate()
+  secuenceStop?: Date;
+
+  @ApiProperty({ description: 'Duración en segundos', required: false })
+  @IsOptional()
+  @IsNumber()
+  duration?: number;
+
+  @ApiProperty({ description: 'Estándar a cumplir', required: false })
   @IsOptional()
   @IsString()
-  notes?: string;
+  standardOk?: string;
+
+  @ApiProperty({ description: 'Parámetro inicial', required: false })
+  @IsOptional()
+  @IsString()
+  initialParameter?: string;
+
+  @ApiProperty({ description: 'Evidencia al inicio', required: false })
+  @IsOptional()
+  @IsNumber()
+  evidenceAtCreation?: number;
+
+  @ApiProperty({ description: 'Parámetro final', required: false })
+  @IsOptional()
+  @IsString()
+  finalParameter?: string;
+
+  @ApiProperty({ description: 'Evidencia al final', required: false })
+  @IsOptional()
+  @IsNumber()
+  evidenceAtFinal?: number;
+
+  @ApiProperty({ description: 'Motivo de paro', required: false })
+  @IsOptional()
+  @IsNumber()
+  stoppageReason?: number;
+
+  @ApiProperty({ description: 'Tag AM', required: false })
+  @IsOptional()
+  @IsNumber()
+  amTag?: number;
 } 

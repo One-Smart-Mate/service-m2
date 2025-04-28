@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CiltSequencesFrequencies } from './entities/ciltSequencesFrequencies.entity';
+import { CiltSequencesFrequenciesEntity } from './entities/ciltSequencesFrequencies.entity';
 import { CreateCiltSequencesFrequenciesDTO } from './models/dto/createCiltSequencesFrequencies.dto';
 import { UpdateCiltSequencesFrequenciesDTO } from './models/dto/updateCiltSequencesFrequencies.dto';
 import { ResponseCiltSequencesFrequenciesDTO } from './models/dto/responseCiltSequencesFrequencies.dto';
@@ -11,14 +11,14 @@ import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common
 @Injectable()
 export class CiltSequencesFrequenciesService {
   constructor(
-    @InjectRepository(CiltSequencesFrequencies)
-    private readonly ciltSequencesFrequenciesRepository: Repository<CiltSequencesFrequencies>,
+    @InjectRepository(CiltSequencesFrequenciesEntity)
+    private readonly ciltSequencesFrequenciesRepository: Repository<CiltSequencesFrequenciesEntity>,
   ) {}
 
   findAll = async () => {
     try {
-      const frecuencies = await this.ciltSequencesFrequenciesRepository.find();
-      return frecuencies.map(frecuency => this.mapToResponseDTO(frecuency));
+      const frequencies = await this.ciltSequencesFrequenciesRepository.find();
+      return frequencies.map(frequency => this.mapToResponseDTO(frequency));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -26,45 +26,57 @@ export class CiltSequencesFrequenciesService {
 
   findById = async (id: number) => {
     try {
-      const frecuency = await this.ciltSequencesFrequenciesRepository.findOneBy({ id });
-      if (!frecuency) {
+      const frequency = await this.ciltSequencesFrequenciesRepository.findOneBy({ id });
+      if (!frequency) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_FREQUENCIES);
       }
-      return this.mapToResponseDTO(frecuency);
+      return this.mapToResponseDTO(frequency);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  create = async (createCiltSequencesFrequenciesDto: CreateCiltSequencesFrequenciesDTO) => {
+  create = async (createDTO: CreateCiltSequencesFrequenciesDTO) => {
     try {
-      const frecuency = this.ciltSequencesFrequenciesRepository.create(createCiltSequencesFrequenciesDto);
-      const savedFrecuency = await this.ciltSequencesFrequenciesRepository.save(frecuency);
-      return this.mapToResponseDTO(savedFrecuency);
+      const frequency = this.ciltSequencesFrequenciesRepository.create(createDTO);
+      const savedFrequency = await this.ciltSequencesFrequenciesRepository.save(frequency);
+      return this.mapToResponseDTO(savedFrequency);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  update = async (updateCiltSequencesFrequenciesDto: UpdateCiltSequencesFrequenciesDTO) => {
+  update = async (id: number, updateDTO: UpdateCiltSequencesFrequenciesDTO) => {
     try {
-      const frecuency = await this.findById(updateCiltSequencesFrequenciesDto.id);
-      Object.assign(frecuency, updateCiltSequencesFrequenciesDto);
-      const updatedFrecuency = await this.ciltSequencesFrequenciesRepository.save(frecuency);
-      return this.mapToResponseDTO(updatedFrecuency);
+      const frequency = await this.findById(id);
+      Object.assign(frequency, updateDTO);
+      const updatedFrequency = await this.ciltSequencesFrequenciesRepository.save(frequency);
+      return this.mapToResponseDTO(updatedFrequency);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  private mapToResponseDTO(frecuency: CiltSequencesFrequencies): ResponseCiltSequencesFrequenciesDTO {
+  delete = async (id: number) => {
+    try {
+      const frequency = await this.findById(id);
+      await this.ciltSequencesFrequenciesRepository.remove(frequency);
+      return true;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  private mapToResponseDTO(frequency: CiltSequencesFrequenciesEntity): ResponseCiltSequencesFrequenciesDTO {
     const responseDTO = new ResponseCiltSequencesFrequenciesDTO();
-    responseDTO.id = frecuency.id;
-    responseDTO.ciltSecuenceId = frecuency.ciltSecuenceId;
-    responseDTO.frecuencyId = frecuency.frecuencyId;
-    responseDTO.status = frecuency.status;
-    responseDTO.createdAt = frecuency.createdAt;
-    responseDTO.updatedAt = frecuency.updatedAt;
+    responseDTO.id = frequency.id;
+    responseDTO.siteId = frequency.siteId;
+    responseDTO.positionId = frequency.positionId;
+    responseDTO.ciltId = frequency.ciltId;
+    responseDTO.secuencyId = frequency.secuencyId;
+    responseDTO.frecuencyId = frequency.frecuencyId;
+    responseDTO.frecuencyCode = frequency.frecuencyCode;
+    responseDTO.status = frequency.status;
     return responseDTO;
   }
 } 

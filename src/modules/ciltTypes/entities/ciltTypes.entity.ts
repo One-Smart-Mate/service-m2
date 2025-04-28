@@ -2,35 +2,24 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
 
 @Entity('cilt_types')
-export class CiltTypes {
-  @PrimaryGeneratedColumn({ name: 'ID', type: 'int', unsigned: true })
+export class CiltTypesEntity {
+  @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
-  @Column({ name: 'name', type: 'varchar', length: 255, nullable: false })
-  name: string;
+  @Column("int", { name: "site_id", nullable: true })
+  siteId: number | null;
 
-  @Column({ name: 'description', type: 'text', nullable: true })
-  description: string;
+  @Column("varchar", { name: "name", nullable: true, length: 45 })
+  name: string | null;
 
-  @Column({ name: 'status', type: 'char', length: 1, nullable: false, default: () => "'A'" })
-  status: string;
-
-  @Exclude()
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
-  createdAt: Date;
-
-  @Exclude()
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
-  updatedAt: Date;
-
-  @Exclude()
-  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
-  deletedAt: Date | null;
-} 
+  @Column("char", {
+    name: "status",
+    nullable: true,
+    length: 2,
+    default: () => "'A'",
+  })
+  status: string | null;
+}

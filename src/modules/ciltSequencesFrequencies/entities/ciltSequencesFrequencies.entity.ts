@@ -1,22 +1,39 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('cilt_secuences_frecuencies')
-export class CiltSequencesFrequencies {
-  @PrimaryGeneratedColumn()
+export class CiltSequencesFrequenciesEntity {
+  @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
-  @Column({ name: 'cilt_secuence_id' })
-  ciltSecuenceId: number;
+  @Column("int", { name: "site_id", nullable: true })
+  siteId: number | null;
 
-  @Column({ name: 'frecuency_id' })
-  frecuencyId: number;
+  @Column("int", { name: "position_id", nullable: true })
+  positionId: number | null;
 
-  @Column({ name: 'status', default: 'A' })
-  status: string;
+  @Column("int", { name: "cilt_id", nullable: true })
+  ciltId: number | null;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @Column("int", { name: "secuency_id", nullable: true })
+  secuencyId: number | null;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-} 
+  @Column("int", { name: "frecuency_id", nullable: true })
+  frecuencyId: number | null;
+
+  @Column("char", {
+    name: "frecuency_code",
+    nullable: true,
+    comment:
+      "inciales de la frecuencia: IT=inicio de turno; FT=fin de turno; CP=cambio de formato; RUN= maquina funcionando;",
+    length: 3,
+  })
+  frecuencyCode: string | null;
+
+  @Column("char", {
+    name: "status",
+    nullable: true,
+    length: 1,
+    default: () => "'A'",
+  })
+  status: string | null;
+}

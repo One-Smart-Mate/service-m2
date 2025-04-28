@@ -30,10 +30,10 @@ export class CiltSequencesFrequenciesController {
     return await this.ciltSequencesFrequenciesService.create(createCiltSequencesFrequenciesDto);
   }
 
-  @Put()
+  @Put(':id')
   @ApiOperation({ summary: 'Update a CILT sequence frequency' })
   @ApiBody({ type: UpdateCiltSequencesFrequenciesDTO })
-  async update(@Body() updateCiltSequencesFrequenciesDto: UpdateCiltSequencesFrequenciesDTO) {
-    return await this.ciltSequencesFrequenciesService.update(updateCiltSequencesFrequenciesDto);
+  async update(@Param('id') id: number, @Body() updateCiltSequencesFrequenciesDto: UpdateCiltSequencesFrequenciesDTO) {
+    return await this.ciltSequencesFrequenciesService.update(id, updateCiltSequencesFrequenciesDto);
   }
 } 

@@ -1,27 +1,30 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 
 
-@Entity('opl_details')
-export class OplDetails {
-  @PrimaryGeneratedColumn()
+@Entity("opl_details")
+export class OplDetailsEntity {
+  @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
-  @Column({ name: 'opl_id' })
+  @Column("int", { name: "opl_id" })
   oplId: number;
 
-  @Column({ name: 'name' })
-  name: string;
+  @Column("tinyint", { name: "order" })
+  order: number;
 
-  @Column({ name: 'description' })
-  description: string;
+  @Column("enum", { name: "type", enum: ["texto", "imagen", "video", "pdf"] })
+  type: "texto" | "imagen" | "video" | "pdf";
 
-  @Column({ name: 'status', default: 'A' })
-  status: string;
+  @Column("text", { name: "text", nullable: true })
+  text: string | null;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @Column("varchar", { name: "media_url", nullable: true, length: 500 })
+  mediaUrl: string | null;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
-
-} 
+  @Column("datetime", {
+    name: "updated_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  updatedAt: Date | null;
+}

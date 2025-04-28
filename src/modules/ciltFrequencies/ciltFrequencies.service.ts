@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CiltFrequencies } from './entities/ciltFrequencies.entity';
-import { CreateCiltFrequencyDTO } from './models/dto/createCiltFrequency.dto';
-import { UpdateCiltFrequencyDTO } from './models/dto/updateCiltFrequency.dto';
-import { ResponseCiltFrequencyDTO } from './models/dto/responseCiltFrequency.dto';
+import { CiltFrequenciesEntity } from './entities/ciltFrequencies.entity';
+import { CreateCiltFrequenciesDTO } from './models/dto/createCiltFrequencies.dto';
+import { UpdateCiltFrequenciesDTO } from './models/dto/updateCiltFrequencies.dto';
+import { ResponseCiltFrequencyDTO } from './models/dto/responseCiltFrequencies.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
 export class CiltFrequenciesService {
   constructor(
-    @InjectRepository(CiltFrequencies)
-    private readonly ciltFrequenciesRepository: Repository<CiltFrequencies>,
+    @InjectRepository(CiltFrequenciesEntity)
+    private readonly ciltFrequenciesRepository: Repository<CiltFrequenciesEntity>,
   ) {}
 
   findAll = async () => {
@@ -36,9 +36,9 @@ export class CiltFrequenciesService {
     }
   };
 
-  create = async (createCiltFrequencyDto: CreateCiltFrequencyDTO) => {
+  create = async (createDTO: CreateCiltFrequenciesDTO) => {
     try {
-      const frequency = this.ciltFrequenciesRepository.create(createCiltFrequencyDto);
+      const frequency = this.ciltFrequenciesRepository.create(createDTO);
       const savedFrequency = await this.ciltFrequenciesRepository.save(frequency);
       return this.mapToResponseDTO(savedFrequency);
     } catch (exception) {
@@ -46,10 +46,10 @@ export class CiltFrequenciesService {
     }
   };
 
-  update = async (updateCiltFrequencyDto: UpdateCiltFrequencyDTO) => {
+  update = async (id: number, updateDTO: UpdateCiltFrequenciesDTO) => {
     try {
-      const frequency = await this.findById(updateCiltFrequencyDto.id);
-      Object.assign(frequency, updateCiltFrequencyDto);
+      const frequency = await this.findById(id);
+      Object.assign(frequency, updateDTO);
       const updatedFrequency = await this.ciltFrequenciesRepository.save(frequency);
       return this.mapToResponseDTO(updatedFrequency);
     } catch (exception) {
@@ -57,15 +57,21 @@ export class CiltFrequenciesService {
     }
   };
 
-  private mapToResponseDTO(frequency: CiltFrequencies): ResponseCiltFrequencyDTO {
+  delete = async (id: number) => {
+    try {
+      await this.ciltFrequenciesRepository.delete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  private mapToResponseDTO(frequency: CiltFrequenciesEntity): ResponseCiltFrequencyDTO {
     const responseDTO = new ResponseCiltFrequencyDTO();
     responseDTO.id = frequency.id;
-    responseDTO.name = frequency.name;
+    responseDTO.siteId = frequency.siteId;
+    responseDTO.frecuencyCode = frequency.frecuencyCode;
     responseDTO.description = frequency.description;
-    responseDTO.days = frequency.days;
     responseDTO.status = frequency.status;
-    responseDTO.createdAt = frequency.createdAt;
-    responseDTO.updatedAt = frequency.updatedAt;
     return responseDTO;
   }
 } 

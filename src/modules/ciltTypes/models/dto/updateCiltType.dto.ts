@@ -7,17 +7,17 @@ export class UpdateCiltTypeDTO {
   @IsNumber()
   id: number;
 
-  @ApiProperty({ description: 'Name of the CILT type' })
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  siteId?: number;
+
+  @ApiProperty({ description: 'Name of the CILT type', required: false })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiProperty({ description: 'Description of the CILT type' })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({ description: 'Status of the CILT type' })
+  @ApiProperty({ description: 'Status of the CILT type', required: false })
   @IsOptional()
   @IsString()
   status?: string;

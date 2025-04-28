@@ -29,31 +29,11 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
   }
 
-  @Put()
+  @Put(':id')
   @ApiOperation({ summary: 'Update a CILT sequence execution' })
   @ApiBody({ type: UpdateCiltSequencesExecutionDTO })
-  update(@Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
-    return this.ciltSequencesExecutionsService.update(updateCiltSequencesExecutionDTO);
+  update(@Param('id') id: number, @Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.update(id, updateCiltSequencesExecutionDTO);
   }
-
-  @Get('cilt/:ciltId')
-  @ApiOperation({ summary: 'Get CILT sequence executions by CILT ID' })
-  @ApiParam({ name: 'ciltId', type: 'number', description: 'CILT ID' })
-  findByCiltId(@Param('ciltId') ciltId: number) {
-    return this.ciltSequencesExecutionsService.findByCiltId(+ciltId);
-  }
-
-  @Get('sequence/:sequenceId')
-  @ApiOperation({ summary: 'Get CILT sequence executions by sequence ID' })
-  @ApiParam({ name: 'sequenceId', type: 'number', description: 'Sequence ID' })
-  findBySequenceId(@Param('sequenceId') sequenceId: number) {
-    return this.ciltSequencesExecutionsService.findBySequenceId(+sequenceId);
-  }
-
-  @Get('user/:userId')
-  @ApiOperation({ summary: 'Get CILT sequence executions by user ID' })
-  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
-  findByUserId(@Param('userId') userId: number) {
-    return this.ciltSequencesExecutionsService.findByUserId(+userId);
-  }
+  
 } 

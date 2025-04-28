@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltSequencesService } from './ciltSequences.service';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
-import { ResponseCiltSequenceDTO } from './models/dto/responseCiltSequence.dto';
+
 
 @ApiTags('Cilt Sequences')
 @Controller('cilt-sequences')
@@ -30,10 +30,10 @@ export class CiltSequencesController {
     return await this.ciltSequencesService.create(createCiltSequenceDto);
   }
 
-  @Put()
+  @Put(':id')
   @ApiOperation({ summary: 'Update a CILT sequence' })
   @ApiBody({ type: UpdateCiltSequenceDTO })
-  async update(@Body() updateCiltSequenceDto: UpdateCiltSequenceDTO) {
-    return await this.ciltSequencesService.update(updateCiltSequenceDto);
+  async update(@Param('id') id: number, @Body() updateCiltSequenceDto: UpdateCiltSequenceDTO) {
+    return await this.ciltSequencesService.update(id, updateCiltSequenceDto);
   }
 } 

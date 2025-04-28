@@ -1,19 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
+import { IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class CreateCiltTypeDTO {
-  @ApiProperty({ description: 'Name of the CILT type' })
-  @IsNotEmpty()
-  @IsString()
-  name: string;
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  siteId?: number;
 
-  @ApiProperty({ description: 'Description of the CILT type' })
+  @ApiProperty({ description: 'Name of the CILT type', required: false })
   @IsOptional()
   @IsString()
-  description?: string;
+  name?: string;
 
-  @ApiProperty({ description: 'Status of the CILT type', default: 'A' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Status of the CILT type', required: false, default: 'A' })
+  @IsOptional()
   @IsString()
-  status: string;
+  status?: string;
 } 

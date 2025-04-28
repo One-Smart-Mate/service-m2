@@ -1,22 +1,49 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
-@Entity('opl_mstr')
+@Entity("opl_mstr", { schema: "railway" })
 export class OplMstr {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
-  @Column({ name: 'name' })
-  name: string;
+  @Column("varchar", { name: "title", length: 100 })
+  title: string;
 
-  @Column({ name: 'description' })
-  description: string;
+  @Column("varchar", { name: "objetive", nullable: true, length: 255 })
+  objetive: string | null;
 
-  @Column({ name: 'status', default: 'A' })
-  status: string;
+  @Column("int", { name: "creator_id", nullable: true })
+  creatorId: number | null;
 
-  @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  @Column("varchar", { name: "creator_name", nullable: true, length: 100 })
+  creatorName: string | null;
 
-  @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  @Column("int", { name: "reviewer_id", nullable: true })
+  reviewerId: number | null;
+
+  @Column("varchar", { name: "reviewer_name", nullable: true, length: 100 })
+  reviewerName: string | null;
+
+  @Column("enum", { name: "opl_type", nullable: true, enum: ["opl", "sop"] })
+  oplType: "opl" | "sop" | null;
+
+  @Column("datetime", {
+    name: "created_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  createdAt: Date | null;
+
+  @Column("datetime", {
+    name: "updated_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  updatedAt: Date | null;
+
+  @Column("datetime", {
+    name: "deleted_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+  })
+  deletedAt: Date | null;
 } 

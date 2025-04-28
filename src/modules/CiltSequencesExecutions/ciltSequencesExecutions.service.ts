@@ -2,11 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
-import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
+import { ResponseCiltSequencesExecutionDTO } from './models/dto/responseCiltSequencesExecution.dto';
+import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
-
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -17,7 +17,8 @@ export class CiltSequencesExecutionsService {
 
   findAll = async () => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find();
+      const executions = await this.ciltSequencesExecutionsRepository.find();
+      return executions.map(execution => this.mapToResponseDTO(execution));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -29,67 +30,52 @@ export class CiltSequencesExecutionsService {
       if (!execution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
       }
-      return execution;
+      return this.mapToResponseDTO(execution);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  findByCiltId = async (ciltId: number) => {
+  create = async (createDTO: CreateCiltSequencesExecutionDTO) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({
-        where: { ciltId },
-      });
+      const execution = this.ciltSequencesExecutionsRepository.create(createDTO);
+      const savedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
+      return this.mapToResponseDTO(savedExecution);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  findBySequenceId = async (sequenceId: number) => {
+  update = async (id: number, updateDTO: UpdateCiltSequencesExecutionDTO) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({
-        where: { sequenceId },
-      });
+      const execution = await this.findById(id);
+      Object.assign(execution, updateDTO);
+      const updatedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
+      return this.mapToResponseDTO(updatedExecution);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  findByUserId = async (userId: number) => {
-    try {
-      return await this.ciltSequencesExecutionsRepository.find({
-        where: { userId },
-      });
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  create = async (createCiltSequencesExecutionDTO: CreateCiltSequencesExecutionDTO) => {
-    try {
-      const execution = this.ciltSequencesExecutionsRepository.create({
-        ...createCiltSequencesExecutionDTO,
-        createdAt: new Date(),
-      });
-      return await this.ciltSequencesExecutionsRepository.save(execution);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  update = async (updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) => {
-    try {
-      const execution = await this.ciltSequencesExecutionsRepository.findOneBy({ id: updateCiltSequencesExecutionDTO.id });
-      if (!execution) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
-      }
-
-      Object.assign(execution, updateCiltSequencesExecutionDTO);
-      execution.updatedAt = new Date();
-
-      return await this.ciltSequencesExecutionsRepository.save(execution);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
+  private mapToResponseDTO(execution: CiltSequencesExecutionsEntity): ResponseCiltSequencesExecutionDTO {
+    const responseDTO = new ResponseCiltSequencesExecutionDTO();
+    responseDTO.id = execution.id;
+    responseDTO.siteId = execution.siteId;
+    responseDTO.positionId = execution.positionId;
+    responseDTO.ciltId = execution.ciltId;
+    responseDTO.ciltDetailsId = execution.ciltDetailsId;
+    responseDTO.secuenceStart = execution.secuenceStart;
+    responseDTO.secuenceStop = execution.secuenceStop;
+    responseDTO.duration = execution.duration;
+    responseDTO.standardOk = execution.standardOk;
+    responseDTO.initialParameter = execution.initialParameter;
+    responseDTO.evidenceAtCreation = execution.evidenceAtCreation;
+    responseDTO.finalParameter = execution.finalParameter;
+    responseDTO.evidenceAtFinal = execution.evidenceAtFinal;
+    responseDTO.stoppageReason = execution.stoppageReason;
+    responseDTO.amTag = execution.amTag;
+    responseDTO.createdAt = execution.createdAt;
+    responseDTO.updatedAt = execution.updatedAt;
+    return responseDTO;
+  }
 } 

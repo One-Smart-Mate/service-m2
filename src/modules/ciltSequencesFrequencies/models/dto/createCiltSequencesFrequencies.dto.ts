@@ -1,19 +1,39 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsOptional, IsNumber, IsString } from 'class-validator';
 
 export class CreateCiltSequencesFrequenciesDTO {
-  @ApiProperty({ description: 'ID of the CILT sequence' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
   @IsNumber()
-  ciltSecuenceId: number;
+  siteId?: number;
 
-  @ApiProperty({ description: 'ID of the frequency' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'ID de la posición', required: false })
+  @IsOptional()
   @IsNumber()
-  frecuencyId: number;
+  positionId?: number;
 
-  @ApiProperty({ description: 'Status of the frequency', default: 'A' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'ID del CILT', required: false })
+  @IsOptional()
+  @IsNumber()
+  ciltId?: number;
+
+  @ApiProperty({ description: 'ID de la secuencia', required: false })
+  @IsOptional()
+  @IsNumber()
+  secuencyId?: number;
+
+  @ApiProperty({ description: 'ID de la frecuencia', required: false })
+  @IsOptional()
+  @IsNumber()
+  frecuencyId?: number;
+
+  @ApiProperty({ description: 'Código de la frecuencia', required: false })
+  @IsOptional()
   @IsString()
-  status: string;
+  frecuencyCode?: string;
+
+  @ApiProperty({ description: 'Estado', required: false, default: 'A' })
+  @IsOptional()
+  @IsString()
+  status?: string;
 } 

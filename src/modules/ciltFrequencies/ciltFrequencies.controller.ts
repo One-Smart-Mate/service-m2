@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltFrequenciesService } from './ciltFrequencies.service';
-import { CreateCiltFrequencyDTO } from './models/dto/createCiltFrequency.dto';
-import { UpdateCiltFrequencyDTO } from './models/dto/updateCiltFrequency.dto';
-import { ResponseCiltFrequencyDTO } from './models/dto/responseCiltFrequency.dto';
+import { CreateCiltFrequenciesDTO } from './models/dto/createCiltFrequencies.dto';
+import { UpdateCiltFrequenciesDTO } from './models/dto/updateCiltFrequencies.dto';
+
 
 @ApiTags('Cilt Frequencies')
 @Controller('cilt-frequencies')
@@ -25,15 +25,15 @@ export class CiltFrequenciesController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new CILT frequency' })
-  @ApiBody({ type: CreateCiltFrequencyDTO })
-  async create(@Body() createCiltFrequencyDto: CreateCiltFrequencyDTO) {
+  @ApiBody({ type: CreateCiltFrequenciesDTO })
+  async create(@Body() createCiltFrequencyDto: CreateCiltFrequenciesDTO) {
     return await this.ciltFrequenciesService.create(createCiltFrequencyDto);
   }
 
-  @Put()
+  @Put(':id')
   @ApiOperation({ summary: 'Update a CILT frequency' })
-  @ApiBody({ type: UpdateCiltFrequencyDTO })
-  async update(@Body() updateCiltFrequencyDto: UpdateCiltFrequencyDTO) {
-    return await this.ciltFrequenciesService.update(updateCiltFrequencyDto);
+  @ApiBody({ type: UpdateCiltFrequenciesDTO })
+  async update(@Param('id') id: number, @Body() updateCiltFrequencyDto: UpdateCiltFrequenciesDTO) {
+    return await this.ciltFrequenciesService.update(id, updateCiltFrequencyDto);
   }
 } 

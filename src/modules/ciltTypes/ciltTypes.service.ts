@@ -1,18 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CiltTypes } from './entities/ciltTypes.entity';
+import { CiltTypesEntity } from './entities/ciltTypes.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 import { CreateCiltTypeDTO } from './models/dto/createCiltType.dto';
 import { UpdateCiltTypeDTO } from './models/dto/updateCiltType.dto';
 import { ResponseCiltTypeDTO } from './models/dto/responseCiltType.dto';
 
+
 @Injectable()
 export class CiltTypesService {
   constructor(
-    @InjectRepository(CiltTypes)
-    private readonly ciltTypesRepository: Repository<CiltTypes>,
+    @InjectRepository(CiltTypesEntity)
+    private readonly ciltTypesRepository: Repository<CiltTypesEntity>,
   ) {}
 
   findAll = async () => {
@@ -57,14 +58,11 @@ export class CiltTypesService {
     }
   };
 
-  private mapToResponseDTO(ciltType: CiltTypes): ResponseCiltTypeDTO {
+  private mapToResponseDTO(ciltType: CiltTypesEntity): ResponseCiltTypeDTO {
     const responseDTO = new ResponseCiltTypeDTO();
     responseDTO.id = ciltType.id;
     responseDTO.name = ciltType.name;
-    responseDTO.description = ciltType.description;
     responseDTO.status = ciltType.status;
-    responseDTO.createdAt = ciltType.createdAt;
-    responseDTO.updatedAt = ciltType.updatedAt;
     return responseDTO;
   }
 } 

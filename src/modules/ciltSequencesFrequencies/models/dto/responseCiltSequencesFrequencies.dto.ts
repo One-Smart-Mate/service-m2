@@ -1,16 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ResponseCiltSequencesFrequenciesDTO {
-  @ApiProperty({ description: 'ID of the frequency' })
+  @ApiProperty({ description: 'ID de la frecuencia de secuencia' })
   id: number;
 
-  @ApiProperty({ description: 'ID of the CILT sequence' })
-  ciltSecuenceId: number;
+  @ApiProperty({ description: 'Site ID' })
+  siteId: number;
 
-  @ApiProperty({ description: 'ID of the frequency' })
+  @ApiProperty({ description: 'ID de la posición' })
+  positionId: number;
+
+  @ApiProperty({ description: 'ID del CILT' })
+  ciltId: number;
+
+  @ApiProperty({ description: 'ID de la secuencia' })
+  secuencyId: number;
+
+  @ApiProperty({ description: 'ID de la frecuencia' })
   frecuencyId: number;
 
-  @ApiProperty({ description: 'Status of the frequency' })
+  @ApiProperty({ description: 'Código de la frecuencia' })
+  frecuencyCode: string;
+
+  @ApiProperty({ description: 'Estado' })
   status: string;
 
   @ApiProperty({ description: 'Creation date' })

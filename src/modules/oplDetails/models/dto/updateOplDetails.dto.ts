@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsEnum, IsString, IsOptional } from 'class-validator';
 
 export class UpdateOplDetailsDTO {
   @ApiProperty({ description: 'ID of the detail' })
@@ -7,23 +7,28 @@ export class UpdateOplDetailsDTO {
   @IsNumber()
   id: number;
 
-  @ApiProperty({ description: 'ID of the OPL' })
+  @ApiProperty({ description: 'ID of the OPL', required: false })
   @IsOptional()
   @IsNumber()
   oplId?: number;
 
-  @ApiProperty({ description: 'Name of the detail' })
+  @ApiProperty({ description: 'Order of the detail', required: false })
   @IsOptional()
-  @IsString()
-  name?: string;
+  @IsNumber()
+  order?: number;
 
-  @ApiProperty({ description: 'Description of the detail' })
+  @ApiProperty({ description: 'Type of content', enum: ['texto', 'imagen', 'video', 'pdf'], required: false })
   @IsOptional()
-  @IsString()
-  description?: string;
+  @IsEnum(['texto', 'imagen', 'video', 'pdf'])
+  type?: 'texto' | 'imagen' | 'video' | 'pdf';
 
-  @ApiProperty({ description: 'Status of the detail' })
+  @ApiProperty({ description: 'Text content', required: false })
   @IsOptional()
   @IsString()
-  status?: string;
+  text?: string;
+
+  @ApiProperty({ description: 'URL of the media content', required: false })
+  @IsOptional()
+  @IsString()
+  mediaUrl?: string;
 } 

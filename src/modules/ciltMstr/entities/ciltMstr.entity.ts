@@ -2,83 +2,94 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
 } from 'typeorm';
-import { Exclude } from 'class-transformer';
 
 @Entity('cilt')
 export class CiltMstrEntity {
-  @PrimaryGeneratedColumn({ name: 'ID', type: 'int', unsigned: true })
+  @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;
 
-  @Column({ name: 'site_id', type: 'int', nullable: true })
+  @Column("int", { name: "site_id", nullable: true })
   siteId: number | null;
 
-  @Column({ name: 'position_id', type: 'int', nullable: true })
+  @Column("int", { name: "position_id", nullable: true })
   positionId: number | null;
 
-  @Column({ name: 'name', type: 'varchar', length: 45, nullable: true })
-  name: string | null;
+  @Column("varchar", { name: "cilt_name", nullable: true, length: 45 })
+  ciltName: string | null;
 
-  @Column({ name: 'description', type: 'varchar', length: 255, nullable: true })
-  description: string | null;
+  @Column("varchar", { name: "cilt_description", nullable: true, length: 255 })
+  ciltDescription: string | null;
 
-  @Column({ name: 'tools_required', type: 'text', nullable: true })
-  toolsRequired: string | null;
-
-  @Column({ name: 'standard_ok', type: 'boolean', default: false })
-  standardOk: boolean;
-
-  @Column({ name: 'repository_url', type: 'varchar', length: 255, nullable: true })
-  repositoryUrl: string | null;
-
-  @Column({ name: 'creator_id', type: 'int', nullable: true })
+  @Column("int", { name: "creator_id", nullable: true })
   creatorId: number | null;
 
-  @Column({ name: 'creator_name', type: 'varchar', length: 100, nullable: true })
+  @Column("varchar", { name: "creator_name", nullable: true, length: 100 })
   creatorName: string | null;
 
-  @Column({ name: 'reviewer_id', type: 'int', nullable: true })
+  @Column("int", { name: "reviewer_id", nullable: true })
   reviewerId: number | null;
 
-  @Column({ name: 'reviewer_name', type: 'varchar', length: 100, nullable: true })
+  @Column("varchar", { name: "reviewer_name", nullable: true, length: 100 })
   reviewerName: string | null;
 
-  @Column({ name: 'approved_by_id', type: 'int', nullable: true })
+  @Column("int", { name: "approved_by_id", nullable: true })
   approvedById: number | null;
 
-  @Column({ name: 'approved_by_name', type: 'varchar', length: 100, nullable: true })
+  @Column("varchar", { name: "approved_by_name", nullable: true, length: 100 })
   approvedByName: string | null;
 
-  @Column({ name: 'standard_time', type: 'int', nullable: true })
+  @Column("int", {
+    name: "standard_time",
+    nullable: true,
+    comment:
+      "tiempo estandar de ejecucion del procedimiento, se almacena en segundos pero se muestra en lenguaje natural",
+  })
   standardTime: number | null;
 
-  @Column({ name: 'learnig_time', type: 'varchar', length: 25, nullable: true })
-  learningTime: string | null;
+  @Column("varchar", {
+    name: "learnig_time",
+    nullable: true,
+    comment:
+      "tiempo de aprendizaje del procedimiento, se almacena en lenguaje natural",
+    length: 25,
+  })
+  learnigTime: string | null;
 
-  @Column({ name: 'url_img_layout', type: 'varchar', length: 500, nullable: true })
+  @Column("varchar", {
+    name: "url_img_layout",
+    nullable: true,
+    comment: "url donde se almacena el diagrama de la maquina",
+    length: 500,
+  })
   urlImgLayout: string | null;
 
-  @Column({ name: 'order', type: 'int', nullable: true, default: () => "'1'" })
+  @Column("int", {
+    name: "order",
+    nullable: true,
+    comment: "ordenamiento del listado de los cilt",
+    default: () => "'1'",
+  })
   order: number | null;
 
-  @Column({ name: 'status', type: 'char', length: 1, nullable: true, default: () => "'A'" })
+  @Column("char", {
+    name: "status",
+    nullable: true,
+    length: 1,
+    default: () => "'A'",
+  })
   status: string | null;
 
-  @Column({ name: 'date_of_last_used', type: 'timestamp', nullable: true })
+  @Column("timestamp", { name: "date_of_last_used", nullable: true })
   dateOfLastUsed: Date | null;
 
-  @Exclude()
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
-  createdAt: Date;
+  @Column("timestamp", { name: "created_at", nullable: true })
+  createdAt: Date | null;
 
-  @Exclude()
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
-  updatedAt: Date;
+  @Column("timestamp", { name: "updated_at", nullable: true })
+  updatedAt: Date | null;
 
-  @Exclude()
-  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  @Column("timestamp", { name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 }
+
