@@ -15,6 +15,13 @@ export class CiltTypesController {
     return await this.ciltTypesService.findAll();
   }
 
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all CILT types by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteId(@Param('siteId') siteId: number) {
+    return await this.ciltTypesService.findBySiteId(siteId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT type by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT type ID' })

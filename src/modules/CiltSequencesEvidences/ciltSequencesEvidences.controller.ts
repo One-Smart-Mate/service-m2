@@ -15,6 +15,27 @@ export class CiltSequencesEvidencesController {
     return await this.ciltSequencesEvidencesService.findAll();
   }
 
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all CILT evidences by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteId(@Param('siteId') siteId: number) {
+    return await this.ciltSequencesEvidencesService.findBySiteId(siteId);
+  }
+
+  @Get('position/:positionId')
+  @ApiOperation({ summary: 'Get all CILT evidences by position ID' })
+  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
+  async findByPositionId(@Param('positionId') positionId: number) {
+    return await this.ciltSequencesEvidencesService.findByPositionId(positionId);
+  }
+
+  @Get('cilt/:ciltId')
+  @ApiOperation({ summary: 'Get all CILT evidences by CILT ID' })
+  @ApiParam({ name: 'ciltId', type: 'number', description: 'CILT ID' })
+  async findByCiltId(@Param('ciltId') ciltId: number) {
+    return await this.ciltSequencesEvidencesService.findByCiltId(ciltId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT evidence by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT evidence ID' })

@@ -24,6 +24,14 @@ export class OplDetailsController {
     return await this.oplDetailsService.findById(id);
   }
 
+  @Get('/by-opl/:oplId')
+  @ApiOperation({ summary: 'Get OPL details by OPL ID' })
+  @ApiResponse({ status: 200, description: 'List of OPL details found'})
+  @ApiResponse({ status: 404, description: 'No OPL details found' })
+  async findByOplId(@Param('oplId') oplId: number) {
+    return await this.oplDetailsService.findByOplId(oplId);
+  }
+
   @Post("/create")
   @ApiOperation({ summary: 'Create a new OPL detail' })
   @ApiResponse({ status: 201, description: 'OPL detail created successfully'})

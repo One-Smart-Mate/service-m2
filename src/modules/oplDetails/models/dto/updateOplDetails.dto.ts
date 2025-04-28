@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsEnum, IsString, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsEnum, IsString, IsOptional, IsISO8601 } from 'class-validator';
 
 export class UpdateOplDetailsDTO {
   @ApiProperty({ description: 'ID of the detail' })
@@ -31,4 +31,8 @@ export class UpdateOplDetailsDTO {
   @IsOptional()
   @IsString()
   mediaUrl?: string;
+
+  @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  updatedAt: string;
 } 

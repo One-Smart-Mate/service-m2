@@ -37,6 +37,18 @@ export class OplDetailsService {
     }
   };
 
+  findByOplId = async (oplId: number) => {
+    try {
+      const details = await this.oplDetailsRepository.findBy({ oplId });
+      if (!details || details.length === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
+      }
+      return details;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   create = async (createOplDetailsDto: CreateOplDetailsDTO) => {
     try {
       const detail = this.oplDetailsRepository.create(createOplDetailsDto);

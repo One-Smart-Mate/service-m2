@@ -22,6 +22,46 @@ export class CiltSequencesService {
     }
   };
 
+  findBySiteId = async (siteId: number) => {
+    try {
+      return await this.ciltSequencesRepository.find({ where: { siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByPositionId = async (positionId: number) => {
+    try {
+      return await this.ciltSequencesRepository.find({ where: { positionId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByAreaId = async (areaId: number) => {
+    try {
+      return await this.ciltSequencesRepository.find({ where: { areaId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByCiltMstrId = async (ciltMstrId: number) => {
+    try {
+      return await this.ciltSequencesRepository.find({ where: { ciltMstrId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByLevelId = async (levelId: number) => {
+    try {
+      return await this.ciltSequencesRepository.find({ where: { levelId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const sequence = await this.ciltSequencesRepository.findOneBy({ id });

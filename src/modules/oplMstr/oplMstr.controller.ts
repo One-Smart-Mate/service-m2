@@ -1,9 +1,8 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { OplMstrService } from './oplMstr.service';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
 import { UpdateOplMstrDTO } from './models/dto/updateOplMstr.dto';
-
 
 @ApiTags('Opl Master')
 @Controller('opl-mstr')
@@ -15,6 +14,14 @@ export class OplMstrController {
   @ApiResponse({ status: 200, description: 'List of OPLs'})
   async findAll() {
     return await this.oplMstrService.findAll();
+  }
+
+  @Get('creator/:creatorId')
+  @ApiOperation({ summary: 'Get all OPLs by creator ID' })
+  @ApiParam({ name: 'creatorId', type: 'number', description: 'Creator ID' })
+  @ApiResponse({ status: 200, description: 'List of OPLs created by the user'})
+  async findByCreatorId(@Param('creatorId') creatorId: number) {
+    return await this.oplMstrService.findByCreatorId(creatorId);
   }
 
   @Get(':id')

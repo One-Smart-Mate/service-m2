@@ -25,6 +25,14 @@ export class OplMstrService {
     }
   };
 
+  findByCreatorId = async (creatorId: number) => {
+    try {
+      return await this.oplRepository.find({ where: { creatorId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const opl = await this.oplRepository.findOneBy({ id });

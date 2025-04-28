@@ -22,6 +22,14 @@ export class CiltTypesService {
     }
   };
 
+  findBySiteId = async (siteId: number) => {
+    try {
+      return await this.ciltTypesRepository.find({ where: { siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const ciltType = await this.ciltTypesRepository.findOneBy({ id });

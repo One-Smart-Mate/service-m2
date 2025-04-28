@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsEnum, IsNumber, IsISO8601 } from 'class-validator';
 
 export class CreateOplMstrDTO {
   @ApiProperty({ description: 'Title of the OPL' })
@@ -36,4 +36,8 @@ export class CreateOplMstrDTO {
   @IsOptional()
   @IsEnum(['opl', 'sop'])
   oplType?: 'opl' | 'sop';
+
+  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  createdAt: string;
 } 

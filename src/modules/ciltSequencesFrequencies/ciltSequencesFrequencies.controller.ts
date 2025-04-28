@@ -4,7 +4,6 @@ import { CiltSequencesFrequenciesService } from './ciltSequencesFrequencies.serv
 import { CreateCiltSequencesFrequenciesDTO } from './models/dto/createCiltSequencesFrequencies.dto';
 import { UpdateCiltSequencesFrequenciesDTO } from './models/dto/updateCiltSequencesFrequencies.dto';
 
-
 @ApiTags('Cilt Sequences Frequencies')
 @Controller('cilt-sequences-frequencies')
 export class CiltSequencesFrequenciesController {
@@ -14,6 +13,34 @@ export class CiltSequencesFrequenciesController {
   @ApiOperation({ summary: 'Get all CILT sequence frequencies' })
   async findAll() {
     return await this.ciltSequencesFrequenciesService.findAll();
+  }
+
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all CILT sequence frequencies by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteId(@Param('siteId') siteId: number) {
+    return await this.ciltSequencesFrequenciesService.findBySiteId(siteId);
+  }
+
+  @Get('position/:positionId')
+  @ApiOperation({ summary: 'Get all CILT sequence frequencies by position ID' })
+  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
+  async findByPositionId(@Param('positionId') positionId: number) {
+    return await this.ciltSequencesFrequenciesService.findByPositionId(positionId);
+  }
+
+  @Get('cilt/:ciltId')
+  @ApiOperation({ summary: 'Get all CILT sequence frequencies by CILT ID' })
+  @ApiParam({ name: 'ciltId', type: 'number', description: 'CILT ID' })
+  async findByCiltId(@Param('ciltId') ciltId: number) {
+    return await this.ciltSequencesFrequenciesService.findByCiltId(ciltId);
+  }
+
+  @Get('frequency/:frecuencyId')
+  @ApiOperation({ summary: 'Get all CILT sequence frequencies by frequency ID' })
+  @ApiParam({ name: 'frecuencyId', type: 'number', description: 'Frequency ID' })
+  async findByFrecuencyId(@Param('frecuencyId') frecuencyId: number) {
+    return await this.ciltSequencesFrequenciesService.findByFrecuencyId(frecuencyId);
   }
 
   @Get(':id')

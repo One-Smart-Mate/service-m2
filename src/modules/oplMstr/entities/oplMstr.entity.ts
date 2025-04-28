@@ -28,22 +28,19 @@ export class OplMstr {
 
   @Column("datetime", {
     name: "created_at",
-    nullable: true,
-    default: () => "CURRENT_TIMESTAMP",
+    nullable: true
   })
   createdAt: Date | null;
 
   @Column("datetime", {
     name: "updated_at",
-    nullable: true,
-    default: () => "CURRENT_TIMESTAMP",
+    nullable: true
   })
   updatedAt: Date | null;
 
   @Column("datetime", {
     name: "deleted_at",
-    nullable: true,
-    default: () => "CURRENT_TIMESTAMP",
+    nullable: true
   })
   deletedAt: Date | null;
 } 

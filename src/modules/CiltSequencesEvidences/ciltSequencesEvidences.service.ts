@@ -25,6 +25,30 @@ export class CiltSequencesEvidencesService {
     }
   };
 
+  findBySiteId = async (siteId: number) => {
+    try {
+      return await this.ciltSequencesEvidencesRepository.find({ where: { siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByPositionId = async (positionId: number) => {
+    try {
+      return await this.ciltSequencesEvidencesRepository.find({ where: { positionId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByCiltId = async (ciltId: number) => {
+    try {
+      return await this.ciltSequencesEvidencesRepository.find({ where: { ciltId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const ciltEvidence = await this.ciltSequencesEvidencesRepository.findOne({

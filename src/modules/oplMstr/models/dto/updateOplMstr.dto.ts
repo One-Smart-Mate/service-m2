@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { IsNotEmpty, IsString, IsNumber, IsOptional, IsEnum, IsISO8601 } from 'class-validator';
 
 export class UpdateOplMstrDTO {
   @ApiProperty({ description: 'ID of the OPL' })
@@ -41,4 +41,8 @@ export class UpdateOplMstrDTO {
   @IsOptional()
   @IsEnum(['opl', 'sop'])
   oplType?: 'opl' | 'sop';
+
+  @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  updatedAt: string;
 } 

@@ -15,6 +15,20 @@ export class CiltMstrController {
     return await this.ciltMstrService.findAll();
   }
 
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all CILTs by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteId(@Param('siteId') siteId: number) {
+    return await this.ciltMstrService.findBySiteId(siteId);
+  }
+
+  @Get('position/:positionId')
+  @ApiOperation({ summary: 'Get all CILTs by position ID' })
+  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
+  async findByPositionId(@Param('positionId') positionId: number) {
+    return await this.ciltMstrService.findByPositionId(positionId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT ID' })
