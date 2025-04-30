@@ -20,7 +20,7 @@ export class CiltSequencesEntity {
   @Column("int", {
     name: "position_id",
     nullable: true,
-    comment: "heredada de positions",
+    comment: "inherited from positions",
   })
   positionId: number | null;
 
@@ -36,7 +36,7 @@ export class CiltSequencesEntity {
   @Column("int", {
     name: "level_id",
     nullable: true,
-    comment: "nodo final donde se crea la secuencia",
+    comment: "final node where the sequence is created",
   })
   levelId: number | null;
 
@@ -46,7 +46,7 @@ export class CiltSequencesEntity {
   @Column("tinyint", {
     name: "order",
     nullable: true,
-    comment: "orden en el que se muestran las secuencias",
+    comment: "order in which the sequences are displayed",
   })
   order: number | null;
 
@@ -54,14 +54,14 @@ export class CiltSequencesEntity {
     name: "secuence_list",
     nullable: true,
     comment:
-      "secuencia de pasos a seguir, es un texto con formato, pueden ser un listado",
+      "sequence of steps to follow, it is a text with format, it can be a list",
   })
   secuenceList: string | null;
 
   @Column("char", {
     name: "secuence_color",
     nullable: true,
-    comment: "color de la secuencia en hexadecimal",
+    comment: "sequence color in hexadecimal",
     length: 6,
   })
   secuenceColor: string | null;
@@ -70,7 +70,7 @@ export class CiltSequencesEntity {
     name: "cilt_type_id",
     nullable: true,
     comment:
-      "tipo de CILT a ejecutar, viene de la tabla cilt_types; una secuencia solo puede tener un tipo de cilt",
+      "type of CILT to execute, comes from the cilt_types table; a sequence can only have one type of cilt",
   })
   ciltTypeId: number | null;
 
@@ -80,7 +80,7 @@ export class CiltSequencesEntity {
   @Column("int", {
     name: "reference_opl_sop",
     nullable: true,
-    comment: "viene de la tabla opl_mstr",
+    comment: "comes from the opl_mstr table",
   })
   referenceOplSop: number | null;
 
@@ -88,14 +88,14 @@ export class CiltSequencesEntity {
     name: "standard_time",
     nullable: true,
     comment:
-      "tiempo de ejecucion de la secuencia; se captura en segundos, se muestra en lenguaje natural",
+      "execution time of the sequence; captured in seconds, displayed in natural language",
   })
   standardTime: number | null;
 
   @Column("varchar", {
     name: "standard_ok",
     nullable: true,
-    comment: "texto simple que indica cual es el standard esperado o a cumplir",
+    comment: "simple text that indicates what the expected standard is or to be fulfilled",
     length: 100,
   })
   standardOk: string | null;
@@ -103,7 +103,7 @@ export class CiltSequencesEntity {
   @Column("int", {
     name: "remediation_opl_sop",
     nullable: true,
-    comment: "viene de la tabla opl_mstr",
+    comment: "comes from the opl_mstr table",
   })
   remediationOplSop: number | null;
 
@@ -111,14 +111,14 @@ export class CiltSequencesEntity {
     name: "tools_required",
     nullable: true,
     comment:
-      "texto simple, herramientas necesarias para llevar a cabo las tareas",
+      "simple text, tools necessary to carry out the tasks",
   })
   toolsRequired: string | null;
 
   @Column("tinyint", {
     name: "stoppage_reason",
     nullable: true,
-    comment: "SI/NO si no se cumple el standar es motivo de paro?",
+    comment: "YES/NO if the standard is not met, is the reason for stoppage?",
   })
   stoppageReason: number | null;
 
@@ -126,7 +126,7 @@ export class CiltSequencesEntity {
     name: "quantity_pictures_create",
     nullable: true,
     comment:
-      "cantidad de imagenes al inicio de la secuencia para respaldar el status en que se encontro el equipo, default 1",
+      "quantity of images at the beginning of the sequence to support the status in which the equipment was found, default 1",
     default: () => "'1'",
   })
   quantityPicturesCreate: number | null;
@@ -135,7 +135,7 @@ export class CiltSequencesEntity {
     name: "quantity_pictures_close",
     nullable: true,
     comment:
-      "cantidad de imagenes al termino de la secuencia para respaldar el status en que se dejo el equipo, default 1",
+      "quantity of images at the end of the sequence to support the status in which the equipment was left, default 1",
     default: () => "'1'",
   })
   quantityPicturesClose: number | null;

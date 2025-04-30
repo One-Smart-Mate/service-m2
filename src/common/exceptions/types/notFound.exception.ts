@@ -26,67 +26,73 @@ export enum NotFoundCustomExceptionType {
 
 export class NotFoundCustomException extends HttpException {
   constructor(type: NotFoundCustomExceptionType) {
-    let message;
-    if (type === NotFoundCustomExceptionType.COMPANY) {
-      message = stringConstants.companyNotFound;
+    let message: string;
+
+    switch (type) {
+      case NotFoundCustomExceptionType.COMPANY:
+        message = stringConstants.companyNotFound;
+        break;
+      case NotFoundCustomExceptionType.PRIORITY:
+        message = stringConstants.priorityNotFound;
+        break;
+      case NotFoundCustomExceptionType.USER:
+        message = stringConstants.userNotFound;
+        break;
+      case NotFoundCustomExceptionType.CARDTYPES:
+        message = stringConstants.cardTypesNotFound;
+        break;
+      case NotFoundCustomExceptionType.SITE:
+        message = stringConstants.siteNotFound;
+        break;
+      case NotFoundCustomExceptionType.PRECLASSIFIER:
+        message = stringConstants.preclsassifierNotFound;
+        break;
+      case NotFoundCustomExceptionType.LEVELS:
+        message = stringConstants.levels;
+        break;
+      case NotFoundCustomExceptionType.ROLES:
+        message = stringConstants.roles;
+        break;
+      case NotFoundCustomExceptionType.CARD:
+        message = stringConstants.cardNotFound;
+        break;
+      case NotFoundCustomExceptionType.POSITION:
+        message = stringConstants.positionNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES:
+        message = stringConstants.ciltSequencesEvidencesNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS:
+        message = stringConstants.ciltSequencesExecutionsNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_MSTR:
+        message = stringConstants.ciltMstrNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_TYPES:
+        message = stringConstants.ciltTypesNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES:
+        message = stringConstants.ciltSequencesNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES_FREQUENCIES:
+        message = stringConstants.ciltSequencesFrequenciesNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_FREQUENCIES:
+        message = stringConstants.ciltFrequenciesNotFound;
+        break;
+      case NotFoundCustomExceptionType.OPL_MSTR:
+        message = stringConstants.oplMstrNotFound;
+        break;
+      case NotFoundCustomExceptionType.OPL_DETAILS:
+        message = stringConstants.oplDetailsNotFound;
+        break;
+      case NotFoundCustomExceptionType.REPOSITORY:
+        message = stringConstants.repositoryNotFound;
+        break;
+      default:
+        message = 'Resource not found';
     }
-    if (type === NotFoundCustomExceptionType.PRIORITY) {
-      message = stringConstants.priorityNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.USER) {
-      message = stringConstants.userNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CARDTYPES) {
-      message = stringConstants.cardTypesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.SITE) {
-      message = stringConstants.siteNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.PRECLASSIFIER) {
-      message = stringConstants.preclsassifierNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.LEVELS) {
-      message = stringConstants.levels;
-    }
-    if (type === NotFoundCustomExceptionType.ROLES) {
-      message = stringConstants.roles;
-    }
-    if (type === NotFoundCustomExceptionType.CARD) {
-      message = stringConstants.cardNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.POSITION) {
-      message = stringConstants.positionNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES) {
-      message = stringConstants.ciltSequencesEvidencesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS) {
-      message = stringConstants.ciltSequencesExecutionsNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_MSTR) {
-      message = stringConstants.ciltMstrNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_TYPES) {
-      message = stringConstants.ciltTypesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_SEQUENCES) {
-      message = stringConstants.ciltSequencesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_SEQUENCES_FREQUENCIES) {
-      message = stringConstants.ciltSequencesFrequenciesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.CILT_FREQUENCIES) {
-      message = stringConstants.ciltFrequenciesNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.OPL_MSTR) {
-      message = stringConstants.oplMstrNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.OPL_DETAILS) {
-      message = stringConstants.oplDetailsNotFound;
-    }
-    if (type === NotFoundCustomExceptionType.REPOSITORY) {
-      message = stringConstants.repositoryNotFound;
-    }
+
     super(message, HttpStatus.NOT_FOUND);
   }
 }

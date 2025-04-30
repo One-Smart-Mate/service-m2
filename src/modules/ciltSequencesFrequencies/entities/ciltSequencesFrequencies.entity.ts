@@ -24,7 +24,7 @@ export class CiltSequencesFrequenciesEntity {
     name: "frecuency_code",
     nullable: true,
     comment:
-      "inciales de la frecuencia: IT=inicio de turno; FT=fin de turno; CP=cambio de formato; RUN= maquina funcionando;",
+      "initiales of the frequency: IT=start of shift; FT=end of shift; CP=format change; RUN=machine running;",
     length: 3,
   })
   frecuencyCode: string | null;

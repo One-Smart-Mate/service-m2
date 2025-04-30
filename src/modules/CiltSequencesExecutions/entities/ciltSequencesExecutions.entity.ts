@@ -15,35 +15,35 @@ export class CiltSequencesExecutionsEntity {
   @Column("int", {
     name: "position_id",
     nullable: true,
-    comment: "viene de la tabla posiciones",
+    comment: "comes from the positions table",
   })
   positionId: number | null;
 
   @Column("int", {
     name: "cilt_id",
     nullable: true,
-    comment: "viene de la tabla cilt_mstr",
+    comment: "comes from the cilt_mstr table",
   })
   ciltId: number | null;
 
   @Column("int", {
     name: "cilt_details_id",
     nullable: true,
-    comment: "viene de la tabla cilt_details",
+    comment: "comes from the cilt_details table",
   })
   ciltDetailsId: number | null;
 
   @Column("timestamp", {
     name: "secuence_start",
     nullable: true,
-    comment: "momento en que inicia la secuencia del cilt",
+    comment: "moment when the sequence of the cilt starts",
   })
   secuenceStart: Date | null;
 
   @Column("timestamp", {
     name: "secuence_stop",
     nullable: true,
-    comment: "momento en que termina la secuencia del cilt",
+    comment: "moment when the sequence of the cilt ends",
   })
   secuenceStop: Date | null;
 
@@ -51,14 +51,14 @@ export class CiltSequencesExecutionsEntity {
     name: "duration",
     nullable: true,
     comment:
-      "duracion de la ejecucion de la secuencia en segundos: secuence_start - secuence_stop",
+      "duration of the sequence execution in seconds: secuence_start - secuence_stop",
   })
   duration: number | null;
 
   @Column("varchar", {
     name: "standard_ok",
     nullable: true,
-    comment: "estandar que se debe cumplir",
+    comment: "standard to be fulfilled",
     length: 45,
   })
   standardOk: string | null;
@@ -67,7 +67,7 @@ export class CiltSequencesExecutionsEntity {
     name: "initial_parameter",
     nullable: true,
     comment:
-      "parametro que se encontro, es opcional si habia alguna lectura a efectuar",
+      "parameter found, it is optional if there was any reading to be made",
     length: 45,
   })
   initialParameter: string | null;
@@ -76,7 +76,7 @@ export class CiltSequencesExecutionsEntity {
     name: "evidence_at_creation",
     nullable: true,
     comment:
-      "si se capturo evidencia al inicio de la secuencia, se almacena 1, sino se almacena 0; sirve para evitar un join a la tabla cilt_secuencies_evidences",
+      "if evidence was captured at the beginning of the sequence, it is stored 1, otherwise it is stored 0; it is used to avoid a join to the cilt_secuencies_evidences table",
     default: () => "'0'",
   })
   evidenceAtCreation: number | null;
@@ -85,7 +85,7 @@ export class CiltSequencesExecutionsEntity {
     name: "final_parameter",
     nullable: true,
     comment:
-      "parametro en final, es opcional si habia alguna lectura a efectuar",
+      "final parameter, it is optional if there was any reading to be made",
     length: 45,
   })
   finalParameter: string | null;
@@ -94,7 +94,7 @@ export class CiltSequencesExecutionsEntity {
     name: "evidence_at_final",
     nullable: true,
     comment:
-      "si se capturo evidencia al final de la secuencia, se almacena 1, sino se almacena 0; sirve para evitar un join a la tabla cilt_secuencies_evidences",
+      "if evidence was captured at the end of the sequence, it is stored 1, otherwise it is stored 0; it is used to avoid a join to the cilt_secuencies_evidences table",
     default: () => "'0'",
   })
   evidenceAtFinal: number | null;
@@ -103,7 +103,7 @@ export class CiltSequencesExecutionsEntity {
     name: "stoppage_reason",
     nullable: true,
     comment:
-      "indica si encontrar NOK la secuencia y no poder llevarla a parametro OK es motivo de paro",
+      "indicates if finding NOK the sequence and not being able to take it to parameter OK is a stoppage reason",
   })
   stoppageReason: number | null;
 
@@ -111,7 +111,7 @@ export class CiltSequencesExecutionsEntity {
     name: "am_tag",
     nullable: true,
     comment:
-      "indica si tiene una tarjeta de am, se utiliza para evitar un join a la tabla de cards",
+      "indicates if it has an AM card, it is used to avoid a join to the cards table",
     default: () => "'0'",
   })
   amTag: number | null;

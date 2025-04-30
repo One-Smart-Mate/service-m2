@@ -7,17 +7,17 @@ export class CreateCiltFrequenciesDTO {
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'Código de la frecuencia (IT=Inicio de turno, FT=Fin de turno, CP=Cambio de formato, RUN=Maquina funcionando)', required: false })
+  @ApiProperty({ description: 'Frequency code (IT=Start of shift, FT=End of shift, CP=Format change, RUN=Machine running)', required: false })
   @IsOptional()
   @IsString()
   frecuencyCode?: string;
 
-  @ApiProperty({ description: 'Descripción de la frecuencia', required: false })
+  @ApiProperty({ description: 'Frequency description', required: false })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'Estado de la frecuencia', required: false, default: 'A' })
+  @ApiProperty({ description: 'Frequency status', required: false, default: 'A' })
   @IsOptional()
   @IsString()
   status?: string;

@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsOptional, IsString, IsNumber } from 'class-validator';
 
 export class UpdateCiltFrequenciesDTO {
-  @ApiProperty({ description: 'ID de la frecuencia' })
+  @ApiProperty({ description: 'Frequency ID' })
   @IsNotEmpty()
   @IsNumber()
   id: number;
@@ -12,17 +12,17 @@ export class UpdateCiltFrequenciesDTO {
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'Código de la frecuencia (IT=Inicio de turno, FT=Fin de turno, CP=Cambio de formato, RUN=Maquina funcionando)', required: false })
+  @ApiProperty({ description: 'Frequency code (IT=Start of shift, FT=End of shift, CP=Format change, RUN=Machine running)', required: false })
   @IsOptional()
   @IsString()
   frecuencyCode?: string;
 
-  @ApiProperty({ description: 'Descripción de la frecuencia', required: false })
+  @ApiProperty({ description: 'Frequency description', required: false })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ description: 'Estado de la frecuencia', required: false })
+  @ApiProperty({ description: 'Frequency status', required: false })
   @IsOptional()
   @IsString()
   status?: string;

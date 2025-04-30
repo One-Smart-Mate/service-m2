@@ -43,7 +43,7 @@ export class CiltMstrEntity {
     name: "standard_time",
     nullable: true,
     comment:
-      "tiempo estandar de ejecucion del procedimiento, se almacena en segundos pero se muestra en lenguaje natural",
+      "standard execution time of the procedure, stored in seconds but displayed in natural language",
   })
   standardTime: number | null;
 
@@ -51,7 +51,7 @@ export class CiltMstrEntity {
     name: "learnig_time",
     nullable: true,
     comment:
-      "tiempo de aprendizaje del procedimiento, se almacena en lenguaje natural",
+      "learning time of the procedure, stored in natural language",
     length: 25,
   })
   learnigTime: string | null;
@@ -59,7 +59,7 @@ export class CiltMstrEntity {
   @Column("varchar", {
     name: "url_img_layout",
     nullable: true,
-    comment: "url donde se almacena el diagrama de la maquina",
+    comment: "url where the machine diagram is stored",
     length: 500,
   })
   urlImgLayout: string | null;
@@ -67,7 +67,7 @@ export class CiltMstrEntity {
   @Column("int", {
     name: "order",
     nullable: true,
-    comment: "ordenamiento del listado de los cilt",
+    comment: "order of the cilt list",
     default: () => "'1'",
   })
   order: number | null;

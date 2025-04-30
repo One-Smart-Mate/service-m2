@@ -24,7 +24,7 @@ export class CiltSequencesEvidencesEntity {
   @Column("varchar", {
     name: "evidence_url",
     nullable: true,
-    comment: "URL donde se almacena la imagen de evidencia",
+    comment: "URL where the evidence image is stored",
     length: 500,
   })
   evidenceUrl: string | null;
