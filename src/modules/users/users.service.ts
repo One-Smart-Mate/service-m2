@@ -369,7 +369,7 @@ export class UsersService {
       } else {
         userSite.user = user;
       }
-      const appUrl = process.env.APP_URL;
+      const appUrl = process.env.URL_WEB;
 
       await this.mailService.sendWelcomeEmail(userSite.user, appUrl, createUserDTO.translation);
 
