@@ -9,7 +9,7 @@ import {
   Put,
 } from '@nestjs/common';
 import { SiteService } from './site.service';
-import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CreateSiteDTO } from './models/dto/create-site.dto';
 import { UpadeSiteDTO } from './models/dto/update.site.dto';
 import { plainToClass } from 'class-transformer';
@@ -54,5 +54,17 @@ export class SiteController {
   @Get('/all')
   findAll() {
     return this.siteService.findAll();
+  }
+
+  @Get('/:siteId/users/roles-and-positions')
+  @ApiOperation({ summary: 'Get users by site with roles and positions' })
+  @ApiParam({ name: 'siteId', type: 'number' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Users retrieved successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Site not found' })
+  async findUsersWithRolesAndPositions(@Param('siteId') siteId: number) {
+    return this.siteService.findUsersWithRolesAndPositions(siteId);
   }
 }
