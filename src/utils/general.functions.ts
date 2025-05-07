@@ -37,3 +37,12 @@ export const addDaysToDateString = (dateString: string, days: number): string =>
   return `${year}-${month}-${day}`;
 };
 
+export const generateRandomHex = (length: number): string => {
+  const hexChars = '0123456789ABCDEF';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += hexChars.charAt(Math.floor(Math.random() * hexChars.length));
+  }
+  return result;
+};
+

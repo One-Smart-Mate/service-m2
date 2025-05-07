@@ -14,12 +14,15 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { UpadeSiteDTO } from './models/dto/update.site.dto';
+import { UserEntity } from '../users/entities/user.entity';
 
 @Injectable()
 export class SiteService {
   constructor(
     @InjectRepository(SiteEntity)
     private readonly siteRepository: Repository<SiteEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
     private readonly companyService: CompanyService,
   ) {}
 
@@ -173,6 +176,44 @@ export class SiteService {
       return siteBusinessName;
     } catch (exceptino) {
       HandleException.exception(exceptino);
+    }
+  };
+
+  findUsersWithRolesAndPositions = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { userHasSites: { site: { id: siteId } } },
+        relations: { 
+          userRoles: { role: true },
+          usersPositions: { position: true }
+        },
+      });
+
+      return users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        roles: user.userRoles.map((userRole) => ({
+          id: userRole.role.id,
+          name: userRole.role.name
+        })),
+        positions: user.usersPositions.map((userPosition) => ({
+          id: userPosition.position.id,
+          name: userPosition.position.name,
+          description: userPosition.position.description,
+          route: userPosition.position.route,
+          levelId: userPosition.position.levelId,
+          levelName: userPosition.position.levelName,
+          areaId: userPosition.position.areaId,
+          areaName: userPosition.position.areaName,
+          siteId: userPosition.position.siteId,
+          siteName: userPosition.position.siteName,
+          siteType: userPosition.position.siteType,
+          status: userPosition.position.status
+        }))
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
     }
   };
 }
