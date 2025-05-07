@@ -17,6 +17,7 @@ export class UserResponse {
   companyName: string;
   sites: Site[];
   app_history: number;
+  dueDate: string;
 
   constructor(
     user: UserEntity,
@@ -39,5 +40,6 @@ export class UserResponse {
       logo: userHasSite.site.logo,
     }));
     this.app_history = app_history;
+    this.dueDate = user.userHasSites[0].site.dueDate;
   }
 }

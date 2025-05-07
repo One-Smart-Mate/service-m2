@@ -58,6 +58,9 @@ export class ValidationException extends HttpException {
     if (type === ValidationExceptionType.DUPLICATED_USER_AT_IMPORTATION) {
       message = stringConstants.duplicateUserAtRow + info;
     }
+    if (type === ValidationExceptionType.INVALID_HEX_FORMAT) {
+      message = stringConstants.invalidHexFormat;
+    }
     super(message, HttpStatus.BAD_REQUEST);
   }
 }
@@ -81,4 +84,5 @@ export enum ValidationExceptionType {
   DUPLICATED_EMAIL,
   MISSING_FIELDS,
   INVALID_ROLE,
+  INVALID_HEX_FORMAT,
 }

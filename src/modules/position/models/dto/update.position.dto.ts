@@ -78,6 +78,17 @@ export class UpdatePositionDto {
   @MaxLength(1)
   status: string | null;
 
+  @ApiProperty({ description: 'Node Responsible ID', example: 1, type: 'number' })
+  @IsInt()
+  @IsOptional()
+  nodeResponsableId: number | null;
+
+  @ApiProperty({ description: 'Node Responsible Name', example: 'John Doe', type: 'string', maxLength: 100 })
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  nodeResponsableName: string | null;
+
   @ApiProperty({ description: 'User IDs to associate with the position', example: [1, 2], type: [Number] })
   @IsInt({ each: true })
   @IsOptional()

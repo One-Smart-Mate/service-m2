@@ -18,7 +18,7 @@ import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdateUserDTO } from './models/update.user.dto';
 import { MailService } from '../mail/mail.service';
-import { generateRandomCode } from 'src/utils/general.functions';
+import { generateRandomCode, generateRandomHex } from 'src/utils/general.functions';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
@@ -347,6 +347,31 @@ export class UsersService {
       const userSite = new UserHasSitesEntity();
       userSite.site = site;
 
+      let fastPassword = createUserDTO.fastPassword;
+      if (!fastPassword) {
+        fastPassword = generateRandomHex(6);
+        
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (!isUnique && attempts < maxAttempts) {
+          const existingUser = await this.userRepository.findOne({
+            where: { 
+              fastPassword, 
+              userHasSites: { site: { id: createUserDTO.siteId } } 
+            }
+          });
+          
+          if (!existingUser) {
+            isUnique = true;
+          } else {
+            fastPassword = generateRandomHex(6);
+            attempts++;
+          }
+        }
+      }
+
       if (!user) {
         const createUser = await this.userRepository.create({
           name: createUserDTO.name,
@@ -355,6 +380,7 @@ export class UsersService {
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
           ),
+          fastPassword,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
@@ -367,9 +393,11 @@ export class UsersService {
         await this.roleService.assignUserRoles(createUser, roles);
         userSite.user = createUser;
       } else {
+        user.fastPassword = fastPassword;
+        await this.userRepository.save(user);
         userSite.user = user;
       }
-      const appUrl = process.env.APP_URL;
+      const appUrl = process.env.URL_WEB;
 
       await this.mailService.sendWelcomeEmail(userSite.user, appUrl, createUserDTO.translation);
 
@@ -412,6 +440,26 @@ export class UsersService {
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+      }
+
+      if (updateUserDTO.fastPassword) {
+        if (!/^[0-9A-F]+$/i.test(updateUserDTO.fastPassword)) {
+          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+        }
+        
+        const existingUser = await this.userRepository.findOne({
+          where: { 
+            fastPassword: updateUserDTO.fastPassword, 
+            id: Not(updateUserDTO.id),
+            userHasSites: { site: { id: updateUserDTO.siteId } } 
+          }
+        });
+        
+        if (existingUser) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.fastPassword = updateUserDTO.fastPassword;
       }
 
       user.status = updateUserDTO.status;
@@ -652,6 +700,39 @@ export class UsersService {
           id: userHasSite.site.id,
           name: userHasSite.site.name,
           logo: userHasSite.site.logo
+        }))
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findUsersBySiteWithPositions = async (siteId: number) => {
+    try {
+      const users = await this.userRepository.find({
+        where: { userHasSites: { site: { id: siteId } } },
+        relations: { 
+          usersPositions: { position: true }
+        },
+      });
+
+      return users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        positions: user.usersPositions.map((userPosition) => ({
+          id: userPosition.position.id,
+          name: userPosition.position.name,
+          description: userPosition.position.description,
+          route: userPosition.position.route,
+          levelId: userPosition.position.levelId,
+          levelName: userPosition.position.levelName,
+          areaId: userPosition.position.areaId,
+          areaName: userPosition.position.areaName,
+          siteId: userPosition.position.siteId,
+          siteName: userPosition.position.siteName,
+          siteType: userPosition.position.siteType,
+          status: userPosition.position.status
         }))
       }));
     } catch (exception) {

@@ -3,7 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import typeOrmConfig from './config/type.orm.config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
@@ -20,11 +19,19 @@ import { FileUploadModule } from './modules/file-upload/file-upload.module';
 import { ExportModule } from './modules/export/export.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PositionModule } from './modules/position/position.module';
-import { CiltModule } from './modules/cilt/cilt.module';
+import { CiltMstrModule } from './modules/ciltMstr/ciltMstr.module';
+import { CiltTypesModule } from './modules/ciltTypes/ciltTypes.module';
+import { CiltSequencesFrequenciesModule } from './modules/ciltSequencesFrequencies/ciltSequencesFrequencies.module';
+import { CiltSequencesModule } from './modules/ciltSequences/ciltSequences.module';
+import { OplDetailsModule } from './modules/oplDetails/oplDetails.module';
+import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
+import { RepositoryModule } from './modules/repository/repository.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
-
+import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
+import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
+import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -45,7 +52,16 @@ import { CustomLoggerService } from './common/logger/logger.service';
     ExportModule,
     NotificationsModule,
     PositionModule,
-    CiltModule
+    CiltMstrModule,
+    CiltTypesModule,
+    CiltFrequenciesModule,
+    CiltSequencesModule,
+    CiltSequencesFrequenciesModule,
+    CiltSequencesExecutionsModule,
+    CiltSequencesEvidencesModule,
+    OplMstrModule,
+    OplDetailsModule,
+    RepositoryModule,
   ],
   controllers: [AppController],
   providers: [
