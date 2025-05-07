@@ -103,6 +103,9 @@ export class UserEntity {
   @Column({ name: 'web_version', type: 'varchar', length: 15, nullable: true })
   webVersion: string;
 
+  @Column({ name: 'fast_password', type: 'varchar', length: 6, nullable: true })
+  fastPassword: string;
+
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;
 

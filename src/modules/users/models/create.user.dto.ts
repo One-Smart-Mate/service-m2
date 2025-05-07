@@ -10,6 +10,7 @@ import {
   IsString,
   Max,
   Min,
+  Matches,
 } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
@@ -58,4 +59,14 @@ export class CreateUserDTO {
   })
   @IsString()
   translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
+
+  @ApiProperty({ 
+    description: 'Fast password for quick access (hexadecimal format)', 
+    required: false,
+    example: 'A1B2C3'
+  })
+  @IsString()
+  @IsOptional()
+  @Matches(/^[0-9A-Fa-f]+$/, { message: 'Fast password must be in hexadecimal format' })
+  fastPassword?: string;
 }

@@ -18,7 +18,7 @@ import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdateUserDTO } from './models/update.user.dto';
 import { MailService } from '../mail/mail.service';
-import { generateRandomCode } from 'src/utils/general.functions';
+import { generateRandomCode, generateRandomHex } from 'src/utils/general.functions';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
@@ -347,6 +347,31 @@ export class UsersService {
       const userSite = new UserHasSitesEntity();
       userSite.site = site;
 
+      let fastPassword = createUserDTO.fastPassword;
+      if (!fastPassword) {
+        fastPassword = generateRandomHex(6);
+        
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (!isUnique && attempts < maxAttempts) {
+          const existingUser = await this.userRepository.findOne({
+            where: { 
+              fastPassword, 
+              userHasSites: { site: { id: createUserDTO.siteId } } 
+            }
+          });
+          
+          if (!existingUser) {
+            isUnique = true;
+          } else {
+            fastPassword = generateRandomHex(6);
+            attempts++;
+          }
+        }
+      }
+
       if (!user) {
         const createUser = await this.userRepository.create({
           name: createUserDTO.name,
@@ -355,6 +380,7 @@ export class UsersService {
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
           ),
+          fastPassword,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
@@ -367,6 +393,8 @@ export class UsersService {
         await this.roleService.assignUserRoles(createUser, roles);
         userSite.user = createUser;
       } else {
+        user.fastPassword = fastPassword;
+        await this.userRepository.save(user);
         userSite.user = user;
       }
       const appUrl = process.env.URL_WEB;
@@ -412,6 +440,26 @@ export class UsersService {
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+      }
+
+      if (updateUserDTO.fastPassword) {
+        if (!/^[0-9A-F]+$/i.test(updateUserDTO.fastPassword)) {
+          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+        }
+        
+        const existingUser = await this.userRepository.findOne({
+          where: { 
+            fastPassword: updateUserDTO.fastPassword, 
+            id: Not(updateUserDTO.id),
+            userHasSites: { site: { id: updateUserDTO.siteId } } 
+          }
+        });
+        
+        if (existingUser) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.fastPassword = updateUserDTO.fastPassword;
       }
 
       user.status = updateUserDTO.status;
