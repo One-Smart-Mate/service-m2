@@ -22,4 +22,11 @@ export class CiltTypesEntity {
     default: () => "'A'",
   })
   status: string | null;
+
+  @Column("char", {
+    name: "color",
+    nullable: true,
+    length: 6
+  })
+  color: string | null;
 }

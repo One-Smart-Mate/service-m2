@@ -193,6 +193,8 @@ export class SiteService {
         id: user.id,
         name: user.name,
         email: user.email,
+        lastLoginWeb: user.lastLoginWeb,
+        lastLoginApp: user.lastLoginApp,
         roles: user.userRoles.map((userRole) => ({
           id: userRole.role.id,
           name: userRole.role.name

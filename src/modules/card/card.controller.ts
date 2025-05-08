@@ -200,6 +200,11 @@ export class CardController {
     return this.cardService.findCardNotes(cardId);
   }
 
+  @Get('/notes/uuid/:cardUUID')
+  findCardNotesByUUID(@Param('cardUUID') cardUUID: string) {
+    return this.cardService.findCardNotesByUUID(cardUUID);
+  }
+
   @Post('/update/priority')
   updateCardPriority(@Body() updateCardPriorityDTO: UpdateCardPriorityDTO) {
     return this.cardService.updateCardPriority(updateCardPriorityDTO);

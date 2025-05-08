@@ -970,6 +970,25 @@ export class CardService {
     }
   };
 
+  findCardNotesByUUID = async (cardUUID: string) => {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { cardUUID: cardUUID }
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      return await this.cardNoteRepository.find({
+        where: { cardId: card.id },
+        order: { createdAt: 'DESC' },
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   getCards = async (params: {
     siteId: number;
     area?: string;
