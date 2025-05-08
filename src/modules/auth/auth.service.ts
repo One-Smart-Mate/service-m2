@@ -41,6 +41,16 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
+      const loginDate = data.loginDate ? new Date(data.loginDate) : new Date();
+      
+      if (data.platform === 'web') {
+        user.lastLoginWeb = loginDate;
+      } else if (['app', 'android', 'ios'].includes(data.platform)) {
+        user.lastLoginApp = loginDate;
+      }
+      
+      await this.usersSevice.update(user);
+
       const roles = await this.usersSevice.getUserRoles(user.id);
 
       const payload = { id: user.id, name: user.name, email: user.email };

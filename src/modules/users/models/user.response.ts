@@ -18,6 +18,8 @@ export class UserResponse {
   sites: Site[];
   app_history: number;
   dueDate: string;
+  lastLoginWeb: Date | null;
+  lastLoginApp: Date | null;
 
   constructor(
     user: UserEntity,
@@ -41,5 +43,7 @@ export class UserResponse {
     }));
     this.app_history = app_history;
     this.dueDate = user.userHasSites[0].site.dueDate;
+    this.lastLoginWeb = user.lastLoginWeb;
+    this.lastLoginApp = user.lastLoginApp;
   }
 }
