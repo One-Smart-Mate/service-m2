@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsEmail, IsIn, IsISO8601, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDTO {
   @ApiProperty({ description: 'email', example: 'username@domain' })
@@ -25,13 +25,4 @@ export class LoginDTO {
   @IsString()
   @IsIn(['web', 'app', 'android', 'ios'])
   platform: string = 'web';
-
-  @ApiProperty({ 
-    description: 'Login date and time', 
-    example: '2025-05-08T00:00:00.000Z',
-    required: false
-  })
-  @IsOptional()
-  @IsISO8601()
-  loginDate: string = new Date().toISOString();
 }

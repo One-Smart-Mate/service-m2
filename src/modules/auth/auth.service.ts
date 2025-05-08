@@ -41,12 +41,12 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
-      const loginDate = data.loginDate ? new Date(data.loginDate) : new Date();
+      const now = new Date();
       
       if (data.platform === 'web') {
-        user.lastLoginWeb = loginDate;
+        user.lastLoginWeb = now;
       } else if (['app', 'android', 'ios'].includes(data.platform)) {
-        user.lastLoginApp = loginDate;
+        user.lastLoginApp = now;
       }
       
       await this.usersSevice.update(user);
