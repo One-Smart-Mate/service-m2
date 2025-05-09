@@ -3,18 +3,16 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
 import { join } from 'path';
 
 const mailConfig = MailerModule.forRoot({
-  
-  
   transport: {
-    host: 'cdentalcaregroup.com',
-    secure: false,
+    host: process.env.EMAIL_HOST,
+    secure: process.env.EMAIL_SECURE === 'true',
     auth: {
-      user: 'cdentalcaregorup-contact@cdentalcaregroup.com',
-      pass: '96BTJhHB9NV#$#12',
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD,
     },
   },
   defaults: {
-    from: '"M2" <cdentalcaregorup-contact@cdentalcaregroup.com>',
+    from: `"OSM" <${process.env.EMAIL_FROM}>`,
   },
   template: {
     dir: join(__dirname, 'templates'),
