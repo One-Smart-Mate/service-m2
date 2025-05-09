@@ -22,4 +22,8 @@ export class UpdateCiltTypeDTO {
   @IsString()
   status?: string;
 
+  @ApiProperty({ description: 'Color code for the CILT type (hex format)', required: false, example: 'FF5733' })
+  @IsOptional()
+  @IsString()
+  color?: string;
 } 
