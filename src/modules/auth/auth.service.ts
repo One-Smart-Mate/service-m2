@@ -15,6 +15,7 @@ import {
 } from 'src/common/exceptions/types/validation.exception';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { SiteService } from '../site/site.service';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class AuthService {
@@ -40,6 +41,16 @@ export class AuthService {
       if (!isPasswordValid) {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
+
+      const now = new Date();
+      
+      if (data.platform === stringConstants.OS_WEB) {
+        user.lastLoginWeb = now;
+      } else if ([stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(data.platform)) {
+        user.lastLoginApp = now;
+      }
+      
+      await this.usersSevice.update(user);
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
