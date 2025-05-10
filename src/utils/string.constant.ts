@@ -72,6 +72,7 @@ export const stringConstants = {
   a: 'a',
   cambio: 'Cambio:',
   cambioElMecanicoDe: 'cambió el responsable de:',
+  noResponsible: 'No responsible',
 
   //methodology
   M: 'M',
