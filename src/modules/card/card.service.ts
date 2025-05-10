@@ -929,7 +929,7 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const oldMechanicName = card.mechanicName || 'Sin responsable';
+      const oldMechanicName = card.mechanicName || stringConstants.noResponsible;
 
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;

@@ -4,15 +4,16 @@ import { join } from 'path';
 
 const mailConfig = MailerModule.forRoot({
   transport: {
-    host: process.env.EMAIL_HOST,
-    secure: process.env.EMAIL_SECURE === 'true',
+    host: process.env.MAIL_HOST,
+    port: parseInt(process.env.MAIL_PORT, 10),
+    secure: true,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASSWORD,
+      user: process.env.MAIL_USER,
+      pass: process.env.MAIL_PASSWORD,
     },
   },
   defaults: {
-    from: `"OSM" <${process.env.EMAIL_FROM}>`,
+    from: `"OSM" <${process.env.MAIL_FROM}>`,
   },
   template: {
     dir: join(__dirname, 'templates'),
