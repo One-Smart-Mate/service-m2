@@ -108,7 +108,14 @@ export class LevelService {
         tokens,
       );
 
-      return await this.levelRepository.save(createLevelDTO);
+      const savedLevel = await this.levelRepository.save(createLevelDTO);
+      
+      if (!savedLevel.levelMachineId) {
+        savedLevel.levelMachineId = savedLevel.id.toString(16);
+        await this.levelRepository.save(savedLevel);
+      }
+
+      return savedLevel;
     } catch (exception) {
       HandleException.exception(exception);
     }
