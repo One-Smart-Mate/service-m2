@@ -1,10 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import {
-  ValidationException,
-  ValidationExceptionType,
-} from 'src/common/exceptions/types/validation.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
 import { RolesService } from '../roles/roles.service';
 import { CreateUsersDTO } from './dto/create.users.dto';
@@ -15,32 +11,42 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { UsersAndSitesDTO } from './dto/users.and.sites.dto';
-import { generateRandomCode } from 'src/utils/general.functions';
+import { generateRandomCode, generateRandomHex } from 'src/utils/general.functions';
 import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UsersAndRolesDTO } from './dto/users.and.roles.dto';
 import { RoleEntity } from '../roles/entities/role.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class FileUploadService {
+  private readonly logger = new Logger(FileUploadService.name);
+
   constructor(
     private readonly roleService: RolesService,
     private readonly userService: UsersService,
     private readonly siteService: SiteService,
+    private readonly mailService: MailService,
   ) {}
+
   importUsers = async (file: Express.Multer.File, siteIdDTO: SiteIdDTO) => {
     try {
       const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      return await this.validateAndTransformUsersData(
+      const result = await this.validateAndTransformUsersData(
         jsonData,
         Number(siteIdDTO.siteId),
       );
+
+      return {
+        message: result.successfullyCreated > 0 
+          ? 'Users imported successfully' 
+          : 'All users already exist in the site',
+        data: result
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -53,6 +59,7 @@ export class FileUploadService {
     const usersAndRoles: UsersAndRolesDTO[] = [];
     const randomPassword = generateRandomCode(8);
     const currentDate = new Date();
+    const skippedUsers: { email: string; reason: string }[] = [];
 
     const [
       hashedPassword,
@@ -82,36 +89,40 @@ export class FileUploadService {
       const { Name, Email, Role } = record;
 
       if (!Name || !Email || !Role) {
-        throw new ValidationException(
-          ValidationExceptionType.MISSING_FIELDS,
-          String(index + 2),
-        );
+        skippedUsers.push({
+          email: Email || 'No email provided',
+          reason: 'Missing required fields',
+        });
+        return;
       }
 
       const normalizedEmail = Email.toLowerCase();
 
       if (existingEmailsInFile.has(normalizedEmail)) {
-        throw new ValidationException(
-          ValidationExceptionType.DUPLICATED_EMAIL,
-          String(index + 2),
-        );
+        skippedUsers.push({
+          email: normalizedEmail,
+          reason: 'Duplicate email in file',
+        });
+        return;
       } else {
         existingEmailsInFile.add(normalizedEmail);
       }
 
       if (existingEmailsInSite.has(normalizedEmail)) {
-        throw new ValidationException(
-          ValidationExceptionType.DUPLICATED_USER_AT_IMPORTATION,
-          String(index + 2),
-        );
+        skippedUsers.push({
+          email: normalizedEmail,
+          reason: 'User already exists in site',
+        });
+        return;
       }
 
       const role = rolesMap.get(Role.toLowerCase());
       if (!role) {
-        throw new ValidationException(
-          ValidationExceptionType.INVALID_ROLE,
-          String(index + 2),
-        );
+        skippedUsers.push({
+          email: normalizedEmail,
+          reason: 'Invalid role',
+        });
+        return;
       }
 
       roleAssignments.set(normalizedEmail, role);
@@ -125,18 +136,20 @@ export class FileUploadService {
           createdAt: currentDate,
         });
       } else {
+        const fastPassword = generateRandomHex(6);
         usersToCreate.push({
           name: Name,
           email: normalizedEmail,
           password: hashedPassword,
+          fastPassword,
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
+          siteCode: site.siteCode,
         });
       }
     });
 
-    const savedUsers =
-      await this.userService.saveImportedNewUsers(usersToCreate);
+    const savedUsers = await this.userService.saveImportedNewUsers(usersToCreate);
 
     savedUsers.forEach((newUser) => {
       usersAndSites.push({
@@ -158,9 +171,19 @@ export class FileUploadService {
     await this.userService.assignSiteToImportedUsers(usersAndSites);
     await this.roleService.assignRoleToImportedUsers(usersAndRoles);
 
+    const appUrl = process.env.URL_WEB;
+    for (const newUser of savedUsers) {
+      try {
+        await this.mailService.sendWelcomeEmail(newUser, appUrl, stringConstants.LANG_ES);
+      } catch (error) {
+        this.logger.error(`Failed to send welcome email to ${newUser.email}: ${error.message}`);
+      }
+    }
+
     return {
-      usersToCreate,
-      usersAndSites,
+      totalProcessed: data.length,
+      successfullyCreated: savedUsers.length,
+      skippedUsers,
     };
   };
 }
