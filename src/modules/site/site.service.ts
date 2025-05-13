@@ -193,6 +193,9 @@ export class SiteService {
         id: user.id,
         name: user.name,
         email: user.email,
+        status: user.status,
+        uploadCardDataWithDataNet: user.uploadCardDataWithDataNet,
+        uploadCardEvidenceWithDataNet: user.uploadCardEvidenceWithDataNet,
         lastLoginWeb: user.lastLoginWeb,
         lastLoginApp: user.lastLoginApp,
         roles: user.userRoles.map((userRole) => ({

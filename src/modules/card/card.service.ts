@@ -910,7 +910,10 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
 
-      if (Number(card.mechanicId) === updateCardMechanicDTO.mechanicId) {
+      const currentMechanicId = card.mechanicId ? String(card.mechanicId) : null;
+      const newMechanicId = updateCardMechanicDTO.mechanicId ? String(updateCardMechanicDTO.mechanicId) : null;
+      
+      if (currentMechanicId === newMechanicId) {
         return;
       }
 
@@ -926,17 +929,20 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElMecanicoDe} <${card.mechanicName}> ${stringConstants.a} <${userMechanic.name}>`;
-      note.createdAt = new Date();
+      const oldMechanicName = card.mechanicName || stringConstants.noResponsible;
 
       card.mechanicId = userMechanic.id;
       card.mechanicName = userMechanic.name;
 
-      const tokens = await this.userService.getUserToken(userMechanic.id);
+      await this.cardRepository.save(card);
 
+      const note = new CardNoteEntity();
+      note.cardId = card.id;
+      note.siteId = card.siteId;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElMecanicoDe} <${oldMechanicName}> ${stringConstants.a} <${userMechanic.name}>`;
+      note.createdAt = new Date();
+
+      const tokens = await this.userService.getUserToken(userMechanic.id);
       if (tokens && tokens.length > 0) {
         await this.firebaseService.sendMultipleMessage(
           new NotificationDTO(
@@ -950,8 +956,6 @@ export class CardService {
           tokens,
         );
       }
-
-      await this.cardRepository.save(card);
 
       return await this.cardNoteRepository.save(note);
     } catch (exception) {
