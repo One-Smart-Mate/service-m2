@@ -83,6 +83,9 @@ export class CiltMstrEntity {
   @Column("timestamp", { name: "date_of_last_used", nullable: true })
   dateOfLastUsed: Date | null;
 
+  @Column("datetime", { name: "cilt_due_date", nullable: true })
+  ciltDueDate: Date | null;
+
   @Column("timestamp", { name: "created_at", nullable: true })
   createdAt: Date | null;
 

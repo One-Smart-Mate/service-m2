@@ -94,6 +94,11 @@ export class UpdateCiltMstrDTO {
   @IsISO8601()
   dateOfLastUsed: string;
 
+  @ApiProperty({ description: 'CILT due date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
+  @IsOptional()
+  @IsISO8601()
+  ciltDueDate?: string;
+
   @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()
   updatedAt: string;

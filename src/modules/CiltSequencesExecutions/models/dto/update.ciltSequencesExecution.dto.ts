@@ -77,6 +77,11 @@ export class UpdateCiltSequencesExecutionDTO {
   @IsNumber()
   amTag?: number;
 
+  @ApiProperty({ description: 'Scheduled run date/time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
+  @IsOptional()
+  @IsISO8601()
+  runSecuenceSchedule?: string;
+
   @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()
   updatedAt: string;
