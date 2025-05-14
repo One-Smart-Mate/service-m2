@@ -57,6 +57,11 @@ export class UpdateCiltSequenceDTO {
   @IsString()
   levelName?: string;
 
+  @ApiProperty({ description: 'Route of the level', required: false })
+  @IsOptional()
+  @IsString()
+  route?: string;
+
   @ApiProperty({ description: 'Sequence order', required: false })
   @IsOptional()
   @IsNumber()
@@ -112,6 +117,11 @@ export class UpdateCiltSequenceDTO {
   @IsNumber()
   stoppageReason?: number;
 
+  @ApiProperty({ description: 'Is the machine stopped?', required: false })
+  @IsOptional()
+  @IsNumber()
+  machineStopped?: number;
+
   @ApiProperty({ description: 'Number of pictures at start', required: false })
   @IsOptional()
   @IsNumber()
@@ -121,6 +131,11 @@ export class UpdateCiltSequenceDTO {
   @IsOptional()
   @IsNumber()
   quantityPicturesClose?: number;
+
+  @ApiProperty({ description: 'Sequence status (A=Active, I=Inactive, D=Draft)', required: false })
+  @IsOptional()
+  @IsString()
+  status?: string;
 
   @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()

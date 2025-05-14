@@ -38,4 +38,10 @@ export class LevelController {
   findById(@Param('levelId') levelId: number) {
     return this.levelService.findById(+levelId);
   }
+
+  @Get('/path/:levelId')
+  @ApiParam({ name: 'levelId', required: true, example: 1, description: 'ID del nivel para obtener su ruta' })
+  getLevelPath(@Param('levelId') levelId: number) {
+    return this.levelService.getLevelPathById(+levelId);
+  }
 }

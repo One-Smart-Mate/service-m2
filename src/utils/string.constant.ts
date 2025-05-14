@@ -147,6 +147,9 @@ export const stringConstants = {
   OS_IOS: 'IOS',
   OS_WEB: 'WEB',
 
+  successImport: 'Users imported successfully',
+  allUsersAlreadyExist: 'All users already exist in the site',
+
   // Email templates
   emailTemplates: {
     [LANG_ES]: {

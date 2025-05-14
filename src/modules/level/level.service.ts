@@ -108,7 +108,14 @@ export class LevelService {
         tokens,
       );
 
-      return await this.levelRepository.save(createLevelDTO);
+      const savedLevel = await this.levelRepository.save(createLevelDTO);
+      
+      if (!savedLevel.levelMachineId) {
+        savedLevel.levelMachineId = savedLevel.id.toString(16);
+        await this.levelRepository.save(savedLevel);
+      }
+
+      return savedLevel;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -319,4 +326,26 @@ export class LevelService {
     }
   }
   
+  getLevelPathById = async (levelId: number): Promise<string> => {
+    try {
+      const path: string[] = [];
+      let currentLevel = await this.levelRepository.findOneBy({ id: levelId });
+
+      if (!currentLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      while (currentLevel) {
+        path.unshift(currentLevel.name);
+        if (!currentLevel.superiorId || Number(currentLevel.superiorId) === 0) {
+          break;
+        }
+        currentLevel = await this.levelRepository.findOneBy({ id: currentLevel.superiorId });
+      }
+
+      return path.join('/');
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
