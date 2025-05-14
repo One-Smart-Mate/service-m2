@@ -126,6 +126,16 @@ export class CreateCiltSequenceDTO {
   @IsNumber()
   quantityPicturesClose?: number;
 
+  @ApiProperty({ description: 'Reference point', required: false })
+  @IsOptional()
+  @IsString()
+  referencePoint?: string;
+
+  @ApiProperty({ description: 'Can be selected without programming', required: false })
+  @IsOptional()
+  @IsNumber()
+  selectableWithoutProgramming?: number;
+
   @ApiProperty({ description: 'Sequence status (A=Active, I=Inactive, D=Draft)', required: false, default: 'A' })
   @IsOptional()
   @IsString()
