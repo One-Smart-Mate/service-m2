@@ -158,6 +158,13 @@ export class CiltSequencesEntity {
   })
   referencePoint: string | null;
 
+  @Column("tinyint", {
+    name: "selectable_without_programming",
+    nullable: true,
+    comment: "Indicates if the sequence can be selected without programming",
+  })
+  selectableWithoutProgramming: number | null;
+
   @Column("timestamp", {
     name: "created_at",
     nullable: true,
