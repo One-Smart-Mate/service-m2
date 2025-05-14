@@ -43,8 +43,8 @@ export class FileUploadService {
 
       return {
         message: result.successfullyCreated > 0 
-          ? 'Users imported successfully' 
-          : 'All users already exist in the site',
+          ? 'Usuarios importados exitosamente' 
+          : 'Todos los usuarios ya existen en el sitio',
         data: result
       };
     } catch (exception) {
@@ -59,7 +59,7 @@ export class FileUploadService {
     const usersAndRoles: UsersAndRolesDTO[] = [];
     const randomPassword = generateRandomCode(8);
     const currentDate = new Date();
-    const skippedUsers: { email: string; reason: string }[] = [];
+    const processedUsers: { email: string; name: string; reason: boolean }[] = [];
 
     const [
       hashedPassword,
@@ -89,9 +89,10 @@ export class FileUploadService {
       const { Name, Email, Role } = record;
 
       if (!Name || !Email || !Role) {
-        skippedUsers.push({
-          email: Email || 'No email provided',
-          reason: 'Missing required fields',
+        processedUsers.push({
+          email: Email || 'No email proporcionado',
+          name: Name || '',
+          reason: false
         });
         return;
       }
@@ -99,9 +100,10 @@ export class FileUploadService {
       const normalizedEmail = Email.toLowerCase();
 
       if (existingEmailsInFile.has(normalizedEmail)) {
-        skippedUsers.push({
+        processedUsers.push({
           email: normalizedEmail,
-          reason: 'Duplicate email in file',
+          name: Name,
+          reason: false
         });
         return;
       } else {
@@ -109,18 +111,20 @@ export class FileUploadService {
       }
 
       if (existingEmailsInSite.has(normalizedEmail)) {
-        skippedUsers.push({
+        processedUsers.push({
           email: normalizedEmail,
-          reason: 'User already exists in site',
+          name: Name,
+          reason: false
         });
         return;
       }
 
       const role = rolesMap.get(Role.toLowerCase());
       if (!role) {
-        skippedUsers.push({
+        processedUsers.push({
           email: normalizedEmail,
-          reason: 'Invalid role',
+          name: Name,
+          reason: false
         });
         return;
       }
@@ -135,6 +139,11 @@ export class FileUploadService {
           site: site,
           createdAt: currentDate,
         });
+        processedUsers.push({
+          email: normalizedEmail,
+          name: Name,
+          reason: true
+        });
       } else {
         const fastPassword = generateRandomHex(6);
         usersToCreate.push({
@@ -145,6 +154,11 @@ export class FileUploadService {
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
+        });
+        processedUsers.push({
+          email: normalizedEmail,
+          name: Name,
+          reason: true
         });
       }
     });
@@ -177,13 +191,14 @@ export class FileUploadService {
         await this.mailService.sendWelcomeEmail(newUser, appUrl, stringConstants.LANG_ES);
       } catch (error) {
         this.logger.error(`Failed to send welcome email to ${newUser.email}: ${error.message}`);
+        // No modificamos reason ya que ahora es boolean
       }
     }
 
     return {
       totalProcessed: data.length,
       successfullyCreated: savedUsers.length,
-      skippedUsers,
+      processedUsers,
     };
   };
 }
