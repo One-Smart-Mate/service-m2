@@ -43,8 +43,8 @@ export class FileUploadService {
 
       return {
         message: result.successfullyCreated > 0 
-          ? 'Usuarios importados exitosamente' 
-          : 'Todos los usuarios ya existen en el sitio',
+          ? stringConstants.successImport
+          : stringConstants.allUsersAlreadyExist,
         data: result
       };
     } catch (exception) {
@@ -59,7 +59,7 @@ export class FileUploadService {
     const usersAndRoles: UsersAndRolesDTO[] = [];
     const randomPassword = generateRandomCode(8);
     const currentDate = new Date();
-    const processedUsers: { email: string; name: string; reason: boolean }[] = [];
+    const processedUsers: { email: string; name: string; reason: string; registered: boolean }[] = [];
 
     const [
       hashedPassword,
@@ -90,9 +90,10 @@ export class FileUploadService {
 
       if (!Name || !Email || !Role) {
         processedUsers.push({
-          email: Email || 'No email proporcionado',
+          email: Email || stringConstants.emailIsMissing,
           name: Name || '',
-          reason: false
+          reason: "",
+          registered: false
         });
         return;
       }
@@ -103,7 +104,8 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: false
+          reason: stringConstants.duplicatedEmailAtRow,
+          registered: false
         });
         return;
       } else {
@@ -114,7 +116,8 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: false
+          reason: stringConstants.duplicatedEmailAtRow,
+          registered: false
         });
         return;
       }
@@ -124,7 +127,8 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: false
+          reason: "",
+          registered: false
         });
         return;
       }
@@ -142,7 +146,8 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: true
+          reason: "",
+          registered: true
         });
       } else {
         const fastPassword = generateRandomHex(6);
@@ -158,7 +163,8 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: true
+          reason: "",
+          registered: true
         });
       }
     });
@@ -191,7 +197,6 @@ export class FileUploadService {
         await this.mailService.sendWelcomeEmail(newUser, appUrl, stringConstants.LANG_ES);
       } catch (error) {
         this.logger.error(`Failed to send welcome email to ${newUser.email}: ${error.message}`);
-        // No modificamos reason ya que ahora es boolean
       }
     }
 
