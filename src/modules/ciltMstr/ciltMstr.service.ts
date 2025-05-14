@@ -92,13 +92,11 @@ export class CiltMstrService {
 
   findCiltsByUserId = async (userId: number) => {
     try {
-      // Verificar si el usuario existe
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      // Obtener todas las posiciones asignadas al usuario
       const userPositions = await this.usersPositionsRepository.find({
         where: { user: { id: userId } },
         relations: ['position'],
@@ -108,53 +106,41 @@ export class CiltMstrService {
         return { message: 'El usuario no tiene posiciones asignadas', data: [] };
       }
 
-      // Extraer los IDs de posición
       const positionIds = userPositions.map(up => up.position.id);
 
-      // Obtener todos los CILT masters por posiciones
       const ciltMasters = await this.ciltRepository.find({
         where: { positionId: In(positionIds) },
       });
 
-      // Obtener todas las secuencias CILT por posiciones
       const ciltSequences = await this.ciltSequencesRepository.find({
         where: { positionId: In(positionIds) },
       });
 
-      // Obtener todas las ejecuciones CILT por posiciones
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
         where: { positionId: In(positionIds) },
       });
 
-      // Estructura de respuesta con la información anidada jerárquicamente
       const positions = userPositions.map(up => {
         const positionId = up.position.id;
         
-        // Filtrar masters para esta posición
         const positionCiltMasters = ciltMasters.filter(cm => cm.positionId === positionId);
         
-        // Mapear cada master para incluir sus secuencias
         const mastersWithSequences = positionCiltMasters.map(master => {
-          // Encontrar secuencias para este master
           const masterSequences = ciltSequences.filter(
             seq => seq.positionId === positionId && seq.ciltMstrId === master.id
           );
           
-          // Mapear cada secuencia para incluir sus ejecuciones
           const sequencesWithExecutions = masterSequences.map(sequence => {
-            // Encontrar ejecuciones para esta secuencia
             const sequenceExecutions = ciltExecutions.filter(
               exec => exec.ciltDetailsId === sequence.id
             );
             
-            // Devolver la secuencia con sus ejecuciones
             return {
               ...sequence,
               executions: sequenceExecutions
             };
           });
           
-          // Devolver el master con sus secuencias
           return {
             ...master,
             sequences: sequencesWithExecutions
@@ -170,7 +156,6 @@ export class CiltMstrService {
         };
       });
 
-      // Respuesta final
       return {
         userInfo: {
           id: user.id,
