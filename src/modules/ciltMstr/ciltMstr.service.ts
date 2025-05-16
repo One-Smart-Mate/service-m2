@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, IsNull } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -103,7 +103,14 @@ export class CiltMstrService {
       });
 
       if (!userPositions.length) {
-        return { message: 'El usuario no tiene posiciones asignadas', data: [] };
+        return {
+          userInfo: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          },
+          positions: []
+        };
       }
 
       const positionIds = userPositions.map(up => up.position.id);
@@ -117,7 +124,10 @@ export class CiltMstrService {
       });
 
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
-        where: { positionId: In(positionIds) },
+        where: { 
+          positionId: In(positionIds),
+          deletedAt: IsNull()
+        },
       });
 
       const positions = userPositions.map(up => {
@@ -163,6 +173,51 @@ export class CiltMstrService {
           email: user.email,
         },
         positions
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findCiltDetailsById = async (ciltMstrId: number) => {
+    try {
+      const ciltMstr = await this.ciltRepository.findOneBy({ id: ciltMstrId });
+      if (!ciltMstr) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+      }
+
+      const ciltSequences = await this.ciltSequencesRepository.find({
+        where: { ciltMstrId },
+      });
+
+      // Get all sequence IDs
+      const sequenceIds = ciltSequences.map(sequence => sequence.id);
+
+      // Get executions for all sequences
+      const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
+        where: { 
+          ciltDetailsId: In(sequenceIds),
+          deletedAt: IsNull()
+        },
+      });
+
+      // Map executions to their respective sequences
+      const sequencesWithExecutions = ciltSequences.map(sequence => {
+        const sequenceExecutions = ciltExecutions.filter(
+          exec => exec.ciltDetailsId === sequence.id
+        );
+
+        return {
+          ...sequence,
+          executions: sequenceExecutions
+        };
+      });
+
+      return {
+        ciltInfo: {
+          ...ciltMstr
+        },
+        sequences: sequencesWithExecutions
       };
     } catch (exception) {
       HandleException.exception(exception);
