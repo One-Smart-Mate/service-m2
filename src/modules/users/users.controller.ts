@@ -14,6 +14,7 @@ import { LogoutDTO } from './models/logout.dto';
 import { stringConstants } from 'src/utils/string.constant';
 import { SendCodeEmailDto } from './models/send.code.email.dto';
 import { UserWithPositionsResponseDTO } from './models/user.with.positions.response.dto';
+import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 @Controller('users')
 @ApiTags('users')
 export class UsersController {
@@ -65,6 +66,13 @@ export class UsersController {
   @Put('/update')
   update(@Body() updateUserDTO: UpdateUserDTO) {
     return this.usersService.updateUser(updateUserDTO);
+  }
+
+  @Put('/update-partial')
+  @ApiOperation({ summary: 'Update user partially (name, email, password, fastPassword)' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  updatePartial(@Body() updateUserPartialDTO: UpdateUserPartialDTO) {
+    return this.usersService.updateUserPartial(updateUserPartialDTO);
   }
 
   @Post('/app-token')

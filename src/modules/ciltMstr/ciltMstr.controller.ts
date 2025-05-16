@@ -29,6 +29,20 @@ export class CiltMstrController {
     return await this.ciltMstrService.findByPositionId(positionId);
   }
 
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  async findByUserId(@Param('userId') userId: number) {
+    return await this.ciltMstrService.findCiltsByUserId(userId);
+  }
+
+  @Get('details/:ciltMstrId')
+  @ApiOperation({ summary: 'Get detailed information of a CILT including its sequences and executions' })
+  @ApiParam({ name: 'ciltMstrId', type: 'number', description: 'CILT Master ID' })
+  async findCiltDetailsById(@Param('ciltMstrId') ciltMstrId: number) {
+    return await this.ciltMstrService.findCiltDetailsById(ciltMstrId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT ID' })

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -27,7 +27,9 @@ export class CiltSequencesExecutionsService {
 
   findAll = async () => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find();
+      return await this.ciltSequencesExecutionsRepository.find({
+        where: { deletedAt: IsNull() }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -35,7 +37,12 @@ export class CiltSequencesExecutionsService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({ where: { siteId } });
+      return await this.ciltSequencesExecutionsRepository.find({ 
+        where: { 
+          siteId,
+          deletedAt: IsNull() 
+        } 
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -43,7 +50,12 @@ export class CiltSequencesExecutionsService {
 
   findByPositionId = async (positionId: number) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({ where: { positionId } });
+      return await this.ciltSequencesExecutionsRepository.find({ 
+        where: { 
+          positionId,
+          deletedAt: IsNull() 
+        } 
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -51,7 +63,12 @@ export class CiltSequencesExecutionsService {
 
   findByCiltId = async (ciltId: number) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({ where: { ciltId } });
+      return await this.ciltSequencesExecutionsRepository.find({ 
+        where: { 
+          ciltId,
+          deletedAt: IsNull() 
+        } 
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -59,7 +76,12 @@ export class CiltSequencesExecutionsService {
 
   findByCiltDetailsId = async (ciltDetailsId: number) => {
     try {
-      return await this.ciltSequencesExecutionsRepository.find({ where: { ciltDetailsId } });
+      return await this.ciltSequencesExecutionsRepository.find({ 
+        where: { 
+          ciltDetailsId,
+          deletedAt: IsNull() 
+        } 
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -67,7 +89,12 @@ export class CiltSequencesExecutionsService {
 
   findById = async (id: number) => {
     try {
-      const execution = await this.ciltSequencesExecutionsRepository.findOneBy({ id });
+      const execution = await this.ciltSequencesExecutionsRepository.findOne({ 
+        where: { 
+          id,
+          deletedAt: IsNull() 
+        } 
+      });
       if (!execution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
       }
@@ -120,6 +147,23 @@ export class CiltSequencesExecutionsService {
       }
 
       return updatedExecution;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  softDelete = async (id: number) => {
+    try {
+      const execution = await this.findById(id);
+      if (!execution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
+      }
+
+      // Set the deletedAt field to the current timestamp
+      execution.deletedAt = new Date();
+      
+      // Save the entity with the updated deletedAt timestamp
+      return await this.ciltSequencesExecutionsRepository.save(execution);
     } catch (exception) {
       HandleException.exception(exception);
     }

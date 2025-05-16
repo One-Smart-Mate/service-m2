@@ -43,6 +43,9 @@ export class CiltSequencesEntity {
   @Column("varchar", { name: "level_name", nullable: true, length: 45 })
   levelName: string | null;
 
+  @Column("varchar", { name: "route", nullable: true, length: 250 })
+  route: string | null;
+
   @Column("tinyint", {
     name: "order",
     nullable: true,
@@ -123,6 +126,14 @@ export class CiltSequencesEntity {
   stoppageReason: number | null;
 
   @Column("tinyint", {
+    name: "machine_stopped",
+    nullable: true,
+    comment: "YES/NO if the machine is stopped for this CILT anomally",
+    default: () => "'0'",
+  })
+  machineStopped: number | null;
+
+  @Column("tinyint", {
     name: "quantity_pictures_create",
     nullable: true,
     comment:
@@ -140,6 +151,20 @@ export class CiltSequencesEntity {
   })
   quantityPicturesClose: number | null;
 
+  @Column("char", {
+    name: "reference_point",
+    nullable: true,
+    length: 10,
+  })
+  referencePoint: string | null;
+
+  @Column("tinyint", {
+    name: "selectable_without_programming",
+    nullable: true,
+    comment: "Indicates if the sequence can be selected without programming",
+  })
+  selectableWithoutProgramming: number | null;
+
   @Column("timestamp", {
     name: "created_at",
     nullable: true,
@@ -152,5 +177,14 @@ export class CiltSequencesEntity {
 
   @Column("timestamp", { name: "deleted_at", nullable: true })
   deletedAt: Date | null;
+
+  @Column("char", {
+    name: "status",
+    nullable: true,
+    comment: "Sequence status, A=Active, I=Inactive, D=Draft",
+    length: 1,
+    default: () => "'A'",
+  })
+  status: string | null;
 
 }

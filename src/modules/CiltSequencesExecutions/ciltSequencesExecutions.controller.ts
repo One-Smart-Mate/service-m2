@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -62,5 +62,14 @@ export class CiltSequencesExecutionsController {
   @ApiBody({ type: UpdateCiltSequencesExecutionDTO })
   update(@Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
     return this.ciltSequencesExecutionsService.update(updateCiltSequencesExecutionDTO);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Soft delete a CILT sequence execution by ID' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution ID' })
+  @ApiResponse({ status: 200, description: 'CILT sequence execution soft deleted successfully' })
+  @ApiResponse({ status: 404, description: 'CILT sequence execution not found' })
+  softDelete(@Param('id') id: number) {
+    return this.ciltSequencesExecutionsService.softDelete(+id);
   }
 } 

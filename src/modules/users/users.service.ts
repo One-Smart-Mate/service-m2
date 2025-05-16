@@ -28,6 +28,7 @@ import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
 import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
+import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 
 @Injectable()
 export class UsersService {
@@ -490,6 +491,85 @@ export class UsersService {
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
       console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: updateUserPartialDTO.id },
+      });
+      
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      
+      // Check email uniqueness only if email is being updated
+      if (updateUserPartialDTO.email && updateUserPartialDTO.email !== user.email) {
+        const emailIsNotUnique = await this.userRepository.exists({
+          where: { email: updateUserPartialDTO.email, id: Not(updateUserPartialDTO.id) },
+        });
+        
+        if (emailIsNotUnique) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.email = updateUserPartialDTO.email;
+      }
+      
+      // Update name if provided
+      if (updateUserPartialDTO.name) {
+        user.name = updateUserPartialDTO.name;
+      }
+      
+      // Update password if provided
+      if (updateUserPartialDTO.password) {
+        user.password = await bcryptjs.hash(
+          updateUserPartialDTO.password,
+          stringConstants.SALT_ROUNDS,
+        );
+      }
+      
+      // Update fast password if provided
+      if (updateUserPartialDTO.fastPassword) {
+        if (!/^[0-9A-F]+$/i.test(updateUserPartialDTO.fastPassword)) {
+          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+        }
+        
+        // Check if fastPassword is already in use by another user at the same site
+        const existingUsers = await this.userRepository.find({
+          where: { 
+            fastPassword: updateUserPartialDTO.fastPassword, 
+            id: Not(updateUserPartialDTO.id)
+          },
+          relations: { userHasSites: { site: true } }
+        });
+        
+        // Get user's sites
+        const userSites = await this.userHasSiteRepository.find({
+          where: { user: { id: user.id } },
+          relations: { site: true }
+        });
+        
+        const userSiteIds = userSites.map(us => us.site.id);
+        
+        // Check if any other user has the same fastPassword in the same sites
+        const conflictingUser = existingUsers.find(u => 
+          u.userHasSites.some(uhs => userSiteIds.includes(uhs.site.id))
+        );
+        
+        if (conflictingUser) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.fastPassword = updateUserPartialDTO.fastPassword;
+      }
+      
+      user.updatedAt = new Date();
+      
+      return await this.userRepository.save(user);
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };
