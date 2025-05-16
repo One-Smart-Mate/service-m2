@@ -32,6 +32,7 @@ import { CustomLoggerService } from './common/logger/logger.service';
 import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
 import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
+import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -62,6 +63,7 @@ import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/c
     OplMstrModule,
     OplDetailsModule,
     RepositoryModule,
+    OplLevelsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -24,6 +24,22 @@ export class OplMstrController {
     return await this.oplMstrService.findByCreatorId(creatorId);
   }
 
+  @Get('level/:levelId')
+  @ApiOperation({ summary: 'Get all OPLs by level ID' })
+  @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
+  @ApiResponse({ status: 200, description: 'List of OPLs associated with the level'})
+  async findByLevelId(@Param('levelId') levelId: number) {
+    return await this.oplMstrService.findOplMstrByLevelId(levelId);
+  }
+
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all OPLs by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  @ApiResponse({ status: 200, description: 'List of OPLs associated with the site'})
+  async findBySiteId(@Param('siteId') siteId: bigint) {
+    return await this.oplMstrService.findOplMstrBySiteId(siteId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an OPL by ID' })
   @ApiResponse({ status: 200, description: 'OPL found'})
