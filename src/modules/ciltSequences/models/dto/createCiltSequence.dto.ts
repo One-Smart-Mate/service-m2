@@ -51,6 +51,11 @@ export class CreateCiltSequenceDTO {
   @IsString()
   levelName?: string;
 
+  @ApiProperty({ description: 'Route of the level', required: false })
+  @IsOptional()
+  @IsString()
+  route?: string;
+
   @ApiProperty({ description: 'Sequence order', required: false })
   @IsOptional()
   @IsNumber()
@@ -106,6 +111,11 @@ export class CreateCiltSequenceDTO {
   @IsNumber()
   stoppageReason?: number;
 
+  @ApiProperty({ description: 'Is the machine stopped?', required: false, default: 0 })
+  @IsOptional()
+  @IsNumber()
+  machineStopped?: number;
+
   @ApiProperty({ description: 'Number of pictures at start', required: false, default: 1 })
   @IsOptional()
   @IsNumber()
@@ -115,6 +125,21 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsNumber()
   quantityPicturesClose?: number;
+
+  @ApiProperty({ description: 'Reference point', required: false })
+  @IsOptional()
+  @IsString()
+  referencePoint?: string;
+
+  @ApiProperty({ description: 'Can be selected without programming', required: false })
+  @IsOptional()
+  @IsNumber()
+  selectableWithoutProgramming?: number;
+
+  @ApiProperty({ description: 'Sequence status (A=Active, I=Inactive, D=Draft)', required: false, default: 'A' })
+  @IsOptional()
+  @IsString()
+  status?: string;
 
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()

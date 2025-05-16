@@ -116,6 +116,12 @@ export class CiltSequencesExecutionsEntity {
   })
   amTag: number | null;
 
+  @Column("datetime", {
+    name: "run_secuence_schedule",
+    nullable: true,
+  })
+  runSecuenceSchedule: Date | null;
+
   @Column("timestamp", { name: "created_at", nullable: true })
   createdAt: Date | null;
 
