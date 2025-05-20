@@ -72,10 +72,10 @@ export class UpdateCiltSequencesExecutionDTO {
   @IsNumber()
   stoppageReason?: number;
 
-  @ApiProperty({ description: 'AM tag', required: false })
+  @ApiProperty({ description: 'AM tag id', required: false })
   @IsOptional()
   @IsNumber()
-  amTag?: number;
+  am_tag_id?: number;
 
   @ApiProperty({ description: 'Scheduled run date/time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()

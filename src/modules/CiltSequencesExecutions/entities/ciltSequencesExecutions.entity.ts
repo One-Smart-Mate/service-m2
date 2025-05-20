@@ -108,13 +108,13 @@ export class CiltSequencesExecutionsEntity {
   stoppageReason: number | null;
 
   @Column("tinyint", {
-    name: "am_tag",
+    name: "am_tag_id",
     nullable: true,
     comment:
       "indicates if it has an AM card, it is used to avoid a join to the cards table",
     default: () => "'0'",
   })
-  amTag: number | null;
+  am_tag_id: number | null;
 
   @Column("datetime", {
     name: "run_secuence_schedule",
