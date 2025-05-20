@@ -22,7 +22,8 @@ export enum NotFoundCustomExceptionType {
   OPL_MSTR,
   OPL_DETAILS,
   REPOSITORY,
-  OPLLEVELS
+  OPLLEVELS,
+  CILT_SECUENCES_SCHEDULE
 }
 
 export class NotFoundCustomException extends HttpException {
@@ -91,7 +92,10 @@ export class NotFoundCustomException extends HttpException {
         message = stringConstants.repositoryNotFound;
         break;
       case NotFoundCustomExceptionType.OPLLEVELS:
-        message = 'OPL Levels not found';
+        message = stringConstants.oplLevelsNotFound;
+        break;
+      case NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE:
+        message = stringConstants.ciltSecuencesScheduleNotFound;
         break;
       default:
         message = 'Resource not found';

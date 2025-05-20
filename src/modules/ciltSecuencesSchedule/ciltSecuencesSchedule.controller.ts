@@ -1,0 +1,59 @@
+import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { CiltSecuencesScheduleService } from './ciltSecuencesSchedule.service';
+import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
+import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
+
+@ApiTags('CILT Secuences Schedule')
+@Controller('cilt-secuences-schedule')
+export class CiltSecuencesScheduleController {
+  constructor(private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService) {}
+
+  @Get("/all")
+  @ApiOperation({ summary: 'Get all active schedules' })
+  async findAll() {
+    return await this.ciltSecuencesScheduleService.findActiveSchedules();
+  }
+
+  @Get('site/:siteId')
+  @ApiOperation({ summary: 'Get all schedules by site ID' })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteId(@Param('siteId') siteId: number) {
+    return await this.ciltSecuencesScheduleService.findBySiteId(siteId);
+  }
+
+  @Get('cilt/:ciltId')
+  @ApiOperation({ summary: 'Get all schedules by CILT ID' })
+  @ApiParam({ name: 'ciltId', type: 'number', description: 'CILT ID' })
+  async findByCiltId(@Param('ciltId') ciltId: number) {
+    return await this.ciltSecuencesScheduleService.findByCiltId(ciltId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a schedule by ID' })
+  @ApiParam({ name: 'id', type: 'number', description: 'Schedule ID' })
+  async findById(@Param('id') id: number) {
+    return await this.ciltSecuencesScheduleService.findById(id);
+  }
+
+  @Post("/create")
+  @ApiOperation({ summary: 'Create a new schedule' })
+  @ApiBody({ type: CreateCiltSecuencesScheduleDto })
+  async create(@Body() createDto: CreateCiltSecuencesScheduleDto) {
+    return await this.ciltSecuencesScheduleService.create(createDto);
+  }
+
+  @Put("/update")
+  @ApiOperation({ summary: 'Update a schedule' })
+  @ApiBody({ type: UpdateCiltSecuencesScheduleDto })
+  async update(@Body() updateDto: UpdateCiltSecuencesScheduleDto) {
+    return await this.ciltSecuencesScheduleService.update(updateDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a schedule' })
+  @ApiParam({ name: 'id', type: 'number', description: 'Schedule ID' })
+  async delete(@Param('id') id: number) {
+    return await this.ciltSecuencesScheduleService.delete(id);
+  }
+} 

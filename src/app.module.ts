@@ -33,6 +33,7 @@ import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
 import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
 import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
+import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 @Module({
   imports: [
     ConfigModule.forRoot(),
@@ -64,6 +65,7 @@ import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
     OplDetailsModule,
     RepositoryModule,
     OplLevelsModule,
+    CiltSecuencesScheduleModule,
   ],
   controllers: [AppController],
   providers: [
