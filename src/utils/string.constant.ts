@@ -114,6 +114,7 @@ export const stringConstants = {
   repositoryNotFound: 'Repository not found',
   oplLevelsNotFound: 'OPL Levels not found',
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',
+  ciltMstrPositionLevelsNotFound: 'CILT Position Level not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',

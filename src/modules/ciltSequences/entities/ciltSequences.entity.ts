@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 
 @Entity('cilt_secuences')
 export class CiltSequencesEntity {
@@ -187,4 +188,7 @@ export class CiltSequencesEntity {
   })
   status: string | null;
 
+  @ManyToOne(() => CiltMstrEntity, (ciltMstr) => ciltMstr.sequences)
+  @JoinColumn({ name: 'cilt_mstr_id' })
+  ciltMstr: CiltMstrEntity;
 }
