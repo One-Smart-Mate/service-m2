@@ -5,7 +5,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
+import { PositionEntity } from '../../position/entities/position.entity';
+import { LevelEntity } from '../../level/entities/level.entity';
 
 @Entity('cilt_mstr_position_levels')
 export class CiltMstrPositionLevelsEntity {
@@ -35,4 +40,16 @@ export class CiltMstrPositionLevelsEntity {
 
   @DeleteDateColumn({ type: 'timestamp', name: 'deleted_at', nullable: true })
   deletedAt: Date | null;
+
+  @ManyToOne(() => CiltMstrEntity)
+  @JoinColumn({ name: 'cilt_mstr_id' })
+  ciltMstr: CiltMstrEntity;
+
+  @ManyToOne(() => PositionEntity)
+  @JoinColumn({ name: 'position_id' })
+  position: PositionEntity;
+
+  @ManyToOne(() => LevelEntity)
+  @JoinColumn({ name: 'level_id' })
+  level: LevelEntity;
 } 

@@ -2,7 +2,9 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
+  OneToMany,
 } from 'typeorm';
+import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
 
 @Entity('cilt_mstr')
 export class CiltMstrEntity {
@@ -94,5 +96,8 @@ export class CiltMstrEntity {
 
   @Column("timestamp", { name: "deleted_at", nullable: true })
   deletedAt: Date | null;
+
+  @OneToMany(() => CiltSequencesEntity, (sequence) => sequence.ciltMstr)
+  sequences: CiltSequencesEntity[];
 }
 

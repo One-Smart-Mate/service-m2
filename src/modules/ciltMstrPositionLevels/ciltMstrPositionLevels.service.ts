@@ -26,7 +26,8 @@ export class CiltMstrPositionLevelsService {
   findAll = async () => {
     try {
       return await this.ciltMstrPositionLevelsRepository.find({
-        where: { deletedAt: IsNull() }
+        where: { deletedAt: IsNull() },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -39,7 +40,8 @@ export class CiltMstrPositionLevelsService {
         where: { 
           siteId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -52,7 +54,8 @@ export class CiltMstrPositionLevelsService {
         where: { 
           ciltMstrId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -65,7 +68,8 @@ export class CiltMstrPositionLevelsService {
         where: { 
           positionId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -78,7 +82,8 @@ export class CiltMstrPositionLevelsService {
         where: { 
           levelId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -91,7 +96,8 @@ export class CiltMstrPositionLevelsService {
         where: { 
           id,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
       if (!positionLevel) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
