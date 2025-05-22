@@ -29,11 +29,15 @@ export class CiltMstrController {
     return await this.ciltMstrService.findByPositionId(positionId);
   }
 
-  @Get('user/:userId')
+  @Post('user/:userId/:date')
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
   @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
-  async findByUserId(@Param('userId') userId: number) {
-    return await this.ciltMstrService.findCiltsByUserId(userId);
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
+  async findByUserId(
+    @Param('userId') userId: number,
+    @Param('date') date: string
+  ) {
+    return await this.ciltMstrService.findCiltsByUserId(userId, date);
   }
 
   @Get('details/:ciltMstrId')
