@@ -78,7 +78,7 @@ export class CiltSequencesExecutionsService {
     try {
       return await this.ciltSequencesExecutionsRepository.find({ 
         where: { 
-          ciltDetailsId,
+          ciltSecuenceId: ciltDetailsId,
           deletedAt: IsNull() 
         } 
       });

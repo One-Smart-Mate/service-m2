@@ -142,7 +142,7 @@ export class CiltMstrService {
           
           const sequencesWithExecutions = masterSequences.map(sequence => {
             const sequenceExecutions = ciltExecutions.filter(
-              exec => exec.ciltDetailsId === sequence.id
+              exec => exec.ciltSecuenceId === sequence.id
             );
             
             return {
@@ -196,7 +196,7 @@ export class CiltMstrService {
       // Get executions for all sequences
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
         where: { 
-          ciltDetailsId: In(sequenceIds),
+          ciltSecuenceId: In(sequenceIds),
           deletedAt: IsNull()
         },
       });
@@ -204,7 +204,7 @@ export class CiltMstrService {
       // Map executions to their respective sequences
       const sequencesWithExecutions = ciltSequences.map(sequence => {
         const sequenceExecutions = ciltExecutions.filter(
-          exec => exec.ciltDetailsId === sequence.id
+          exec => exec.ciltSecuenceId === sequence.id
         );
 
         return {

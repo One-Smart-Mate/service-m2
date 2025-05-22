@@ -11,6 +11,7 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { LevelEntity } from '../level/entities/level.entity';
+import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { In } from 'typeorm';
 
 @Injectable()
@@ -20,11 +21,23 @@ export class OplMstrService {
     private readonly oplRepository: Repository<OplMstr>,
     @InjectRepository(OplLevelsEntity)
     private readonly oplLevelsRepository: Repository<OplLevelsEntity>,
+    @InjectRepository(OplDetailsEntity)
+    private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
   ) {}
 
   findAll = async () => {
     try {
-      return await this.oplRepository.find();
+      const opls = await this.oplRepository.find();
+      const oplIds = opls.map(opl => opl.id);
+      const details = await this.oplDetailsRepository.find({
+        where: { oplId: In(oplIds) },
+        order: { order: 'ASC' }
+      });
+
+      return opls.map(opl => ({
+        ...opl,
+        details: details.filter(detail => detail.oplId === opl.id)
+      }));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -32,7 +45,17 @@ export class OplMstrService {
 
   findByCreatorId = async (creatorId: number) => {
     try {
-      return await this.oplRepository.find({ where: { creatorId } });
+      const opls = await this.oplRepository.find({ where: { creatorId } });
+      const oplIds = opls.map(opl => opl.id);
+      const details = await this.oplDetailsRepository.find({
+        where: { oplId: In(oplIds) },
+        order: { order: 'ASC' }
+      });
+
+      return opls.map(opl => ({
+        ...opl,
+        details: details.filter(detail => detail.oplId === opl.id)
+      }));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -44,7 +67,15 @@ export class OplMstrService {
       if (!opl) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
       }
-      return opl;
+      const details = await this.oplDetailsRepository.find({
+        where: { oplId: id },
+        order: { order: 'ASC' }
+      });
+
+      return {
+        ...opl,
+        details
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -52,7 +83,6 @@ export class OplMstrService {
 
   findOplMstrByLevelId = async (levelId: number) => {
     try {
-      // Usamos queryBuilder para poder realizar joins y aplicar filtros más complejos
       const opls = await this.oplRepository
         .createQueryBuilder('opl')
         .innerJoin('opl_mstr_levels', 'oml', 'opl.id = oml.opl_id')
@@ -61,7 +91,16 @@ export class OplMstrService {
         .andWhere('opl.deleted_at IS NULL')
         .getMany();
       
-      return opls;
+      const oplIds = opls.map(opl => opl.id);
+      const details = await this.oplDetailsRepository.find({
+        where: { oplId: In(oplIds) },
+        order: { order: 'ASC' }
+      });
+
+      return opls.map(opl => ({
+        ...opl,
+        details: details.filter(detail => detail.oplId === opl.id)
+      }));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -69,7 +108,7 @@ export class OplMstrService {
 
   findOplMstrBySiteId = async (siteId: bigint) => {
     try {
-      return await this.oplRepository.find({
+      const opls = await this.oplRepository.find({
         where: {
           siteId,
           deletedAt: null
@@ -78,6 +117,17 @@ export class OplMstrService {
           id: 'ASC'
         }
       });
+
+      const oplIds = opls.map(opl => opl.id);
+      const details = await this.oplDetailsRepository.find({
+        where: { oplId: In(oplIds) },
+        order: { order: 'ASC' }
+      });
+
+      return opls.map(opl => ({
+        ...opl,
+        details: details.filter(detail => detail.oplId === opl.id)
+      }));
     } catch (exception) {
       HandleException.exception(exception);
     }

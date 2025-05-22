@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 
 @Entity('cilt_secuences')
@@ -18,15 +18,11 @@ export class CiltSequencesEntity {
   @Column("varchar", { name: "area_name", nullable: true, length: 100 })
   areaName: string | null;
 
-  @Column("int", {
-    name: "position_id",
-    nullable: true,
-    comment: "inherited from positions",
-  })
+  @Column("int", { name: "position_id", nullable: true })
   positionId: number | null;
 
-  @Column("varchar", { name: "position_name", length: 45 })
-  positionName: string;
+  @Column("varchar", { name: "position_name", nullable: true, length: 45 })
+  positionName: string | null;
 
   @Column("int", { name: "cilt_mstr_id", nullable: true })
   ciltMstrId: number | null;
@@ -34,11 +30,13 @@ export class CiltSequencesEntity {
   @Column("varchar", { name: "cilt_mstr_name", nullable: true, length: 45 })
   ciltMstrName: string | null;
 
-  @Column("int", {
-    name: "level_id",
-    nullable: true,
-    comment: "final node where the sequence is created",
-  })
+  @Column("int", { name: "frecuency_id", nullable: true })
+  frecuencyId: number | null;
+
+  @Column("char", { name: "frecuency_code", nullable: true, length: 3 })
+  frecuencyCode: string | null;
+
+  @Column("int", { name: "level_id", nullable: true })
   levelId: number | null;
 
   @Column("varchar", { name: "level_name", nullable: true, length: 45 })
@@ -47,146 +45,65 @@ export class CiltSequencesEntity {
   @Column("varchar", { name: "route", nullable: true, length: 250 })
   route: string | null;
 
-  @Column("tinyint", {
-    name: "order",
-    nullable: true,
-    comment: "order in which the sequences are displayed",
-  })
+  @Column("char", { name: "reference_point", nullable: true, length: 10 })
+  referencePoint: string | null;
+
+  @Column("tinyint", { name: "order", nullable: true })
   order: number | null;
 
-  @Column("text", {
-    name: "secuence_list",
-    nullable: true,
-    comment:
-      "sequence of steps to follow, it is a text with format, it can be a list",
-  })
+  @Column("text", { name: "secuence_list", nullable: true })
   secuenceList: string | null;
 
-  @Column("char", {
-    name: "secuence_color",
-    nullable: true,
-    comment: "sequence color in hexadecimal",
-    length: 6,
-  })
+  @Column("char", { name: "secuence_color", nullable: true, length: 6 })
   secuenceColor: string | null;
 
-  @Column("int", {
-    name: "cilt_type_id",
-    nullable: true,
-    comment:
-      "type of CILT to execute, comes from the cilt_types table; a sequence can only have one type of cilt",
-  })
+  @Column("int", { name: "cilt_type_id", nullable: true })
   ciltTypeId: number | null;
 
   @Column("varchar", { name: "cilt_type_name", nullable: true, length: 45 })
   ciltTypeName: string | null;
 
-  @Column("int", {
-    name: "reference_opl_sop",
-    nullable: true,
-    comment: "comes from the opl_mstr table",
-  })
-  referenceOplSop: number | null;
+  @Column("int", { name: "reference_opl_sop_id", nullable: true })
+  referenceOplSopId: number | null;
 
-  @Column("int", {
-    name: "standard_time",
-    nullable: true,
-    comment:
-      "execution time of the sequence; captured in seconds, displayed in natural language",
-  })
+  @Column("int", { name: "standard_time", nullable: true })
   standardTime: number | null;
 
-  @Column("varchar", {
-    name: "standard_ok",
-    nullable: true,
-    comment: "simple text that indicates what the expected standard is or to be fulfilled",
-    length: 100,
-  })
+  @Column("varchar", { name: "standard_ok", nullable: true, length: 100 })
   standardOk: string | null;
 
-  @Column("int", {
-    name: "remediation_opl_sop",
-    nullable: true,
-    comment: "comes from the opl_mstr table",
-  })
-  remediationOplSop: number | null;
+  @Column("int", { name: "remediation_opl_sop_id", nullable: true })
+  remediationOplSopId: number | null;
 
-  @Column("text", {
-    name: "tools_required",
-    nullable: true,
-    comment:
-      "simple text, tools necessary to carry out the tasks",
-  })
+  @Column("text", { name: "tools_required", nullable: true })
   toolsRequired: string | null;
 
-  @Column("tinyint", {
-    name: "stoppage_reason",
-    nullable: true,
-    comment: "YES/NO if the standard is not met, is the reason for stoppage?",
-  })
+  @Column("tinyint", { name: "stoppage_reason", nullable: true })
   stoppageReason: number | null;
 
-  @Column("tinyint", {
-    name: "machine_stopped",
-    nullable: true,
-    comment: "YES/NO if the machine is stopped for this CILT anomally",
-    default: () => "'0'",
-  })
+  @Column("tinyint", { name: "machine_stopped", nullable: true, default: 0 })
   machineStopped: number | null;
 
-  @Column("tinyint", {
-    name: "quantity_pictures_create",
-    nullable: true,
-    comment:
-      "quantity of images at the beginning of the sequence to support the status in which the equipment was found, default 1",
-    default: () => "'1'",
-  })
+  @Column("tinyint", { name: "quantity_pictures_create", nullable: true, default: 1 })
   quantityPicturesCreate: number | null;
 
-  @Column("tinyint", {
-    name: "quantity_pictures_close",
-    nullable: true,
-    comment:
-      "quantity of images at the end of the sequence to support the status in which the equipment was left, default 1",
-    default: () => "'1'",
-  })
+  @Column("tinyint", { name: "quantity_pictures_close", nullable: true, default: 1 })
   quantityPicturesClose: number | null;
 
-  @Column("char", {
-    name: "reference_point",
-    nullable: true,
-    length: 10,
-  })
-  referencePoint: string | null;
-
-  @Column("tinyint", {
-    name: "selectable_without_programming",
-    nullable: true,
-    comment: "Indicates if the sequence can be selected without programming",
-  })
+  @Column("tinyint", { name: "selectable_without_programming", nullable: true })
   selectableWithoutProgramming: number | null;
 
-  @Column("timestamp", {
-    name: "created_at",
-    nullable: true,
-    default: () => "'CURRENT_TIMESTAMP(6)'",
-  })
+  @Column("char", { name: "status", nullable: true, length: 1, default: 'A' })
+  status: string | null;
+
+  @Column("timestamp", { name: "created_at", nullable: true, precision: 6, default: () => "CURRENT_TIMESTAMP(6)" })
   createdAt: Date | null;
 
-  @Column("timestamp", { name: "updated_at", nullable: true })
+  @Column("timestamp", { name: "updated_at", nullable: true, precision: 6 })
   updatedAt: Date | null;
 
-  @Column("timestamp", { name: "deleted_at", nullable: true })
+  @Column("timestamp", { name: "deleted_at", nullable: true, precision: 6 })
   deletedAt: Date | null;
-
-  @Column("char", {
-    name: "status",
-    nullable: true,
-    comment: "Sequence status, A=Active, I=Inactive, D=Draft",
-    length: 1,
-    default: () => "'A'",
-  })
-  status: string | null;
 
   @ManyToOne(() => CiltMstrEntity, (ciltMstr) => ciltMstr.sequences)
   @JoinColumn({ name: 'cilt_mstr_id' })
