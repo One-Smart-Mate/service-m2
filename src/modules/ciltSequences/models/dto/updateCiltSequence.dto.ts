@@ -47,6 +47,16 @@ export class UpdateCiltSequenceDTO {
   @IsString()
   ciltMstrName?: string;
 
+  @ApiProperty({ description: 'Frequency ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  frecuencyId?: number;
+
+  @ApiProperty({ description: 'Frequency code', required: false })
+  @IsOptional()
+  @IsString()
+  frecuencyCode?: string;
+
   @ApiProperty({ description: 'Level ID', required: false })
   @IsOptional()
   @IsNumber()
@@ -61,6 +71,11 @@ export class UpdateCiltSequenceDTO {
   @IsOptional()
   @IsString()
   route?: string;
+
+  @ApiProperty({ description: 'Reference point', required: false })
+  @IsOptional()
+  @IsString()
+  referencePoint?: string;
 
   @ApiProperty({ description: 'Sequence order', required: false })
   @IsOptional()
@@ -87,10 +102,10 @@ export class UpdateCiltSequenceDTO {
   @IsString()
   ciltTypeName?: string;
 
-  @ApiProperty({ description: 'OPL/SOP reference', required: false })
+  @ApiProperty({ description: 'Reference OPL/SOP ID', required: false })
   @IsOptional()
   @IsNumber()
-  referenceOplSop?: number;
+  referenceOplSopId?: number;
 
   @ApiProperty({ description: 'Standard time in seconds', required: false })
   @IsOptional()
@@ -102,10 +117,10 @@ export class UpdateCiltSequenceDTO {
   @IsString()
   standardOk?: string;
 
-  @ApiProperty({ description: 'Remediation OPL/SOP', required: false })
+  @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
   @IsOptional()
   @IsNumber()
-  remediationOplSop?: number;
+  remediationOplSopId?: number;
 
   @ApiProperty({ description: 'Required tools', required: false })
   @IsOptional()
@@ -131,11 +146,6 @@ export class UpdateCiltSequenceDTO {
   @IsOptional()
   @IsNumber()
   quantityPicturesClose?: number;
-
-  @ApiProperty({ description: 'Reference point', required: false })
-  @IsOptional()
-  @IsString()
-  referencePoint?: string;
 
   @ApiProperty({ description: 'Can be selected without programming', required: false })
   @IsOptional()
