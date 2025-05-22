@@ -43,6 +43,13 @@ export class CiltSecuencesScheduleController {
     return await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
   }
 
+  @Get('date-simplified/:date')
+  @ApiOperation({ summary: 'Get simplified schedules for a specific date (id, siteId, ciltId, secuenceId only)' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
+  async findSchedulesForDateSimplified(@Param('date') date: string) {
+    return await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
+  }
+
   @Post("/create")
   @ApiOperation({ summary: 'Create a new schedule' })
   @ApiBody({ type: CreateCiltSecuencesScheduleDto })

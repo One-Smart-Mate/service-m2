@@ -5,7 +5,10 @@ import { CiltSecuencesScheduleEntity } from './entities/ciltSecuencesSchedule.en
 import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
 import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import {
+  NotFoundCustomException,
+  NotFoundCustomExceptionType,
+} from 'src/common/exceptions/types/notFound.exception';
 import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
@@ -25,7 +28,9 @@ export class CiltSecuencesScheduleService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltSecuencesScheduleRepository.find({ where: { siteId } });
+      return await this.ciltSecuencesScheduleRepository.find({
+        where: { siteId },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -33,7 +38,9 @@ export class CiltSecuencesScheduleService {
 
   findByCiltId = async (ciltId: number) => {
     try {
-      return await this.ciltSecuencesScheduleRepository.find({ where: { ciltId } });
+      return await this.ciltSecuencesScheduleRepository.find({
+        where: { ciltId },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -41,9 +48,13 @@ export class CiltSecuencesScheduleService {
 
   findById = async (id: number) => {
     try {
-      const schedule = await this.ciltSecuencesScheduleRepository.findOneBy({ id });
+      const schedule = await this.ciltSecuencesScheduleRepository.findOneBy({
+        id,
+      });
       if (!schedule) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
+        );
       }
       return schedule;
     } catch (exception) {
@@ -52,102 +63,323 @@ export class CiltSecuencesScheduleService {
   };
 
   /**
- * Find all scheduled sequences that should be executed on a specific date.
- * This method applies different scheduling rules based on schedule_type:
- * - D1: Daily schedules (checks if the current day of week is enabled)
- * - M1: Monthly schedules by day of month
- * - M2: Monthly schedules by week of month and day of week
- * - Y1: Yearly schedules by specific date
- * - Y2: Yearly schedules by month, week and day of week
- * 
- * @param dateStr - ISO date string in format 'YYYY-MM-DD'
- * @returns Promise with all matching active schedules
- */
-findSchedulesForDate = async (dateStr: string) => {
-  try {
-    // Parse the ISO date
-    const date = new Date(dateStr);
-    
-    // Verify it's a valid date
-    if (isNaN(date.getTime())) {
-      throw new Error('Invalid date provided');
+   * Validate that the dynamically built day column is safe to use in SQL
+   * This prevents SQL injection by ensuring only valid day column names are used
+   */
+  validateDayColumn = (dayColumn: string): boolean => {
+    const validDayColumns = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    return validDayColumns.includes(dayColumn);
+  };
+
+  /**
+   * Find all scheduled sequences that should be executed on a specific date.
+   * This method applies different scheduling rules based on scheduleType:
+   * - dai: Daily schedules (every day)
+   * - wee: Weekly schedules (checks if the current day of week is enabled)
+   * - mon: Monthly schedules by day of month or week of month + day of week
+   * - yea: Yearly schedules by specific date or month + day/week combinations
+   * - man: Manual schedules (not included in automatic scheduling)
+   *
+   * @param dateStr - ISO date string in format 'YYYY-MM-DD'
+   * @returns Promise with all matching active schedules
+   */
+  findSchedulesForDate = async (
+    dateStr: string,
+  ): Promise<CiltSecuencesScheduleEntity[]> => {
+    try {
+      // Parse the ISO date
+      const date = new Date(dateStr + 'T00:00:00'); // Ensure consistent date parsing
+
+      // Verify it's a valid date
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date provided');
+      }
+
+      // Get date components
+      const dayOfMonth = date.getDate();
+      const month = date.getMonth() + 1; // Month is 0-based in JS, so add 1
+
+      // Determine day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+      const dayOfWeekNum = date.getDay();
+      const dayColumns = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const dayColumn = dayColumns[dayOfWeekNum];
+
+      // Validate day column for security
+      if (!this.validateDayColumn(dayColumn)) {
+        throw new Error('Invalid day column');
+      }
+
+      // Calculate week of month (1-based)
+      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const firstWeekDay = firstDayOfMonth.getDay();
+      const offsetDate = date.getDate() + firstWeekDay - 1;
+      const weekOfMonth = Math.floor(offsetDate / 7) + 1;
+
+      // Log for debugging
+      console.log('Query parameters:', {
+        dateStr,
+        dayOfWeekNum,
+        dayColumn,
+        dayOfMonth,
+        month,
+        weekOfMonth,
+      });
+
+      // Create query to get all active schedules
+      const queryBuilder = this.ciltSecuencesScheduleRepository
+        .createQueryBuilder('schedule')
+        .where('schedule.status = :status', { status: 'A' })
+        // Only include schedules that haven't expired
+        .andWhere(
+          '(schedule.endDate IS NULL OR DATE(schedule.endDate) >= :currentDate)',
+          { currentDate: dateStr },
+        );
+
+      // Add conditions for each schedule type
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          // dai: Daily schedule - executes every day
+          qb.orWhere(`schedule.scheduleType = :dailyType`, {
+            dailyType: 'dai',
+          });
+
+          // wee: Weekly schedule - check if the current day of week is enabled
+          // CRITICAL: Must verify that the specific day column equals 1
+          // For example, if today is Sunday, check if the 'sun' field is 1
+          qb.orWhere(
+            `(schedule.scheduleType = :weeklyType AND schedule.${dayColumn} = 1)`,
+            { weeklyType: 'wee' },
+          );
+
+          // mon: Monthly schedules - two sub-types:
+          // 1. By specific day of month (e.g., every 15th of the month)
+          qb.orWhere(
+            `(
+            schedule.scheduleType = :monthlyType AND 
+            schedule.dayOfMonth = :dayOfMonth AND
+            (schedule.weekOfMonth IS NULL OR schedule.weekOfMonth = 0)
+          )`,
+            { monthlyType: 'mon', dayOfMonth },
+          );
+
+          // 2. By week of month and day of week (e.g., every 2nd Monday of each month)
+          qb.orWhere(
+            `(
+            schedule.scheduleType = :monthlyType2 AND 
+            schedule.weekOfMonth = :weekOfMonth AND 
+            schedule.${dayColumn} = 1 AND
+            (schedule.dayOfMonth IS NULL OR schedule.dayOfMonth = 0)
+          )`,
+            { monthlyType2: 'mon', weekOfMonth },
+          );
+
+          // yea: Yearly schedules - multiple sub-types:
+          // 1. Specific date each year using dateOfYear field
+          qb.orWhere(
+            `(
+            schedule.scheduleType = :yearlyType1 AND 
+            schedule.dateOfYear IS NOT NULL AND
+            MONTH(schedule.dateOfYear) = :month AND 
+            DAY(schedule.dateOfYear) = :dayOfMonth
+          )`,
+            { yearlyType1: 'yea', month, dayOfMonth },
+          );
+
+          // 2. Specific month and day using separate fields
+          qb.orWhere(
+            `(
+            schedule.scheduleType = :yearlyType2 AND 
+            schedule.monthOfYear = :month AND 
+            schedule.dayOfMonth = :dayOfMonth AND
+            (schedule.weekOfMonth IS NULL OR schedule.weekOfMonth = 0) AND
+            schedule.dateOfYear IS NULL
+          )`,
+            { yearlyType2: 'yea', month, dayOfMonth },
+          );
+
+          // 3. Specific week of specific month with day of week
+          // (e.g., first Tuesday of March every year)
+          qb.orWhere(
+            `(
+            schedule.scheduleType = :yearlyType3 AND 
+            schedule.monthOfYear = :month AND 
+            schedule.weekOfMonth = :weekOfMonth AND 
+            schedule.${dayColumn} = 1 AND
+            (schedule.dayOfMonth IS NULL OR schedule.dayOfMonth = 0) AND
+            schedule.dateOfYear IS NULL
+          )`,
+            { yearlyType3: 'yea', month, weekOfMonth },
+          );
+        }),
+      );
+
+      // Order by schedule time for better organization
+      queryBuilder.orderBy('schedule.schedule', 'ASC');
+
+      // Log the generated SQL for debugging
+      console.log('Generated SQL:', queryBuilder.getSql());
+
+      // Execute query and return results
+      const results = await queryBuilder.getMany();
+
+      // Additional validation - double check results using isScheduleActiveForDate
+      const validatedResults = results.filter((schedule) =>
+        this.isScheduleActiveForDate(schedule, dateStr),
+      );
+
+      // Log if there's a discrepancy
+      if (results.length !== validatedResults.length) {
+        console.warn(
+          `Query returned ${results.length} results but only ${validatedResults.length} are valid`,
+        );
+      }
+
+      return validatedResults;
+    } catch (exception) {
+      console.error('Error in findSchedulesForDate:', exception);
+      HandleException.exception(exception);
+      return [];
     }
-    
-    // Get date components
-    const dayOfMonth = date.getDate();
-    const month = date.getMonth() + 1; // Month is 0-based in JS, so add 1
-    
-    // Determine day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-    const dayOfWeekNum = date.getDay();
-    const dayColumns = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-    const dayColumn = dayColumns[dayOfWeekNum];
-    
-    // Calculate week of month with precision
-    // First, get the first day of the month
-    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const dayOfWeekFirstDay = firstDayOfMonth.getDay();
-    
-    // Calculate offset for the first week
-    // This makes week calculation more accurate based on calendar weeks
-    const offsetDay = dayOfWeekFirstDay === 0 ? 6 : dayOfWeekFirstDay - 1;
-    
-    // Calculate which week of the month the date falls in
-    const weekOfMonth = Math.ceil((date.getDate() + offsetDay) / 7);
-    
-    // Create query to get all active schedules
-    const queryBuilder = this.ciltSecuencesScheduleRepository
-      .createQueryBuilder('schedule')
-      .where('schedule.status = :status', { status: 'A' })
-      // Only include schedules that haven't expired
-      .andWhere('(schedule.end_date IS NULL OR schedule.end_date >= :currentDate)', 
-        { currentDate: dateStr });
-    
-    // Add conditions for each schedule type
-    queryBuilder.andWhere(new Brackets(qb => {
-      // D1: Daily schedule - check if the current day of week is enabled
-      // For example, if today is Tuesday, check if the 'tue' field is 1
-      qb.orWhere(`(schedule.schedule_type = 'D1' AND schedule.${dayColumn} = 1)`);
-      
-      // M1: Monthly schedule by day of month
-      // For example, if today is the 20th, check if day_of_month = 20
-      qb.orWhere(`(schedule.schedule_type = 'M1' AND schedule.day_of_month = :dayOfMonth)`, 
-        { dayOfMonth });
-      
-      // M2: Monthly schedule by week of month and day of week
-      // For example, "every Tuesday of the 3rd week of each month"
-      qb.orWhere(`(schedule.schedule_type = 'M2' AND schedule.week_of_month = :weekOfMonth AND schedule.${dayColumn} = 1)`, 
-        { weekOfMonth });
-      
-      // Y1: Yearly schedule by specific date
-      // For example, "every May 20th" - can be stored in two ways:
-      // 1. As a complete date in date_of_year (only month and day are relevant)
-      // 2. As separate fields month_of_year and day_of_month
-      qb.orWhere(`(
-        schedule.schedule_type = 'Y1' AND 
-        (
-          (MONTH(schedule.date_of_year) = :month AND DAY(schedule.date_of_year) = :dayOfMonth) OR
-          (schedule.month_of_year = :month AND schedule.day_of_month = :dayOfMonth)
-        )
-      )`, { month, dayOfMonth });
-      
-      // Y2: Yearly schedule by month, week and day of week
-      // For example, "every Tuesday of the 3rd week of May each year"
-      qb.orWhere(`(
-        schedule.schedule_type = 'Y2' AND 
-        schedule.month_of_year = :month AND 
-        schedule.week_of_month = :weekOfMonth AND 
-        schedule.${dayColumn} = 1
-      )`, { month, weekOfMonth });
-    }));
-    
-    // Execute query and return results
-    const results = await queryBuilder.getMany();
-    
-    return results;
-  } catch (exception) {
-    HandleException.exception(exception);
-  }
-};
+  };
+
+  findSchedulesForDateSimplified = async (dateStr: string) => {
+    try {
+      const schedules = await this.findSchedulesForDate(dateStr);
+      return schedules.map(schedule => ({
+        id: schedule.id,
+        siteId: schedule.siteId,
+        ciltId: schedule.ciltId,
+        secuenceId: schedule.secuenceId
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+      return [];
+    }
+  };
+
+  /**
+   * Helper method to check if a specific schedule should execute on a given date
+   * This is useful for validating individual schedules or for unit testing
+   *
+   * @param schedule - The schedule entity to evaluate
+   * @param dateStr - ISO date string in format 'YYYY-MM-DD'
+   * @returns boolean indicating if the schedule should execute
+   */
+  isScheduleActiveForDate = (
+    schedule: CiltSecuencesScheduleEntity,
+    dateStr: string,
+  ): boolean => {
+    try {
+      const date = new Date(dateStr + 'T00:00:00'); // Ensure consistent date parsing
+
+      // Verify it's a valid date
+      if (isNaN(date.getTime())) {
+        return false;
+      }
+
+      // Check if schedule is active
+      if (schedule.status !== 'A') {
+        return false;
+      }
+
+      // Check if schedule hasn't expired
+      if (schedule.endDate) {
+        const endDate = new Date(schedule.endDate + 'T23:59:59');
+        if (date > endDate) {
+          return false;
+        }
+      }
+
+      // Get date components
+      const dayOfMonth = date.getDate();
+      const month = date.getMonth() + 1;
+      const dayOfWeekNum = date.getDay();
+
+      // Calculate week of month
+      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const firstWeekDay = firstDayOfMonth.getDay();
+      const offsetDate = date.getDate() + firstWeekDay - 1;
+      const weekOfMonth = Math.floor(offsetDate / 7) + 1;
+
+      // Get day of week activation status
+      const dayActivations = [
+        schedule.sun,
+        schedule.mon,
+        schedule.tue,
+        schedule.wed,
+        schedule.thu,
+        schedule.fri,
+        schedule.sat,
+      ];
+      const isDayActive = dayActivations[dayOfWeekNum] === 1;
+
+      // Evaluate based on schedule type
+      switch (schedule.scheduleType?.toLowerCase()) {
+        case 'dai': // Daily
+          return true;
+
+        case 'wee': // Weekly
+          return isDayActive;
+
+        case 'mon': // Monthly
+          // Check if dayOfMonth or weekOfMonth is actually set (not null/0)
+          const hasDayOfMonth = schedule.dayOfMonth && schedule.dayOfMonth > 0;
+          const hasWeekOfMonth =
+            schedule.weekOfMonth && schedule.weekOfMonth > 0;
+
+          if (hasDayOfMonth && !hasWeekOfMonth) {
+            // Monthly by day of month
+            return dayOfMonth === schedule.dayOfMonth;
+          } else if (hasWeekOfMonth && !hasDayOfMonth) {
+            // Monthly by week of month + day of week
+            return weekOfMonth === schedule.weekOfMonth && isDayActive;
+          }
+          return false;
+
+        case 'yea': // Yearly
+          if (schedule.dateOfYear) {
+            // Yearly by specific date
+            const yearlyDate = new Date(schedule.dateOfYear + 'T00:00:00');
+            return (
+              date.getMonth() === yearlyDate.getMonth() &&
+              date.getDate() === yearlyDate.getDate()
+            );
+          } else {
+            const hasMonthOfYear =
+              schedule.monthOfYear && schedule.monthOfYear > 0;
+            const hasDayOfMonth =
+              schedule.dayOfMonth && schedule.dayOfMonth > 0;
+            const hasWeekOfMonth =
+              schedule.weekOfMonth && schedule.weekOfMonth > 0;
+
+            if (hasMonthOfYear && hasDayOfMonth && !hasWeekOfMonth) {
+              // Yearly by month and day
+              return (
+                month === schedule.monthOfYear &&
+                dayOfMonth === schedule.dayOfMonth
+              );
+            } else if (hasMonthOfYear && hasWeekOfMonth && !hasDayOfMonth) {
+              // Yearly by month, week, and day of week
+              return (
+                month === schedule.monthOfYear &&
+                weekOfMonth === schedule.weekOfMonth &&
+                isDayActive
+              );
+            }
+          }
+          return false;
+
+        case 'man': // Manual
+          return false; // Manual schedules don't execute automatically
+
+        default:
+          return false;
+      }
+    } catch (error) {
+      console.error('Error in isScheduleActiveForDate:', error);
+      return false;
+    }
+  };
 
   create = async (createDto: CreateCiltSecuencesScheduleDto) => {
     try {
@@ -161,9 +393,13 @@ findSchedulesForDate = async (dateStr: string) => {
 
   update = async (updateDto: UpdateCiltSecuencesScheduleDto) => {
     try {
-      const schedule = await this.ciltSecuencesScheduleRepository.findOneBy({ id: updateDto.id });
+      const schedule = await this.ciltSecuencesScheduleRepository.findOneBy({
+        id: updateDto.id,
+      });
       if (!schedule) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
+        );
       }
 
       Object.assign(schedule, updateDto);
@@ -176,7 +412,9 @@ findSchedulesForDate = async (dateStr: string) => {
 
   findActiveSchedules = async () => {
     try {
-      return await this.ciltSecuencesScheduleRepository.find({ where: { status: stringConstants.activeStatus } });
+      return await this.ciltSecuencesScheduleRepository.find({
+        where: { status: stringConstants.activeStatus },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -192,4 +430,4 @@ findSchedulesForDate = async (dateStr: string) => {
       HandleException.exception(exception);
     }
   };
-} 
+}
