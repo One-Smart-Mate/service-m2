@@ -18,6 +18,7 @@ import {
   ValidationException,
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
+import { generateRandomHex } from 'src/utils/general.functions';
 
 @Injectable()
 export class LevelService {
@@ -111,7 +112,28 @@ export class LevelService {
       const savedLevel = await this.levelRepository.save(createLevelDTO);
       
       if (!savedLevel.levelMachineId) {
-        savedLevel.levelMachineId = savedLevel.id.toString(16);
+        let levelMachineId = generateRandomHex(6);
+        let isUnique = false;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (!isUnique && attempts < maxAttempts) {
+          const existingLevel = await this.levelRepository.findOne({
+            where: { 
+              levelMachineId, 
+              siteId: createLevelDTO.siteId 
+            }
+          });
+          
+          if (!existingLevel) {
+            isUnique = true;
+          } else {
+            levelMachineId = generateRandomHex(6);
+            attempts++;
+          }
+        }
+        
+        savedLevel.levelMachineId = levelMachineId;
         await this.levelRepository.save(savedLevel);
       }
 

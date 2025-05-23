@@ -13,6 +13,8 @@ import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
 import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { CreateCiltSequencesExecutionDTO } from '../CiltSequencesExecutions/models/dto/create.ciltSequencesExecution.dto';
+import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 
 @Injectable()
 export class CiltMstrService {
@@ -27,6 +29,7 @@ export class CiltMstrService {
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     @InjectRepository(CiltSequencesExecutionsEntity)
     private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
+    private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
   ) {}
 
   findAll = async () => {
@@ -90,7 +93,7 @@ export class CiltMstrService {
     }
   };
 
-  findCiltsByUserId = async (userId: number) => {
+  findCiltsByUserId = async (userId: number, date: string) => {
     try {
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
@@ -130,6 +133,9 @@ export class CiltMstrService {
         },
       });
 
+      //  Get the scheduled sequences for the specified date
+      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
+
       const positions = userPositions.map(up => {
         const positionId = up.position.id;
         
@@ -142,12 +148,77 @@ export class CiltMstrService {
           
           const sequencesWithExecutions = masterSequences.map(sequence => {
             const sequenceExecutions = ciltExecutions.filter(
-              exec => exec.ciltDetailsId === sequence.id
+              exec => exec.ciltSecuenceId === sequence.id
             );
+
+              // Check if the sequence is scheduled for today
+            const isScheduledToday = scheduledSequences.some(
+              scheduled => 
+                scheduled.ciltId === master.id && 
+                scheduled.secuenceId === sequence.id
+            );
+
+            let executions = [...sequenceExecutions];
+
+            // Create a new execution if it is scheduled for today and has no executions for today
+            if (isScheduledToday) {
+              const hasExecutionForToday = sequenceExecutions.some(
+                exec => {
+                  const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
+                  return execDate === date;
+                }
+              );
+
+              if (!hasExecutionForToday) {
+                const executionDTO: CreateCiltSequencesExecutionDTO = {
+                  siteId: master.siteId,
+                  positionId: positionId,
+                  ciltId: master.id,
+                  ciltSecuenceId: sequence.id,
+                  levelId: sequence.levelId,
+                  route: sequence.route,
+                  userId: user.id,
+                  userWhoExecutedId: user.id,
+                  secuenceSchedule: date,
+                  secuenceStart: null,
+                  secuenceStop: null,
+                  duration: null,
+                  realDuration: null,
+                  standardOk: sequence.standardOk,
+                  initialParameter: null,
+                  evidenceAtCreation: null,
+                  finalParameter: null,
+                  evidenceAtFinal: null,
+                  nok: null,
+                  stoppageReason: null,
+                  machineStopped: null,
+                  amTagId: null,
+                  referencePoint: sequence.referencePoint,
+                  secuenceList: sequence.secuenceList,
+                  secuenceColor: sequence.secuenceColor,
+                  ciltTypeId: sequence.ciltTypeId,
+                  ciltTypeName: sequence.ciltTypeName,
+                  referenceOplSopId: sequence.referenceOplSopId,
+                  remediationOplSopId: sequence.remediationOplSopId?.toString(),
+                  toolsRequiered: sequence.toolsRequired,
+                  selectableWithoutProgramming: sequence.selectableWithoutProgramming,
+                  status: 'A',
+                  createdAt: new Date().toISOString()
+                };
+
+                this.ciltSequencesExecutionsRepository.save(executionDTO)
+                  .then(newExecution => {
+                    executions.push(newExecution);
+                  })
+                  .catch(error => {
+                    console.error('Error creating execution:', error);
+                  });
+              }
+            }
             
             return {
               ...sequence,
-              executions: sequenceExecutions
+              executions
             };
           });
           
@@ -196,7 +267,7 @@ export class CiltMstrService {
       // Get executions for all sequences
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
         where: { 
-          ciltDetailsId: In(sequenceIds),
+          ciltSecuenceId: In(sequenceIds),
           deletedAt: IsNull()
         },
       });
@@ -204,7 +275,7 @@ export class CiltMstrService {
       // Map executions to their respective sequences
       const sequencesWithExecutions = ciltSequences.map(sequence => {
         const sequenceExecutions = ciltExecutions.filter(
-          exec => exec.ciltDetailsId === sequence.id
+          exec => exec.ciltSecuenceId === sequence.id
         );
 
         return {

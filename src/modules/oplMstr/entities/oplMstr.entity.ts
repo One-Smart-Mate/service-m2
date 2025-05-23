@@ -17,6 +17,9 @@ export class OplMstr {
   @Column("varchar", { name: "creator_name", nullable: true, length: 100 })
   creatorName: string | null;
 
+  @Column("bigint", { name: "site_id", nullable: true })
+  siteId: bigint | null;
+
   @Column("int", { name: "reviewer_id", nullable: true })
   reviewerId: number | null;
 
