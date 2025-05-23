@@ -6,9 +6,10 @@ import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
 import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
-import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
-
-@Module({
+import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';  
+import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
+import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
+@Module({   
   imports: [
     TypeOrmModule.forFeature([
       CiltMstrEntity,
@@ -16,10 +17,11 @@ import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutio
       UsersPositionsEntity,
       CiltSequencesEntity,
       CiltSequencesExecutionsEntity,
+      CiltSecuencesScheduleEntity,
     ]),
   ],
   controllers: [CiltMstrController],
-  providers: [CiltMstrService],
+  providers: [CiltMstrService, CiltSecuencesScheduleService],
   exports: [CiltMstrService],
 })
 export class CiltMstrModule {}

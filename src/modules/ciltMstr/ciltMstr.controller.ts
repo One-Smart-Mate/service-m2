@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
+import { FindByUserDTO } from './models/dto/find-by-user.dto';
 
 @ApiTags('Cilt Master')
 @Controller('cilt-mstr')
@@ -29,11 +30,14 @@ export class CiltMstrController {
     return await this.ciltMstrService.findByPositionId(positionId);
   }
 
-  @Get('user/:userId')
+  @Post('user')
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
-  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
-  async findByUserId(@Param('userId') userId: number) {
-    return await this.ciltMstrService.findCiltsByUserId(userId);
+  @ApiBody({ type: FindByUserDTO })
+  async findByUserId(@Body() findByUserDto: FindByUserDTO) {
+    return await this.ciltMstrService.findCiltsByUserId(
+      findByUserDto.userId,
+      findByUserDto.date
+    );
   }
 
   @Get('details/:ciltMstrId')

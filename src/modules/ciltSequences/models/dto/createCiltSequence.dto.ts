@@ -27,9 +27,10 @@ export class CreateCiltSequenceDTO {
   @IsNumber()
   positionId?: number;
 
-  @ApiProperty({ description: 'Position name' })
+  @ApiProperty({ description: 'Position name', required: false })
+  @IsOptional()
   @IsString()
-  positionName: string;
+  positionName?: string;
 
   @ApiProperty({ description: 'CILT master ID', required: false })
   @IsOptional()
@@ -40,6 +41,16 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsString()
   ciltMstrName?: string;
+
+  @ApiProperty({ description: 'Frequency ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  frecuencyId?: number;
+
+  @ApiProperty({ description: 'Frequency code', required: false })
+  @IsOptional()
+  @IsString()
+  frecuencyCode?: string;
 
   @ApiProperty({ description: 'Level ID', required: false })
   @IsOptional()
@@ -55,6 +66,11 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsString()
   route?: string;
+
+  @ApiProperty({ description: 'Reference point', required: false })
+  @IsOptional()
+  @IsString()
+  referencePoint?: string;
 
   @ApiProperty({ description: 'Sequence order', required: false })
   @IsOptional()
@@ -81,10 +97,10 @@ export class CreateCiltSequenceDTO {
   @IsString()
   ciltTypeName?: string;
 
-  @ApiProperty({ description: 'OPL/SOP reference', required: false })
+  @ApiProperty({ description: 'Reference OPL/SOP ID', required: false })
   @IsOptional()
   @IsNumber()
-  referenceOplSop?: number;
+  referenceOplSopId?: number;
 
   @ApiProperty({ description: 'Standard time in seconds', required: false })
   @IsOptional()
@@ -96,10 +112,10 @@ export class CreateCiltSequenceDTO {
   @IsString()
   standardOk?: string;
 
-  @ApiProperty({ description: 'Remediation OPL/SOP', required: false })
+  @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
   @IsOptional()
   @IsNumber()
-  remediationOplSop?: number;
+  remediationOplSopId?: number;
 
   @ApiProperty({ description: 'Required tools', required: false })
   @IsOptional()
@@ -125,11 +141,6 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsNumber()
   quantityPicturesClose?: number;
-
-  @ApiProperty({ description: 'Reference point', required: false })
-  @IsOptional()
-  @IsString()
-  referencePoint?: string;
 
   @ApiProperty({ description: 'Can be selected without programming', required: false })
   @IsOptional()
