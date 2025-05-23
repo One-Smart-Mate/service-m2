@@ -3,7 +3,7 @@ import { IsNumber, IsString, Matches } from 'class-validator';
 
 export class FindByUserDTO {
   @ApiProperty({
-    description: 'ID del usuario',
+    description: 'User ID',
     example: 1,
     type: Number
   })
@@ -11,13 +11,13 @@ export class FindByUserDTO {
   userId: number;
 
   @ApiProperty({
-    description: 'Fecha en formato YYYY-MM-DD',
+    description: 'Date in format YYYY-MM-DD',
     example: '2024-03-20',
     type: String
   })
   @IsString()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, {
-    message: 'La fecha debe estar en formato YYYY-MM-DD',
+    message: 'The date must be in format YYYY-MM-DD',
   })
   date: string;
 } 
