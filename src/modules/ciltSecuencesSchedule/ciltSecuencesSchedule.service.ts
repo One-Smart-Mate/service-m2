@@ -62,6 +62,16 @@ export class CiltSecuencesScheduleService {
     }
   };
 
+  findBySequenceId = async (sequenceId: number) => {
+    try {
+      return await this.ciltSecuencesScheduleRepository.find({
+        where: { secuenceId: sequenceId },
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   /**
    * Validate that the dynamically built day column is safe to use in SQL
    * This prevents SQL injection by ensuring only valid day column names are used
