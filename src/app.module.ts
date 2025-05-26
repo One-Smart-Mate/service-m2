@@ -21,11 +21,11 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { PositionModule } from './modules/position/position.module';
 import { CiltMstrModule } from './modules/ciltMstr/ciltMstr.module';
 import { CiltTypesModule } from './modules/ciltTypes/ciltTypes.module';
-import { CiltSequencesFrequenciesModule } from './modules/ciltSequencesFrequencies/ciltSequencesFrequencies.module';
+import { CiltSequencesFrequenciesModule } from './modules/ciltSequencesFrequenciesOLD/ciltSequencesFrequencies.module';
 import { CiltSequencesModule } from './modules/ciltSequences/ciltSequences.module';
 import { OplDetailsModule } from './modules/oplDetails/oplDetails.module';
 import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
-import { RepositoryModule } from './modules/repository/repository.module';
+import { RepositoryModule } from './modules/repositoryOLD/repository.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';

@@ -4,8 +4,8 @@ import { CiltSequencesFrequenciesService } from './ciltSequencesFrequencies.serv
 import { CreateCiltSequencesFrequenciesDTO } from './models/dto/createCiltSequencesFrequencies.dto';
 import { UpdateCiltSequencesFrequenciesDTO } from './models/dto/updateCiltSequencesFrequencies.dto';
 
-@ApiTags('Cilt Sequences Frequencies')
-@Controller('cilt-sequences-frequencies')
+@ApiTags('Cilt Sequences Frequencies OLD')
+@Controller('cilt-sequences-frequencies-OLD')
 export class CiltSequencesFrequenciesController {
   constructor(private readonly ciltSequencesFrequenciesService: CiltSequencesFrequenciesService) {}
 
