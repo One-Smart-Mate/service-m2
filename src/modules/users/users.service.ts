@@ -174,6 +174,20 @@ export class UsersService {
     return this.userRepository.save(user);
   };
 
+  updateLastLogin = async (user: UserEntity) => {
+    const exists = await this.userRepository.existsBy({ email: user.email });
+    if (!exists) {
+      throw new BadRequestException('The user does not exist');
+    }
+  
+    // Solo actualiza los campos modificados
+    return this.userRepository.update(user.id, {
+      lastLoginWeb: user.lastLoginWeb,
+      lastLoginApp: user.lastLoginApp,
+      updatedAt: new Date(),
+    });
+  };
+  
   getUserRoles = async (userId: number): Promise<string[]> => {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -201,13 +215,13 @@ export class UsersService {
     try {
       const users = await this.userRepository.find({
         where: { userHasSites: { site: { id: siteId } } },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
 
       return tokens;
@@ -226,13 +240,13 @@ export class UsersService {
           userHasSites: { site: { id: siteId } },
           id: Not(userId),
         },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
   
       return tokens;
@@ -245,7 +259,7 @@ export class UsersService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       if (!user) {
@@ -253,9 +267,9 @@ export class UsersService {
       }
 
       const tokens = [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null);
 
       return tokens;
@@ -616,15 +630,15 @@ export class UsersService {
   
       switch (setAppTokenDTO.osName) {
         case stringConstants.OS_ANDROID:
-          user.android_token = setAppTokenDTO.appToken;
+          user.androidToken = setAppTokenDTO.appToken;
           user.androidVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_IOS:
-          user.ios_token = setAppTokenDTO.appToken;
+          user.iosToken = setAppTokenDTO.appToken;
           user.iosVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_WEB:
-          user.web_token = setAppTokenDTO.appToken;
+          user.webToken = setAppTokenDTO.appToken;
           user.webVersion = setAppTokenDTO.osVersion;
           break;
         default:
@@ -647,13 +661,13 @@ export class UsersService {
   
       switch (osName) {
         case stringConstants.OS_ANDROID:
-          user.android_token = null;
+          user.androidToken = null;
           break;
         case stringConstants.OS_IOS:
-          user.ios_token = null;
+          user.iosToken = null;
           break;
         case stringConstants.OS_WEB:
-          user.web_token = null;
+          user.webToken = null;
           break;
         default:
           throw new Error('OS no reconocido');

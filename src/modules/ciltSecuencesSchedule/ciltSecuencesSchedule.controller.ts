@@ -71,8 +71,9 @@ export class CiltSecuencesScheduleController {
     return await this.ciltSecuencesScheduleService.delete(id);
   }
 
-  @Post('sequence')
+  @Get('/sequences/:sequenceId')
   @ApiOperation({ summary: 'Get all schedules by sequence ID' })
+  @ApiParam({ name: 'sequenceId', type: 'number', description: 'Sequence ID' })
   async findBySequenceId(@Param('sequenceId') sequenceId: number) {
     return await this.ciltSecuencesScheduleService.findBySequenceId(sequenceId);
   }

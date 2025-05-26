@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { OplLevelsService } from './oplLevels.service';
 import { CreateOplLevelsDTO } from './models/create-opl-levels.dto';
 
@@ -14,6 +14,14 @@ export class OplLevelsController {
   @ApiResponse({ status: 400, description: 'Invalid request' })
   create(@Body() createOplLevelsDTO: CreateOplLevelsDTO) {
     return this.oplLevelsService.create(createOplLevelsDTO);
+  }
+
+  @Get('level/:levelId')
+  @ApiOperation({ summary: 'Get all OPLs by level ID' })
+  @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
+  @ApiResponse({ status: 200, description: 'List of OPLs associated with the level'})
+  async findByLevelId(@Param('levelId') levelId: number) {
+    return await this.oplLevelsService.findOplMstrByLevelId(levelId);
   }
 
   @Delete(':id')

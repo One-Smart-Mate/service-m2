@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull } from 'typeorm';
+import { Repository, In, IsNull, Equal } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -129,8 +129,11 @@ export class CiltMstrService {
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
         where: { 
           positionId: In(positionIds),
-          deletedAt: IsNull()
+          deletedAt: IsNull(),
+          secuenceSchedule: Equal(new Date(date)),
+          status: 'A'
         },
+        order: { secuenceStart: 'ASC' }
       });
 
       //  Get the scheduled sequences for the specified date
@@ -151,7 +154,7 @@ export class CiltMstrService {
               exec => exec.ciltSecuenceId === sequence.id
             );
 
-              // Check if the sequence is scheduled for today
+            // Check if the sequence is scheduled for today
             const isScheduledToday = scheduledSequences.some(
               scheduled => 
                 scheduled.ciltId === master.id && 
@@ -215,6 +218,12 @@ export class CiltMstrService {
                   });
               }
             }
+            
+            // Filtrar las ejecuciones para asegurar que solo sean de la fecha específica y con status 'A'
+            executions = executions.filter(exec => {
+              const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
+              return execDate === date && exec.status === 'A';
+            });
             
             return {
               ...sequence,
