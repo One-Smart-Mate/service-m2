@@ -37,7 +37,7 @@ export class UserHasSitesEntity {
     default: 'A',
     nullable: true,
     comment:
-      'status especifico para la relación de usuario y site; un usuario puede tener varios sites pero no necesariamente poder accesar a todos',
+      'status specific to the user and site relationship; a user can have multiple sites but not necessarily be able to access all of them',
   })
   status: string;
 

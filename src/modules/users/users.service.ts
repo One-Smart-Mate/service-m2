@@ -180,7 +180,6 @@ export class UsersService {
       throw new BadRequestException('The user does not exist');
     }
   
-    // Solo actualiza los campos modificados
     return this.userRepository.update(user.id, {
       lastLoginWeb: user.lastLoginWeb,
       lastLoginApp: user.lastLoginApp,

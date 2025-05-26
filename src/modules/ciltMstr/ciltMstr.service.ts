@@ -219,7 +219,7 @@ export class CiltMstrService {
               }
             }
             
-            // Filtrar las ejecuciones para asegurar que solo sean de la fecha específica y con status 'A'
+            // Filter executions to ensure they are only for the specific date and with status 'A'
             executions = executions.filter(exec => {
               const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
               return execDate === date && exec.status === 'A';
