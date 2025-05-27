@@ -252,11 +252,25 @@ export class LevelService {
   getSuperiorLevelsById = (levelId: string, levelMap: Map<string, any>) => {
     const array: string[] = [];
     let level = levelMap.get(levelId);
+    
+    if (!level) {
+      const fallbackLevel = {
+        id: parseInt(levelId),
+        name: 'Unknown Level'
+      };
+      return {
+        area: fallbackLevel,
+        location: 'Unknown Level'
+      };
+    }
+    
     array.push(level.name);
 
-    while (level.superiorId > 0) {
+    while (level && level.superiorId > 0) {
       level = levelMap.get(level.superiorId);
-
+      if (!level) {
+        break;
+      }
       array.push(level.name);
     }
 
@@ -272,7 +286,10 @@ export class LevelService {
       where: { siteId: siteId },
     });
     const levelMap = new Map();
-    levels.forEach((level) => levelMap.set(level.id, level));
+    levels.forEach((level) => {
+      levelMap.set(level.id, level);
+      levelMap.set(String(level.id), level);
+    });
     return levelMap;
   };
   findAllChildLevels = async (superiorId: number) => {
