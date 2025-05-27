@@ -1,4 +1,5 @@
 import { Exclude } from 'class-transformer';
+import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 import { UserHasSitesEntity } from 'src/modules/users/entities/user.has.sites.entity';
 import {
   Entity,
@@ -115,4 +116,7 @@ export class SiteEntity {
 
   @OneToMany(() => UserHasSitesEntity, (userHasSites) => userHasSites.site)
   userHasSites: UserHasSitesEntity[];
+
+  @OneToMany(() => CiltSequencesEntity, (ciltSequences) => ciltSequences.site)
+  ciltSequences: CiltSequencesEntity[];
 }
