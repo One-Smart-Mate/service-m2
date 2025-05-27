@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
 import { Exclude } from 'class-transformer';
+import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 
 @Entity('positions')
 export class PositionEntity {
@@ -64,4 +65,9 @@ export class PositionEntity {
   )
   usersPositions: UsersPositionsEntity[];
 
+  @OneToMany(
+    () => CiltSequencesEntity,
+    (ciltSequences) => ciltSequences.position,
+  )
+  ciltSequences: CiltSequencesEntity[];
 }

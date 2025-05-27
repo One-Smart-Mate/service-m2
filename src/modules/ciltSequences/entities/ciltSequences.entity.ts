@@ -1,5 +1,9 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
+import { SiteEntity } from '../../site/entities/site.entity';
+import { LevelEntity } from '../../level/entities/level.entity';
+import { PositionEntity } from '../../position/entities/position.entity';
+import { CiltFrequenciesEntity } from '../../ciltFrequencies/entities/ciltFrequencies.entity';
 
 @Entity('cilt_secuences')
 export class CiltSequencesEntity {
@@ -108,4 +112,24 @@ export class CiltSequencesEntity {
   @ManyToOne(() => CiltMstrEntity, (ciltMstr) => ciltMstr.sequences)
   @JoinColumn({ name: 'cilt_mstr_id' })
   ciltMstr: CiltMstrEntity;
+
+  @ManyToOne(() => SiteEntity)
+  @JoinColumn({ name: 'site_id' })
+  site: SiteEntity;
+
+  @ManyToOne(() => LevelEntity)
+  @JoinColumn({ name: 'area_id' })
+  area: LevelEntity;
+
+  @ManyToOne(() => PositionEntity)
+  @JoinColumn({ name: 'position_id' })
+  position: PositionEntity;
+
+  @ManyToOne(() => LevelEntity)
+  @JoinColumn({ name: 'level_id' })
+  level: LevelEntity;
+
+  @ManyToOne(() => CiltFrequenciesEntity)
+  @JoinColumn({ name: 'frecuency_id' })
+  frequency: CiltFrequenciesEntity;
 }

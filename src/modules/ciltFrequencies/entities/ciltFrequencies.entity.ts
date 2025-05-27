@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 @Entity("cilt_frecuencies")
 export class CiltFrequenciesEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id" })
@@ -33,4 +33,7 @@ export class CiltFrequenciesEntity {
     default: () => "'A'",
   })
   status: string | null;
+
+  @OneToMany(() => CiltSequencesEntity, (ciltSequences) => ciltSequences.frequency)
+  ciltSequences: CiltSequencesEntity[];
 }
