@@ -2,38 +2,42 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
+import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
+import { SiteEntity } from '../../site/entities/site.entity';
 
 @Entity('cilt_secuences_schedule')
 export class CiltSecuencesScheduleEntity {
-  @PrimaryGeneratedColumn({ type: "int", name: "id" })
+  @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;
 
-  @Column("int", { name: "site_id", nullable: true })
+  @Column("int", { name: "site_id", nullable: true, unsigned: true })
   siteId: number | null;
 
-  @Column("int", { name: "cilt_id", nullable: true })
+  @Column("int", { name: "cilt_id", nullable: true, unsigned: true })
   ciltId: number | null;
 
-  @Column("int", { name: "secuence_id", nullable: true })
+  @Column("int", { name: "secuence_id", nullable: true, unsigned: true })
   secuenceId: number | null;
 
-  @Column("varchar", { name: "frecuency", nullable: true, length: 5 })
+  @Column("char", { name: "frecuency", nullable: true, length: 5 })
   frecuency: string | null;
 
-  @Column("time", { name: "schedule", nullable: true, comment: 'Time format HH:mm:ss' })
-  schedule: Date | null;
+  @Column("time", { name: "schedule", nullable: true })
+  schedule: string | null;
 
-  @Column("varchar", { 
+  @Column("char", { 
     name: "schedule_type", 
     nullable: true, 
-    length: 3,
-    comment: 'type of schedule: daily, weekly, monthly, yearly'
+    length: 3
   })
   scheduleType: string | null;
 
-  @Column("date", { name: "end_date", nullable: true, comment: 'Date format YYYY-MM-DD' })
-  endDate: Date | null;
+  @Column("date", { name: "end_date", nullable: true })
+  endDate: string | null;
 
   @Column("tinyint", { name: "mon", nullable: true, default: 0 })
   mon: number | null;
@@ -56,48 +60,68 @@ export class CiltSecuencesScheduleEntity {
   @Column("tinyint", { name: "sun", nullable: true, default: 0 })
   sun: number | null;
 
-  @Column("tinyint", { 
-    name: "day_of_month", 
-    nullable: true,
-    comment: 'stores the day of the month that the sequence is executed'
-  })
+  @Column("tinyint", { name: "day_of_month", nullable: true })
   dayOfMonth: number | null;
 
-  @Column("tinyint", { 
-    name: "week_of_month", 
-    nullable: true,
-    comment: 'if you program repetitions for example: third week of each month, here the number of the week of the month is stored'
-  })
+  @Column("tinyint", { name: "week_of_month", nullable: true })
   weekOfMonth: number | null;
 
-  @Column("date", { 
-    name: "date_of_year", 
-    nullable: true,
-    comment: 'if the schedule is yearly, then here the date is stored in which the sequence has to be executed each year'
-  })
-  dateOfYear: Date | null;
+  @Column("date", { name: "date_of_year", nullable: true })
+  dateOfYear: string | null;
 
-  @Column("tinyint", { 
-    name: "month_of_year", 
-    nullable: true,
-    comment: 'month of the year to evaluate for sequences that are executed on a specific day of a month, regardless of the date'
-  })
+  @Column("tinyint", { name: "month_of_year", nullable: true })
   monthOfYear: number | null;
+
+  @Column("tinyint", { name: "allow_execute_before", nullable: true, default: 1 })
+  allowExecuteBefore: number | null;
+
+  @Column("tinyint", { name: "allow_execute_before_minutes", nullable: true })
+  allowExecuteBeforeMinutes: number | null;
+
+  @Column("tinyint", { name: "tolerance_before_minutes", nullable: true })
+  toleranceBeforeMinutes: number | null;
+
+  @Column("tinyint", { name: "tolerance_after_minutes", nullable: true })
+  toleranceAfterMinutes: number | null;
+
+  @Column("tinyint", { name: "allow_execute_after_due", nullable: true })
+  allowExecuteAfterDue: number | null;
 
   @Column("char", { 
     name: "status", 
     nullable: true, 
     length: 1,
-    default: () => "'A'"
+    default: 'A'
   })
   status: string | null;
 
-  @Column("timestamp", { name: "created_at", nullable: true })
+  @Column("timestamp", { 
+    name: "created_at", 
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP"
+  })
   createdAt: Date | null;
 
-  @Column("timestamp", { name: "updated_at", nullable: true })
+  @Column("timestamp", { 
+    name: "updated_at", 
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP"
+  })
   updatedAt: Date | null;
 
   @Column("timestamp", { name: "deleted_at", nullable: true })
   deletedAt: Date | null;
-} 
+
+  @ManyToOne(() => CiltMstrEntity)
+  @JoinColumn({ name: 'cilt_id' })
+  cilt: CiltMstrEntity;
+
+  @ManyToOne(() => CiltSequencesEntity)
+  @JoinColumn({ name: 'secuence_id' })
+  sequence: CiltSequencesEntity;
+
+  @ManyToOne(() => SiteEntity)
+  @JoinColumn({ name: 'site_id' })
+  site: SiteEntity;
+}
