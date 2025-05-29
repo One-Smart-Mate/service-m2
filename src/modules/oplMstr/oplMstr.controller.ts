@@ -28,7 +28,7 @@ export class OplMstrController {
   @ApiOperation({ summary: 'Get all OPLs by site ID' })
   @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
   @ApiResponse({ status: 200, description: 'List of OPLs associated with the site'})
-  async findBySiteId(@Param('siteId') siteId: bigint) {
+  async findBySiteId(@Param('siteId') siteId: number) {
     return await this.oplMstrService.findOplMstrBySiteId(siteId);
   }
 
