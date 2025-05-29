@@ -1,9 +1,23 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { 
+  Column, 
+  Entity, 
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+  OneToMany
+} from "typeorm";
+import { SiteEntity } from '../../site/entities/site.entity';
+import { UserEntity } from '../../users/entities/user.entity';
+import { OplDetailsEntity } from '../../oplDetails/entities/oplDetails.entity';
+import { CiltSequencesExecutionsEntity } from '../../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
-@Entity("opl_mstr", { schema: "railway" })
+@Entity("opl_mstr")
 export class OplMstr {
-  @PrimaryGeneratedColumn({ type: "int", name: "id" })
+  @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;
+
+  @Column("int", { name: "site_id", nullable: true, unsigned: true })
+  siteId: number | null;
 
   @Column("varchar", { name: "title", length: 100 })
   title: string;
@@ -11,16 +25,13 @@ export class OplMstr {
   @Column("varchar", { name: "objetive", nullable: true, length: 255 })
   objetive: string | null;
 
-  @Column("int", { name: "creator_id", nullable: true })
+  @Column("int", { name: "creator_id", nullable: true, unsigned: true })
   creatorId: number | null;
 
   @Column("varchar", { name: "creator_name", nullable: true, length: 100 })
   creatorName: string | null;
 
-  @Column("bigint", { name: "site_id", nullable: true })
-  siteId: bigint | null;
-
-  @Column("int", { name: "reviewer_id", nullable: true })
+  @Column("int", { name: "reviewer_id", nullable: true, unsigned: true })
   reviewerId: number | null;
 
   @Column("varchar", { name: "reviewer_name", nullable: true, length: 100 })
@@ -31,13 +42,16 @@ export class OplMstr {
 
   @Column("datetime", {
     name: "created_at",
-    nullable: true
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP"
   })
   createdAt: Date | null;
 
   @Column("datetime", {
     name: "updated_at",
-    nullable: true
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP"
   })
   updatedAt: Date | null;
 
@@ -46,4 +60,25 @@ export class OplMstr {
     nullable: true
   })
   deletedAt: Date | null;
-} 
+
+  @ManyToOne(() => SiteEntity)
+  @JoinColumn({ name: 'site_id' })
+  site: SiteEntity;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'creator_id' })
+  creator: UserEntity;
+
+  @ManyToOne(() => UserEntity)
+  @JoinColumn({ name: 'reviewer_id' })
+  reviewer: UserEntity;
+
+  @OneToMany(() => OplDetailsEntity, (detail) => detail.opl)
+  details: OplDetailsEntity[];
+
+  @OneToMany(() => CiltSequencesExecutionsEntity, (execution) => execution.referenceOplSop)
+  referenceExecutions: CiltSequencesExecutionsEntity[];
+
+  @OneToMany(() => CiltSequencesExecutionsEntity, (execution) => execution.remediationOplSop)
+  remediationExecutions: CiltSequencesExecutionsEntity[];
+}

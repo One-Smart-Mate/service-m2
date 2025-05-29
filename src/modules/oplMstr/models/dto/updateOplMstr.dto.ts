@@ -10,7 +10,7 @@ export class UpdateOplMstrDTO {
   @ApiProperty({ description: 'Site ID of the OPL' })
   @IsOptional()
   @IsNumber()
-  siteId?: bigint;
+  siteId?: number;
 
   @ApiProperty({ description: 'Title of the OPL', required: false })
   @IsOptional()
