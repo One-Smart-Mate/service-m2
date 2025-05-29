@@ -123,7 +123,8 @@ export class CiltMstrService {
       });
 
       const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { positionId: In(positionIds) },
+        where: { ciltMstr: { positionId: In(positionIds) } },
+        relations: ['ciltMstr'],
       });
 
       const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
@@ -133,6 +134,7 @@ export class CiltMstrService {
           secuenceSchedule: Equal(new Date(date)),
           status: 'A'
         },
+        relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' }
       });
 
@@ -141,14 +143,14 @@ export class CiltMstrService {
 
       const positions = userPositions.map(up => {
         const positionId = up.position.id;
-        
+          
         const positionCiltMasters = ciltMasters.filter(cm => cm.positionId === positionId);
-        
+          
         const mastersWithSequences = positionCiltMasters.map(master => {
           const masterSequences = ciltSequences.filter(
-            seq => seq.positionId === positionId && seq.ciltMstrId === master.id
+            seq => seq.ciltMstr.positionId === positionId && seq.ciltMstrId === master.id
           );
-          
+            
           const sequencesWithExecutions = masterSequences.map(sequence => {
             const sequenceExecutions = ciltExecutions.filter(
               exec => exec.ciltSecuenceId === sequence.id
@@ -178,8 +180,6 @@ export class CiltMstrService {
                   positionId: positionId,
                   ciltId: master.id,
                   ciltSecuenceId: sequence.id,
-                  levelId: sequence.levelId,
-                  route: sequence.route,
                   userId: user.id,
                   userWhoExecutedId: user.id,
                   secuenceSchedule: date,
@@ -202,7 +202,7 @@ export class CiltMstrService {
                   ciltTypeId: sequence.ciltTypeId,
                   ciltTypeName: sequence.ciltTypeName,
                   referenceOplSopId: sequence.referenceOplSopId,
-                  remediationOplSopId: sequence.remediationOplSopId?.toString(),
+                  remediationOplSopId: sequence.remediationOplSopId ? Number(sequence.remediationOplSopId) : null,
                   toolsRequiered: sequence.toolsRequired,
                   selectableWithoutProgramming: sequence.selectableWithoutProgramming,
                   status: 'A',
@@ -218,25 +218,25 @@ export class CiltMstrService {
                   });
               }
             }
-            
+              
             // Filter executions to ensure they are only for the specific date and with status 'A'
             executions = executions.filter(exec => {
               const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
               return execDate === date && exec.status === 'A';
             });
-            
+              
             return {
               ...sequence,
               executions
             };
           });
-          
+            
           return {
             ...master,
             sequences: sequencesWithExecutions
           };
         });
-        
+          
         return {
           id: positionId,
           name: up.position.name,
