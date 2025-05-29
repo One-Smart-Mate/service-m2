@@ -137,8 +137,7 @@ export class CreateCiltSecuencesScheduleDto {
   @ApiProperty({ 
     description: 'Date of year in format YYYY-MM-DD', 
     required: false,
-    example: '2024-12-31',
-    type: 'string'
+    example: '2024-01-01'
   })
   @IsOptional()
   @IsString()
@@ -154,10 +153,50 @@ export class CreateCiltSecuencesScheduleDto {
   @Max(12)
   monthOfYear?: number;
 
-  @ApiProperty({ required: false, description: 'Status', default: 'A', maxLength: 1 })
+  @ApiProperty({ required: false, description: 'Allow execute before flag (0 or 1)', default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  allowExecuteBefore?: number;
+
+  @ApiProperty({ required: false, description: 'Allow execute before minutes' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  allowExecuteBeforeMinutes?: number;
+
+  @ApiProperty({ required: false, description: 'Tolerance before minutes' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  toleranceBeforeMinutes?: number;
+
+  @ApiProperty({ required: false, description: 'Tolerance after minutes' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  toleranceAfterMinutes?: number;
+
+  @ApiProperty({ required: false, description: 'Allow execute after due flag (0 or 1)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  allowExecuteAfterDue?: number;
+
+  @ApiProperty({ 
+    required: false, 
+    description: 'Status (A=Active, I=Inactive)', 
+    default: 'A',
+    maxLength: 1
+  })
   @IsOptional()
   @IsString()
   @Length(1, 1)
+  @Matches(/^[AI]$/, {
+    message: 'Status must be either A (Active) or I (Inactive)'
+  })
   status?: string;
 
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })

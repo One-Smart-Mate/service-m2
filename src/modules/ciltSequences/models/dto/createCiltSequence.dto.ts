@@ -12,26 +12,6 @@ export class CreateCiltSequenceDTO {
   @IsString()
   siteName?: string;
 
-  @ApiProperty({ description: 'Area ID', required: false })
-  @IsOptional()
-  @IsNumber()
-  areaId?: number;
-
-  @ApiProperty({ description: 'Area name', required: false })
-  @IsOptional()
-  @IsString()
-  areaName?: string;
-
-  @ApiProperty({ description: 'Position ID', required: false })
-  @IsOptional()
-  @IsNumber()
-  positionId?: number;
-
-  @ApiProperty({ description: 'Position name', required: false })
-  @IsOptional()
-  @IsString()
-  positionName?: string;
-
   @ApiProperty({ description: 'CILT master ID', required: false })
   @IsOptional()
   @IsNumber()
@@ -51,21 +31,6 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsString()
   frecuencyCode?: string;
-
-  @ApiProperty({ description: 'Level ID', required: false })
-  @IsOptional()
-  @IsNumber()
-  levelId?: number;
-
-  @ApiProperty({ description: 'Level name', required: false })
-  @IsOptional()
-  @IsString()
-  levelName?: string;
-
-  @ApiProperty({ description: 'Route of the level', required: false })
-  @IsOptional()
-  @IsString()
-  route?: string;
 
   @ApiProperty({ description: 'Reference point', required: false })
   @IsOptional()
@@ -106,51 +71,6 @@ export class CreateCiltSequenceDTO {
   @IsOptional()
   @IsNumber()
   standardTime?: number;
-
-  @ApiProperty({ description: 'Expected standard', required: false })
-  @IsOptional()
-  @IsString()
-  standardOk?: string;
-
-  @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
-  @IsOptional()
-  @IsNumber()
-  remediationOplSopId?: number;
-
-  @ApiProperty({ description: 'Required tools', required: false })
-  @IsOptional()
-  @IsString()
-  toolsRequired?: string;
-
-  @ApiProperty({ description: 'Is it a stoppage reason?', required: false })
-  @IsOptional()
-  @IsNumber()
-  stoppageReason?: number;
-
-  @ApiProperty({ description: 'Is the machine stopped?', required: false, default: 0 })
-  @IsOptional()
-  @IsNumber()
-  machineStopped?: number;
-
-  @ApiProperty({ description: 'Number of pictures at start', required: false, default: 1 })
-  @IsOptional()
-  @IsNumber()
-  quantityPicturesCreate?: number;
-
-  @ApiProperty({ description: 'Number of pictures at end', required: false, default: 1 })
-  @IsOptional()
-  @IsNumber()
-  quantityPicturesClose?: number;
-
-  @ApiProperty({ description: 'Can be selected without programming', required: false })
-  @IsOptional()
-  @IsNumber()
-  selectableWithoutProgramming?: number;
-
-  @ApiProperty({ description: 'Sequence status (A=Active, I=Inactive, D=Draft)', required: false, default: 'A' })
-  @IsOptional()
-  @IsString()
-  status?: string;
 
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()

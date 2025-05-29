@@ -37,20 +37,6 @@ export class CiltSequencesService {
       }
     }
 
-    if (dto.areaId) {
-      const area = await this.levelRepository.findOneBy({ id: dto.areaId });
-      if (!area) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-    }
-
-    if (dto.positionId) {
-      const position = await this.positionRepository.findOneBy({ id: dto.positionId });
-      if (!position) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-      }
-    }
-
     if (dto.ciltMstrId) {
       const ciltMstr = await this.ciltMstrRepository.findOneBy({ id: dto.ciltMstrId });
       if (!ciltMstr) {
@@ -65,12 +51,6 @@ export class CiltSequencesService {
       }
     }
 
-    if (dto.levelId) {
-      const level = await this.levelRepository.findOneBy({ id: dto.levelId });
-      if (!level) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-    }
   }
 
   findAll = async () => {
@@ -89,33 +69,9 @@ export class CiltSequencesService {
     }
   };
 
-  findByPositionId = async (positionId: number) => {
-    try {
-      return await this.ciltSequencesRepository.find({ where: { positionId } });
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  findByAreaId = async (areaId: number) => {
-    try {
-      return await this.ciltSequencesRepository.find({ where: { areaId } });
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
   findByCiltMstrId = async (ciltMstrId: number) => {
     try {
       return await this.ciltSequencesRepository.find({ where: { ciltMstrId } });
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  findByLevelId = async (levelId: number) => {
-    try {
-      return await this.ciltSequencesRepository.find({ where: { levelId } });
     } catch (exception) {
       HandleException.exception(exception);
     }
