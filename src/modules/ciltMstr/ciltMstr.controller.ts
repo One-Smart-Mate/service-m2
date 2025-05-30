@@ -23,13 +23,6 @@ export class CiltMstrController {
     return await this.ciltMstrService.findBySiteId(siteId);
   }
 
-  @Get('position/:positionId')
-  @ApiOperation({ summary: 'Get all CILTs by position ID' })
-  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
-  async findByPositionId(@Param('positionId') positionId: number) {
-    return await this.ciltMstrService.findByPositionId(positionId);
-  }
-
   @Post('user')
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
   @ApiBody({ type: FindByUserDTO })
