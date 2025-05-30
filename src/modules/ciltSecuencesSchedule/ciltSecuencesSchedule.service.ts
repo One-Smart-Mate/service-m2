@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { CiltSecuencesScheduleEntity } from './entities/ciltSecuencesSchedule.entity';
@@ -11,12 +11,26 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 import { stringConstants } from 'src/utils/string.constant';
+import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { SiteEntity } from '../site/entities/site.entity';
+import { CiltMstrService } from '../ciltMstr/ciltMstr.service';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class CiltSecuencesScheduleService {
   constructor(
     @InjectRepository(CiltSecuencesScheduleEntity)
     private readonly ciltSecuencesScheduleRepository: Repository<CiltSecuencesScheduleEntity>,
+    @InjectRepository(CiltMstrEntity)
+    private readonly ciltMstrRepository: Repository<CiltMstrEntity>,
+    @InjectRepository(CiltSequencesEntity)
+    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    @InjectRepository(SiteEntity)
+    private readonly siteRepository: Repository<SiteEntity>,
+    @Inject(forwardRef(() => CiltMstrService))
+    private readonly ciltMstrService: CiltMstrService,
+    private readonly logger: CustomLoggerService
   ) {}
 
   findAll = async () => {
@@ -370,11 +384,33 @@ export class CiltSecuencesScheduleService {
 
   create = async (createDto: CreateCiltSecuencesScheduleDto) => {
     try {
+      // Validar que existan las entidades relacionadas
+      if (createDto.siteId) {
+        const site = await this.siteRepository.findOneBy({ id: createDto.siteId });
+        if (!site) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+        }
+      }
+
+      if (createDto.ciltId) {
+        const cilt = await this.ciltMstrRepository.findOneBy({ id: createDto.ciltId });
+        if (!cilt) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+        }
+      }
+
+      if (createDto.secuenceId) {
+        const sequence = await this.ciltSequencesRepository.findOneBy({ id: createDto.secuenceId });
+        if (!sequence) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+        }
+      }
+
       const schedule = this.ciltSecuencesScheduleRepository.create(createDto);
       schedule.createdAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
-      if (exception instanceof ValidationException) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
         throw exception;
       }
       HandleException.exception(exception);
@@ -392,10 +428,35 @@ export class CiltSecuencesScheduleService {
         );
       }
 
+      // Validar que existan las entidades relacionadas
+      if (updateDto.siteId) {
+        const site = await this.siteRepository.findOneBy({ id: updateDto.siteId });
+        if (!site) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+        }
+      }
+
+      if (updateDto.ciltId) {
+        const cilt = await this.ciltMstrRepository.findOneBy({ id: updateDto.ciltId });
+        if (!cilt) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+        }
+      }
+
+      if (updateDto.secuenceId) {
+        const sequence = await this.ciltSequencesRepository.findOneBy({ id: updateDto.secuenceId });
+        if (!sequence) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+        }
+      }
+
       Object.assign(schedule, updateDto);
       schedule.updatedAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };

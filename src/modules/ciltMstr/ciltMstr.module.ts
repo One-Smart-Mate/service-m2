@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltMstrController } from './ciltMstr.controller';
 import { CiltMstrService } from './ciltMstr.service';
@@ -9,6 +9,13 @@ import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequ
 import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';  
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
+import { SiteModule } from '../site/site.module';
+import { SiteEntity } from '../site/entities/site.entity';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
+import { CiltSecuencesScheduleModule } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.module';
+
 @Module({   
   imports: [
     TypeOrmModule.forFeature([
@@ -18,10 +25,15 @@ import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/c
       CiltSequencesEntity,
       CiltSequencesExecutionsEntity,
       CiltSecuencesScheduleEntity,
+      SiteEntity,
+      CiltMstrPositionLevelsEntity,
+      OplMstr
     ]),
+    SiteModule,
+    forwardRef(() => CiltSecuencesScheduleModule)
   ],
   controllers: [CiltMstrController],
-  providers: [CiltMstrService, CiltSecuencesScheduleService],
+  providers: [CiltMstrService, CiltSecuencesScheduleService, CustomLoggerService],
   exports: [CiltMstrService],
 })
 export class CiltMstrModule {}

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Equal } from 'typeorm';
+import { Repository, In, IsNull, Equal, Raw } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -15,6 +15,9 @@ import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequ
 import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from '../CiltSequencesExecutions/models/dto/create.ciltSequencesExecution.dto';
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 
 @Injectable()
 export class CiltMstrService {
@@ -29,7 +32,12 @@ export class CiltMstrService {
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     @InjectRepository(CiltSequencesExecutionsEntity)
     private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
+    @InjectRepository(CiltMstrPositionLevelsEntity)
+    private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
+    @InjectRepository(OplMstr)
+    private readonly oplMstrRepository: Repository<OplMstr>,
     private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
+    private readonly logger: CustomLoggerService,
   ) {}
 
   findAll = async () => {
@@ -93,172 +101,185 @@ export class CiltMstrService {
     }
   };
 
-  findCiltsByUserId = async (userId: number, date: string) => {
+  async findCiltsByUserId(userId: number, date: string) {
     try {
+      // Change date to midnight local
+      const scheduleDate = new Date(date);
+  
+      // 1) Search user
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
-
+      this.logger.logProcess('USER', { userId, date });
+  
+      // 2) User positions
       const userPositions = await this.usersPositionsRepository.find({
         where: { user: { id: userId } },
         relations: ['position'],
       });
-
+      this.logger.logProcess('USER POSITIONS', userPositions);
       if (!userPositions.length) {
-        return {
-          userInfo: {
-            id: user.id,
-            name: user.name,
-            email: user.email,
-          },
-          positions: []
-        };
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
       }
-
+  
+      // 3) Active levels for those positions
       const positionIds = userPositions.map(up => up.position.id);
-
-      const ciltMasters = await this.ciltRepository.find({
-        where: { positionId: In(positionIds) },
-      });
-
-      const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { ciltMstr: { positionId: In(positionIds) } },
+      this.logger.logProcess('POSITION IDS', positionIds);
+      const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find({
+        where: {
+          positionId: In(positionIds),
+          status: 'A',
+          deletedAt: IsNull(),
+        },
         relations: ['ciltMstr'],
       });
-
-      const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
-        where: { 
-          positionId: In(positionIds),
+      this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
+  
+      // 4) Unique CILT masters
+      const ciltMasters = Array.from(
+        new Map(ciltPositionLevels.map(cpl => [cpl.ciltMstr.id, cpl.ciltMstr])).values()
+      );
+      this.logger.logProcess('CILT MASTERS', ciltMasters);
+  
+      // 5) Sequences of those CILTs (without ciltMstr relation)
+      const ciltSequences = await this.ciltSequencesRepository.find({
+        where: { ciltMstrId: In(ciltMasters.map(cm => cm.id)) }
+      });
+      this.logger.logProcess('CILT SEQUENCES', ciltSequences);
+  
+      // 6) Validate SOP references in parallel
+      await Promise.all(
+        ciltSequences.map(async seq => {
+          if (seq.referenceOplSopId) {
+            const ref = await this.oplMstrRepository.findOneBy({ id: seq.referenceOplSopId });
+            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REFERENCE);
+          }
+          if (seq.remediationOplSopId) {
+            const rem = await this.oplMstrRepository.findOneBy({ id: seq.remediationOplSopId });
+            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REMEDIATION);
+          }
+        })
+      );
+  
+      // 7) Scheduled schedules for the date
+      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
+      this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
+  
+      // 8) Upsert executions
+      for (const cpl of ciltPositionLevels) {
+        const masterId = cpl.ciltMstr.id;
+        for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
+          const isScheduled = scheduledSequences.some(
+            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
+          );
+          if (!isScheduled) continue;
+  
+          const existing = await this.ciltSequencesExecutionsRepository.findOne({
+            where: {
+              ciltId: masterId,
+              ciltSecuenceId: seq.id,
+              secuenceSchedule: scheduleDate,
+              status: 'A',
+              deletedAt: IsNull(),
+            }
+          });
+  
+          if (existing) {
+            await this.ciltSequencesExecutionsRepository.save(existing);
+            this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
+          } else {
+            const dto: Partial<CiltSequencesExecutionsEntity> = {
+              siteId: cpl.siteId,
+              positionId: cpl.positionId,
+              ciltId: masterId,
+              ciltSecuenceId: seq.id,
+              userId: user.id,
+              userWhoExecutedId: user.id,
+              secuenceSchedule: scheduleDate,
+              standardOk: seq.standardOk,
+              referencePoint: seq.referencePoint,
+              secuenceList: seq.secuenceList,
+              secuenceColor: seq.secuenceColor,
+              ciltTypeId: seq.ciltTypeId,
+              ciltTypeName: seq.ciltTypeName,
+              referenceOplSopId: seq.referenceOplSopId,
+              remediationOplSopId: seq.remediationOplSopId ? Number(seq.remediationOplSopId) : null,
+              toolsRequiered: seq.toolsRequired,
+              selectableWithoutProgramming: seq.selectableWithoutProgramming,
+              status: 'A',
+            };
+            const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
+            this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
+          }
+        }
+      }
+  
+      // 9) Read all executions for the date
+      const allExecutions = await this.ciltSequencesExecutionsRepository.find({
+        where: {
+          ciltId: In(ciltMasters.map(cm => cm.id)),
+          status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: Equal(new Date(date)),
-          status: 'A'
+          secuenceSchedule: scheduleDate,
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
-        order: { secuenceStart: 'ASC' }
+        order: { secuenceStart: 'ASC' },
       });
-
-      //  Get the scheduled sequences for the specified date
-      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
-
+      this.logger.logProcess('CILT EXECUTIONS', allExecutions);
+  
+      // 10) Group sequences and executions
+      const sequencesByMaster = new Map<number, CiltSequencesEntity[]>();
+      ciltSequences.forEach(seq => {
+        const list = sequencesByMaster.get(seq.ciltMstrId) ?? [];
+        list.push(seq);
+        sequencesByMaster.set(seq.ciltMstrId, list);
+      });
+      const executionsBySequence = new Map<number, CiltSequencesExecutionsEntity[]>();
+      allExecutions.forEach(exec => {
+        const list = executionsBySequence.get(exec.ciltSecuenceId) ?? [];
+        list.push(exec);
+        executionsBySequence.set(exec.ciltSecuenceId, list);
+      });
+  
+      // 11) Build response ordered by secuenceSchedule
       const positions = userPositions.map(up => {
-        const positionId = up.position.id;
-          
-        const positionCiltMasters = ciltMasters.filter(cm => cm.positionId === positionId);
-          
-        const mastersWithSequences = positionCiltMasters.map(master => {
-          const masterSequences = ciltSequences.filter(
-            seq => seq.ciltMstr.positionId === positionId && seq.ciltMstrId === master.id
-          );
-            
-          const sequencesWithExecutions = masterSequences.map(sequence => {
-            const sequenceExecutions = ciltExecutions.filter(
-              exec => exec.ciltSecuenceId === sequence.id
-            );
-
-            // Check if the sequence is scheduled for today
-            const isScheduledToday = scheduledSequences.some(
-              scheduled => 
-                scheduled.ciltId === master.id && 
-                scheduled.secuenceId === sequence.id
-            );
-
-            let executions = [...sequenceExecutions];
-
-            // Create a new execution if it is scheduled for today and has no executions for today
-            if (isScheduledToday) {
-              const hasExecutionForToday = sequenceExecutions.some(
-                exec => {
-                  const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
-                  return execDate === date;
-                }
-              );
-
-              if (!hasExecutionForToday) {
-                const executionDTO: CreateCiltSequencesExecutionDTO = {
-                  siteId: master.siteId,
-                  positionId: positionId,
-                  ciltId: master.id,
-                  ciltSecuenceId: sequence.id,
-                  userId: user.id,
-                  userWhoExecutedId: user.id,
-                  secuenceSchedule: date,
-                  secuenceStart: null,
-                  secuenceStop: null,
-                  duration: null,
-                  realDuration: null,
-                  standardOk: sequence.standardOk,
-                  initialParameter: null,
-                  evidenceAtCreation: null,
-                  finalParameter: null,
-                  evidenceAtFinal: null,
-                  nok: null,
-                  stoppageReason: null,
-                  machineStopped: null,
-                  amTagId: null,
-                  referencePoint: sequence.referencePoint,
-                  secuenceList: sequence.secuenceList,
-                  secuenceColor: sequence.secuenceColor,
-                  ciltTypeId: sequence.ciltTypeId,
-                  ciltTypeName: sequence.ciltTypeName,
-                  referenceOplSopId: sequence.referenceOplSopId,
-                  remediationOplSopId: sequence.remediationOplSopId ? Number(sequence.remediationOplSopId) : null,
-                  toolsRequiered: sequence.toolsRequired,
-                  selectableWithoutProgramming: sequence.selectableWithoutProgramming,
-                  status: 'A',
-                  createdAt: new Date().toISOString()
-                };
-
-                this.ciltSequencesExecutionsRepository.save(executionDTO)
-                  .then(newExecution => {
-                    executions.push(newExecution);
-                  })
-                  .catch(error => {
-                    console.error('Error creating execution:', error);
-                  });
-              }
-            }
-              
-            // Filter executions to ensure they are only for the specific date and with status 'A'
-            executions = executions.filter(exec => {
-              const execDate = exec.secuenceSchedule ? new Date(exec.secuenceSchedule).toISOString().split('T')[0] : null;
-              return execDate === date && exec.status === 'A';
+        const masters = ciltPositionLevels
+          .filter(cpl => cpl.positionId === up.position.id)
+          .map(cpl => {
+            // Master sequences
+            const master = cpl.ciltMstr;
+            const sequences = (sequencesByMaster.get(master.id) ?? []).map(seq => {
+              // Extract only seq fields, without ciltMstr relation
+              const { ciltMstr, ...seqFields } = seq as any;
+              const executions = (executionsBySequence.get(seq.id) ?? [])
+                .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
+              return { ...seqFields, executions };
             });
-              
-            return {
-              ...sequence,
-              executions
-            };
+            return { ...master, sequences };
           });
-            
-          return {
-            ...master,
-            sequences: sequencesWithExecutions
-          };
-        });
-          
+  
         return {
-          id: positionId,
+          id: up.position.id,
           name: up.position.name,
           siteName: up.position.siteName,
           areaName: up.position.areaName,
-          ciltMasters: mastersWithSequences
+          ciltMasters: masters,
         };
       });
-
+  
       return {
-        userInfo: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
-        positions
+        userInfo: { id: user.id, name: user.name, email: user.email },
+        positions,
       };
-    } catch (exception) {
-      HandleException.exception(exception);
+    } catch (error) {
+      HandleException.exception(error);
     }
-  };
-
+  }
+  
+  
+    
+  
   findCiltDetailsById = async (ciltMstrId: number) => {
     try {
       const ciltMstr = await this.ciltRepository.findOneBy({ id: ciltMstrId });
