@@ -228,4 +228,8 @@ export const stringConstants = {
       }
     }
   },
+
+  invalidScheduleType: 'Invalid schedule type',
+  invalidDateProvided: 'Invalid date provided',
+  invalidDayColumn: 'Invalid day column',
 };

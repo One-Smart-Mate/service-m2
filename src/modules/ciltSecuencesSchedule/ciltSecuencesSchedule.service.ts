@@ -9,6 +9,7 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
@@ -102,7 +103,7 @@ export class CiltSecuencesScheduleService {
 
       // Verify it's a valid date
       if (isNaN(date.getTime())) {
-        throw new Error('Invalid date provided');
+        throw new ValidationException(ValidationExceptionType.INVALID_DATE);
       }
 
       // Get date components
@@ -116,7 +117,7 @@ export class CiltSecuencesScheduleService {
 
       // Validate day column for security
       if (!this.validateDayColumn(dayColumn)) {
-        throw new Error('Invalid day column');
+        throw new ValidationException(ValidationExceptionType.INVALID_DAY_COLUMN);
       }
 
       // Calculate week of month (1-based)
@@ -124,16 +125,6 @@ export class CiltSecuencesScheduleService {
       const firstWeekDay = firstDayOfMonth.getDay();
       const offsetDate = date.getDate() + firstWeekDay - 1;
       const weekOfMonth = Math.floor(offsetDate / 7) + 1;
-
-      // Log for debugging
-      console.log('Query parameters:', {
-        dateStr,
-        dayOfWeekNum,
-        dayColumn,
-        dayOfMonth,
-        month,
-        weekOfMonth,
-      });
 
       // Create query to get all active schedules
       const queryBuilder = this.ciltSecuencesScheduleRepository
@@ -154,8 +145,6 @@ export class CiltSecuencesScheduleService {
           });
 
           // wee: Weekly schedule - check if the current day of week is enabled
-          // CRITICAL: Must verify that the specific day column equals 1
-          // For example, if today is Sunday, check if the 'sun' field is 1
           qb.orWhere(
             `(schedule.scheduleType = :weeklyType AND schedule.${dayColumn} = 1)`,
             { weeklyType: 'wee' },
@@ -208,7 +197,6 @@ export class CiltSecuencesScheduleService {
           );
 
           // 3. Specific week of specific month with day of week
-          // (e.g., first Tuesday of March every year)
           qb.orWhere(
             `(
             schedule.scheduleType = :yearlyType3 AND 
@@ -226,9 +214,6 @@ export class CiltSecuencesScheduleService {
       // Order by schedule time for better organization
       queryBuilder.orderBy('schedule.schedule', 'ASC');
 
-      // Log the generated SQL for debugging
-      console.log('Generated SQL:', queryBuilder.getSql());
-
       // Execute query and return results
       const results = await queryBuilder.getMany();
 
@@ -237,16 +222,8 @@ export class CiltSecuencesScheduleService {
         this.isScheduleActiveForDate(schedule, dateStr),
       );
 
-      // Log if there's a discrepancy
-      if (results.length !== validatedResults.length) {
-        console.warn(
-          `Query returned ${results.length} results but only ${validatedResults.length} are valid`,
-        );
-      }
-
       return validatedResults;
     } catch (exception) {
-      console.error('Error in findSchedulesForDate:', exception);
       HandleException.exception(exception);
       return [];
     }
@@ -397,6 +374,9 @@ export class CiltSecuencesScheduleService {
       schedule.createdAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      if (exception instanceof ValidationException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };
