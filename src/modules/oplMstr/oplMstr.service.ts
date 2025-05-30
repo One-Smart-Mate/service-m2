@@ -106,7 +106,7 @@ export class OplMstrService {
     }
   };
 
-  findOplMstrBySiteId = async (siteId: bigint) => {
+  findOplMstrBySiteId = async (siteId: number) => {
     try {
       const opls = await this.oplRepository.find({
         where: {

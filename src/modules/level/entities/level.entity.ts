@@ -1,6 +1,5 @@
 import { Exclude } from 'class-transformer';
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('levels')
 export class LevelEntity {
@@ -59,7 +58,4 @@ export class LevelEntity {
   @Exclude()
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
-
-  @OneToMany(() => CiltSequencesEntity, (ciltSequences) => ciltSequences.level)
-  ciltSequences: CiltSequencesEntity[];
 }

@@ -22,32 +22,11 @@ export class CiltSequencesController {
     return await this.ciltSequencesService.findBySiteId(siteId);
   }
 
-  @Get('position/:positionId')
-  @ApiOperation({ summary: 'Get all CILT sequences by position ID' })
-  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
-  async findByPositionId(@Param('positionId') positionId: number) {
-    return await this.ciltSequencesService.findByPositionId(positionId);
-  }
-
-  @Get('area/:areaId')
-  @ApiOperation({ summary: 'Get all CILT sequences by area ID' })
-  @ApiParam({ name: 'areaId', type: 'number', description: 'Area ID' })
-  async findByAreaId(@Param('areaId') areaId: number) {
-    return await this.ciltSequencesService.findByAreaId(areaId);
-  }
-
   @Get('cilt/:ciltMstrId')
   @ApiOperation({ summary: 'Get all CILT sequences by CILT master ID' })
   @ApiParam({ name: 'ciltMstrId', type: 'number', description: 'CILT master ID' })
   async findByCiltMstrId(@Param('ciltMstrId') ciltMstrId: number) {
     return await this.ciltSequencesService.findByCiltMstrId(ciltMstrId);
-  }
-
-  @Get('level/:levelId')
-  @ApiOperation({ summary: 'Get all CILT sequences by level ID' })
-  @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
-  async findByLevelId(@Param('levelId') levelId: number) {
-    return await this.ciltSequencesService.findByLevelId(levelId);
   }
 
   @Get(':id')

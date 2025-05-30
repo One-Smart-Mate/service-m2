@@ -1,6 +1,14 @@
 export const LANG_ES = 'ES';
 export const LANG_EN = 'EN';
 
+export enum ScheduleType {
+  DAILY = 'dai',
+  WEEKLY = 'wee',
+  MONTHLY = 'mon',
+  YEARLY = 'yea',
+  MANUAL = 'man'
+}
+
 export const stringConstants = {
   primaryColor: '#FF5A5F',
   
@@ -114,7 +122,7 @@ export const stringConstants = {
   repositoryNotFound: 'Repository not found',
   oplLevelsNotFound: 'OPL Levels not found',
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',
-  ciltMstrPositionLevelsNotFound: 'CILT Position Level not found',
+  ciltMstrPositionLevelsNotFound: 'CILT Master Position Levels not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
@@ -228,4 +236,12 @@ export const stringConstants = {
       }
     }
   },
+
+  // Schedule validation messages
+  invalidScheduleType: `Invalid schedule type. Must be one of: ${Object.values(ScheduleType).join(', ')}`,
+  invalidDateProvided: 'Invalid date provided',
+  invalidDayColumn: 'Invalid day column',
+
+  oplSopReferenceNotFound: 'OPL/SOP reference not found',
+  oplSopRemediationNotFound: 'OPL/SOP remediation not found',
 };

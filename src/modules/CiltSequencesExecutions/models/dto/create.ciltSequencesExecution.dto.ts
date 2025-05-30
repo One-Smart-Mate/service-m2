@@ -144,8 +144,8 @@ export class CreateCiltSequencesExecutionDTO {
 
   @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
   @IsOptional()
-  @IsString()
-  remediationOplSopId?: string;
+  @IsNumber()
+  remediationOplSopId?: number;
 
   @ApiProperty({ description: 'Tools required', required: false })
   @IsOptional()

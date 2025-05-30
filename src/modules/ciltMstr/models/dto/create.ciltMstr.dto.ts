@@ -126,11 +126,6 @@ export class CreateCiltMstrDTO {
   @Length(1, 1)
   status?: string;
 
-  @ApiProperty({ description: 'Last used date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
-  @IsOptional()
-  @IsISO8601()
-  dateOfLastUsed: string;
-
   @ApiProperty({ description: 'CILT due date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()
   @IsISO8601()

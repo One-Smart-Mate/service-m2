@@ -22,12 +22,21 @@ export class CreateCiltSequencesEvidenceDTO {
   @IsNumber()
   ciltExecutionsEvidencesId?: number;
 
-  @ApiProperty({ description: 'Evidence URL', required: false })
+  @ApiProperty({ 
+    description: 'Evidence URL', 
+    required: false,
+    example: 'https://example.com/evidence/image.jpg'
+  })
   @IsOptional()
   @IsString()
   evidenceUrl?: string;
 
-  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @ApiProperty({ 
+    description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', 
+    default: '2023-06-20T00:00:00.000Z',
+    required: false
+  })
+  @IsOptional()
   @IsISO8601()
-  createdAt: string;
+  createdAt?: string;
 } 
