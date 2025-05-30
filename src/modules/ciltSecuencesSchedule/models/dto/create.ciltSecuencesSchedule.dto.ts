@@ -8,20 +8,22 @@ import {
   Min,
   Max,
   Matches,
+  IsEnum
 } from 'class-validator';
+import { ScheduleType } from 'src/utils/string.constant';
 
 export class CreateCiltSecuencesScheduleDto {
-  @ApiProperty({ required: false, description: 'Site ID' })
+  @ApiProperty({ required: false, description: 'Site ID', default: 1 })
   @IsOptional()
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ required: false, description: 'CILT ID' })
+  @ApiProperty({ required: false, description: 'CILT ID', default: 1 })
   @IsOptional()
   @IsNumber()
   ciltId?: number;
 
-  @ApiProperty({ required: false, description: 'Sequence ID' })
+  @ApiProperty({ required: false, description: 'Sequence ID', default: 1 })
   @IsOptional()
   @IsNumber()
   secuenceId?: number;
@@ -48,14 +50,13 @@ export class CreateCiltSecuencesScheduleDto {
 
   @ApiProperty({ 
     required: false, 
-    description: 'Type of schedule: daily, weekly, monthly, yearly',
-    maxLength: 3,
-    default: 'D1'
+    description: 'Type of schedule: dai, wee, mon, yea, man',
+    enum: ScheduleType,
+    default: ScheduleType.DAILY
   })
   @IsOptional()
-  @IsString()
-  @Length(1, 3)
-  scheduleType?: string;
+  @IsEnum(ScheduleType)
+  scheduleType?: ScheduleType;
 
   @ApiProperty({ 
     description: 'End date in format YYYY-MM-DD', 

@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, IsISO8601, Length, Min, Max, IsNotEmpty, Matches } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsISO8601, Length, Min, Max, IsNotEmpty, Matches, IsEnum } from 'class-validator';
+import { ScheduleType } from 'src/utils/string.constant';
 
 export class UpdateCiltSecuencesScheduleDto {
   @ApiProperty({ description: 'Schedule ID' })
@@ -45,13 +46,12 @@ export class UpdateCiltSecuencesScheduleDto {
   @ApiProperty({ 
     required: false, 
     description: 'Type of schedule: daily, weekly, monthly, yearly',
-    maxLength: 3,
-    default: 'D1'
+    enum: ScheduleType,
+    default: ScheduleType.DAILY
   })
   @IsOptional()
-  @IsString()
-  @Length(1, 3)
-  scheduleType?: string;
+  @IsEnum(ScheduleType)
+  scheduleType?: ScheduleType;
 
   @ApiProperty({ 
     description: 'End date in format YYYY-MM-DD', 

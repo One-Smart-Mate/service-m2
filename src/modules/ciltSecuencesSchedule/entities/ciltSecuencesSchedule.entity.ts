@@ -8,6 +8,7 @@ import {
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
+import { ScheduleType } from 'src/utils/string.constant';
 
 @Entity('cilt_secuences_schedule')
 export class CiltSecuencesScheduleEntity {
@@ -34,7 +35,7 @@ export class CiltSecuencesScheduleEntity {
     nullable: true, 
     length: 3
   })
-  scheduleType: string | null;
+  scheduleType: ScheduleType | null;
 
   @Column("date", { name: "end_date", nullable: true })
   endDate: string | null;
