@@ -47,6 +47,21 @@ export class CiltSequencesExecutionsEntity {
   @Column("datetime", { name: "secuence_schedule", nullable: true })
   secuenceSchedule: Date | null;
 
+  @Column("tinyint", { name: "allow_execute_before", nullable: true })
+  allowExecuteBefore: number | null;
+
+  @Column("tinyint", { name: "allow_execute_before_minutes", nullable: true })
+  allowExecuteBeforeMinutes: number | null;
+
+  @Column("tinyint", { name: "tolerance_before_minutes", nullable: true })
+  toleranceBeforeMinutes: number | null;
+
+  @Column("tinyint", { name: "tolerance_after_minutes", nullable: true })
+  toleranceAfterMinutes: number | null;
+
+  @Column("tinyint", { name: "allow_execute_after_due", nullable: true })
+  allowExecuteAfterDue: number | null;
+
   @Column("timestamp", { name: "secuence_start", nullable: true })
   secuenceStart: Date | null;
 
@@ -94,9 +109,6 @@ export class CiltSequencesExecutionsEntity {
 
   @Column("char", { name: "secuence_color", nullable: true, length: 6 })
   secuenceColor: string | null;
-
-  @Column("varchar", { name: "cilt_secuencies_executionscol", nullable: true, length: 45 })
-  ciltSecuenciesExecutionscol: string | null;
 
   @Column("int", { name: "cilt_type_id", nullable: true, unsigned: true })
   ciltTypeId: number | null;

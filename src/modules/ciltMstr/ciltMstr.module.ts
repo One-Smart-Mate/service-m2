@@ -16,6 +16,7 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { CiltSecuencesScheduleModule } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 
+
 @Module({   
   imports: [
     TypeOrmModule.forFeature([

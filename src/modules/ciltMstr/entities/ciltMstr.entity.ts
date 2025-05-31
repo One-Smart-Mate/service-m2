@@ -3,8 +3,11 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
+import { SiteEntity } from 'src/modules/site/entities/site.entity';
 
 @Entity('cilt_mstr')
 export class CiltMstrEntity {
@@ -76,4 +79,8 @@ export class CiltMstrEntity {
 
   @OneToMany(() => CiltSequencesEntity, (sequence) => sequence.ciltMstr)
   sequences: CiltSequencesEntity[];
+
+  @ManyToOne(() => SiteEntity, (site) => site.cilts)
+  @JoinColumn({ name: 'site_id' })
+  site: SiteEntity;
 }
