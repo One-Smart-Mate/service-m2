@@ -26,8 +26,4 @@ export class CreateCiltMstrPositionLevelsDto {
   @IsOptional()
   @IsString()
   status?: string;
-
-  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
-  @IsISO8601()
-  createdAt: string;
 } 

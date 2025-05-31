@@ -5,7 +5,10 @@ import { CiltSequencesEntity } from './entities/ciltSequences.entity';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import {
+  NotFoundCustomException,
+  NotFoundCustomExceptionType,
+} from 'src/common/exceptions/types/notFound.exception';
 import { SiteEntity } from '../site/entities/site.entity';
 import { LevelEntity } from '../level/entities/level.entity';
 import { PositionEntity } from '../position/entities/position.entity';
@@ -29,7 +32,9 @@ export class CiltSequencesService {
     private readonly ciltFrequenciesRepository: Repository<CiltFrequenciesEntity>,
   ) {}
 
-  private async validateRelatedEntities(dto: CreateCiltSequenceDTO | UpdateCiltSequenceDTO) {
+  private async validateRelatedEntities(
+    dto: CreateCiltSequenceDTO | UpdateCiltSequenceDTO,
+  ) {
     if (dto.siteId) {
       const site = await this.siteRepository.findOneBy({ id: dto.siteId });
       if (!site) {
@@ -38,19 +43,26 @@ export class CiltSequencesService {
     }
 
     if (dto.ciltMstrId) {
-      const ciltMstr = await this.ciltMstrRepository.findOneBy({ id: dto.ciltMstrId });
+      const ciltMstr = await this.ciltMstrRepository.findOneBy({
+        id: dto.ciltMstrId,
+      });
       if (!ciltMstr) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_MSTR,
+        );
       }
     }
 
     if (dto.frecuencyId) {
-      const frequency = await this.ciltFrequenciesRepository.findOneBy({ id: dto.frecuencyId });
+      const frequency = await this.ciltFrequenciesRepository.findOneBy({
+        id: dto.frecuencyId,
+      });
       if (!frequency) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_FREQUENCIES);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_FREQUENCIES,
+        );
       }
     }
-
   }
 
   findAll = async () => {
@@ -81,7 +93,9 @@ export class CiltSequencesService {
     try {
       const sequence = await this.ciltSequencesRepository.findOneBy({ id });
       if (!sequence) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SEQUENCES,
+        );
       }
       return sequence;
     } catch (exception) {
@@ -89,10 +103,21 @@ export class CiltSequencesService {
     }
   };
 
-  create = async (createDTO: CreateCiltSequenceDTO) => {
+  create = async (dto: CreateCiltSequenceDTO) => {
     try {
-      await this.validateRelatedEntities(createDTO);
-      const sequence = this.ciltSequencesRepository.create(createDTO);
+      await this.validateRelatedEntities(dto);
+
+      if (!dto.order || dto.order <= 0) {
+        const { max } = await this.ciltSequencesRepository
+          .createQueryBuilder('seq')
+          .select('MAX(seq.`order`)', 'max')
+          .where('seq.site_id = :siteId', { siteId: dto.siteId })
+          .getRawOne<{ max: number }>();
+
+        dto.order = (max ?? 0) + 1;
+      }
+
+      const sequence = this.ciltSequencesRepository.create(dto);
       return await this.ciltSequencesRepository.save(sequence);
     } catch (exception) {
       HandleException.exception(exception);
@@ -109,4 +134,4 @@ export class CiltSequencesService {
       HandleException.exception(exception);
     }
   };
-} 
+}

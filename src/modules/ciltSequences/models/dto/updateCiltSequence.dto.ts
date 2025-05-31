@@ -1,163 +1,208 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsNumber, IsISO8601 } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsNumber,
+  IsISO8601,
+} from 'class-validator';
 
 export class UpdateCiltSequenceDTO {
-  @ApiProperty({ description: 'Sequence ID' })
+  @ApiProperty({ description: 'Sequence ID', example: 83 })
   @IsNotEmpty()
   @IsNumber()
   id: number;
 
-  @ApiProperty({ description: 'Site ID', required: false })
+  @ApiPropertyOptional({ description: 'Site ID', example: 1 })
   @IsOptional()
   @IsNumber()
   siteId?: number;
 
-  @ApiProperty({ description: 'Site name', required: false })
+  @ApiPropertyOptional({ description: 'Site name', example: 'Main Plant' })
   @IsOptional()
   @IsString()
   siteName?: string;
 
-  @ApiProperty({ description: 'Area ID', required: false })
+  @ApiPropertyOptional({ description: 'Area ID', example: 5 })
   @IsOptional()
   @IsNumber()
   areaId?: number;
 
-  @ApiProperty({ description: 'Area name', required: false })
+  @ApiPropertyOptional({ description: 'Area name', example: 'Welding Area' })
   @IsOptional()
   @IsString()
   areaName?: string;
 
-  @ApiProperty({ description: 'Position ID', required: false })
+  @ApiPropertyOptional({ description: 'Position ID', example: 7 })
   @IsOptional()
   @IsNumber()
   positionId?: number;
 
-  @ApiProperty({ description: 'Position name', required: false })
+  @ApiPropertyOptional({ description: 'Position name', example: 'Operator' })
   @IsOptional()
   @IsString()
   positionName?: string;
 
-  @ApiProperty({ description: 'CILT master ID', required: false })
+  @ApiPropertyOptional({ description: 'CILT master ID', example: 54 })
   @IsOptional()
   @IsNumber()
   ciltMstrId?: number;
 
-  @ApiProperty({ description: 'CILT master name', required: false })
+  @ApiPropertyOptional({ description: 'CILT master name', example: 'Welding' })
   @IsOptional()
   @IsString()
   ciltMstrName?: string;
 
-  @ApiProperty({ description: 'Frequency ID', required: false })
+  @ApiPropertyOptional({ description: 'Frequency ID', example: 2 })
   @IsOptional()
   @IsNumber()
   frecuencyId?: number;
 
-  @ApiProperty({ description: 'Frequency code', required: false })
+  @ApiPropertyOptional({ description: 'Frequency code', example: 'DLY' })
   @IsOptional()
   @IsString()
   frecuencyCode?: string;
 
-  @ApiProperty({ description: 'Level ID', required: false })
+  @ApiPropertyOptional({ description: 'Level ID', example: 3 })
   @IsOptional()
   @IsNumber()
   levelId?: number;
 
-  @ApiProperty({ description: 'Level name', required: false })
+  @ApiPropertyOptional({ description: 'Level name', example: 'Level 1' })
   @IsOptional()
   @IsString()
   levelName?: string;
 
-  @ApiProperty({ description: 'Route of the level', required: false })
+  @ApiPropertyOptional({ description: 'Route of the level', example: '/route/1' })
   @IsOptional()
   @IsString()
   route?: string;
 
-  @ApiProperty({ description: 'Reference point', required: false })
+  @ApiPropertyOptional({ description: 'Reference point', example: 'PNT1' })
   @IsOptional()
   @IsString()
   referencePoint?: string;
 
-  @ApiProperty({ description: 'Sequence order', required: false })
+  @ApiPropertyOptional({
+    description: 'Sequence order',
+    example: 2,
+  })
   @IsOptional()
   @IsNumber()
   order?: number;
 
-  @ApiProperty({ description: 'Sequence list', required: false })
+  @ApiPropertyOptional({ description: 'Sequence list', example: 'Step1,Step2' })
   @IsOptional()
   @IsString()
   secuenceList?: string;
 
-  @ApiProperty({ description: 'Sequence color in hexadecimal', required: false })
+  @ApiPropertyOptional({
+    description: 'Sequence color in hexadecimal',
+    example: 'FF0000',
+  })
   @IsOptional()
   @IsString()
   secuenceColor?: string;
 
-  @ApiProperty({ description: 'CILT type ID', required: false })
+  @ApiPropertyOptional({ description: 'CILT type ID', example: 3 })
   @IsOptional()
   @IsNumber()
   ciltTypeId?: number;
 
-  @ApiProperty({ description: 'CILT type name', required: false })
+  @ApiPropertyOptional({ description: 'CILT type name', example: 'TypeA' })
   @IsOptional()
   @IsString()
   ciltTypeName?: string;
 
-  @ApiProperty({ description: 'Reference OPL/SOP ID', required: false })
+  @ApiPropertyOptional({
+    description: 'Reference OPL/SOP ID',
+    example: 7,
+  })
   @IsOptional()
   @IsNumber()
   referenceOplSopId?: number;
 
-  @ApiProperty({ description: 'Standard time in seconds', required: false })
+  @ApiPropertyOptional({
+    description: 'Standard time in seconds',
+    example: 90,
+  })
   @IsOptional()
   @IsNumber()
   standardTime?: number;
 
-  @ApiProperty({ description: 'Expected standard', required: false })
+  @ApiPropertyOptional({
+    description: 'Expected standard',
+    example: 'All welds must have no porosity',
+  })
   @IsOptional()
   @IsString()
   standardOk?: string;
 
-  @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
+  @ApiPropertyOptional({
+    description: 'Remediation OPL/SOP ID',
+    example: 9,
+  })
   @IsOptional()
   @IsNumber()
   remediationOplSopId?: number;
 
-  @ApiProperty({ description: 'Required tools', required: false })
+  @ApiPropertyOptional({
+    description: 'Required tools',
+    example: 'Helmet, Gloves',
+  })
   @IsOptional()
   @IsString()
   toolsRequired?: string;
 
-  @ApiProperty({ description: 'Is it a stoppage reason?', required: false })
+  @ApiPropertyOptional({
+    description: 'Is it a stoppage reason? (1=yes, 0=no)',
+    example: 0,
+  })
   @IsOptional()
   @IsNumber()
   stoppageReason?: number;
 
-  @ApiProperty({ description: 'Is the machine stopped?', required: false })
+  @ApiPropertyOptional({
+    description: 'Is the machine stopped? (1=yes, 0=no)',
+    example: 1,
+  })
   @IsOptional()
   @IsNumber()
   machineStopped?: number;
 
-  @ApiProperty({ description: 'Number of pictures at start', required: false })
+  @ApiPropertyOptional({
+    description: 'Number of pictures at start',
+    example: 2,
+  })
   @IsOptional()
   @IsNumber()
   quantityPicturesCreate?: number;
 
-  @ApiProperty({ description: 'Number of pictures at end', required: false })
+  @ApiPropertyOptional({
+    description: 'Number of pictures at end',
+    example: 2,
+  })
   @IsOptional()
   @IsNumber()
   quantityPicturesClose?: number;
 
-  @ApiProperty({ description: 'Can be selected without programming', required: false })
+  @ApiPropertyOptional({
+    description: 'Can be selected without programming (1=yes, 0=no)',
+    example: 1,
+  })
   @IsOptional()
   @IsNumber()
   selectableWithoutProgramming?: number;
 
-  @ApiProperty({ description: 'Sequence status (A=Active, I=Inactive, D=Draft)', required: false })
+  @ApiPropertyOptional({
+    description: 'Sequence status (A=Active, I=Inactive, D=Draft)',
+    example: 'A',
+  })
   @IsOptional()
   @IsString()
   status?: string;
 
-  @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', example: '2025-05-30T11:00:00.000Z' })
   @IsISO8601()
   updatedAt: string;
-} 
+}

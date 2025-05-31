@@ -56,14 +56,6 @@ export class CiltMstrService {
     }
   };
 
-  findByPositionId = async (positionId: number) => {
-    try {
-      return await this.ciltRepository.find({ where: { positionId } });
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
   findById = async (id: number) => {
     try {
       const cilt = await this.ciltRepository.findOneBy({ id });
