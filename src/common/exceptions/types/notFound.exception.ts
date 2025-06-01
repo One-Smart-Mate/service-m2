@@ -25,8 +25,6 @@ export enum NotFoundCustomExceptionType {
   OPLLEVELS,
   CILT_SECUENCES_SCHEDULE,
   CILT_MSTR_POSITION_LEVELS,
-  OPL_SOP_REFERENCE,
-  OPL_SOP_REMEDIATION
 }
 
 export class NotFoundCustomException extends HttpException {
@@ -102,12 +100,6 @@ export class NotFoundCustomException extends HttpException {
         break;
       case NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS:
         message = stringConstants.ciltMstrPositionLevelsNotFound;
-        break;
-      case NotFoundCustomExceptionType.OPL_SOP_REFERENCE:
-        message = stringConstants.oplSopReferenceNotFound;
-        break;
-      case NotFoundCustomExceptionType.OPL_SOP_REMEDIATION:
-        message = stringConstants.oplSopRemediationNotFound;
         break;
       default:
         message = 'Resource not found';

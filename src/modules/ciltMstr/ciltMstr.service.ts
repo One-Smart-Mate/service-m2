@@ -145,11 +145,11 @@ export class CiltMstrService {
         ciltSequences.map(async seq => {
           if (seq.referenceOplSopId) {
             const ref = await this.oplMstrRepository.findOneBy({ id: seq.referenceOplSopId });
-            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REFERENCE);
+            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
           }
           if (seq.remediationOplSopId) {
             const rem = await this.oplMstrRepository.findOneBy({ id: seq.remediationOplSopId });
-            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REMEDIATION);
+            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
           }
         })
       );
@@ -346,11 +346,11 @@ export class CiltMstrService {
         ciltSequences.map(async seq => {
           if (seq.referenceOplSopId) {
             const ref = await this.oplMstrRepository.findOneBy({ id: seq.referenceOplSopId });
-            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REFERENCE);
+            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
           }
           if (seq.remediationOplSopId) {
             const rem = await this.oplMstrRepository.findOneBy({ id: seq.remediationOplSopId });
-            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_SOP_REMEDIATION);
+            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
           }
         })
       );
