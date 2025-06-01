@@ -35,10 +35,14 @@ import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/c
 import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
 import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/ciltMstrPositionLevels.module';
+import { TaskModule } from './modules/task/task.module';
+import { ScheduleModule } from '@nestjs/schedule';
+
 @Module({
   imports: [
     ConfigModule.forRoot(),
     typeOrmConfig,
+    ScheduleModule.forRoot(),
     UsersModule,
     AuthModule,
     CompanyModule,
@@ -68,6 +72,7 @@ import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/c
     OplLevelsModule,
     CiltSecuencesScheduleModule,
     CiltMstrPositionLevelsModule,
+    TaskModule,
   ],
   controllers: [AppController],
   providers: [
