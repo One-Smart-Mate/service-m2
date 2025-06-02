@@ -5,6 +5,7 @@ import {
   IsString,
   IsNumber,
   IsISO8601,
+  Length,
 } from 'class-validator';
 
 export class UpdateCiltSequenceDTO {
@@ -33,16 +34,6 @@ export class UpdateCiltSequenceDTO {
   @IsString()
   areaName?: string;
 
-  @ApiPropertyOptional({ description: 'Position ID', example: 7 })
-  @IsOptional()
-  @IsNumber()
-  positionId?: number;
-
-  @ApiPropertyOptional({ description: 'Position name', example: 'Operator' })
-  @IsOptional()
-  @IsString()
-  positionName?: string;
-
   @ApiPropertyOptional({ description: 'CILT master ID', example: 54 })
   @IsOptional()
   @IsNumber()
@@ -61,17 +52,8 @@ export class UpdateCiltSequenceDTO {
   @ApiPropertyOptional({ description: 'Frequency code', example: 'DLY' })
   @IsOptional()
   @IsString()
+  @Length(1, 3)
   frecuencyCode?: string;
-
-  @ApiPropertyOptional({ description: 'Level ID', example: 3 })
-  @IsOptional()
-  @IsNumber()
-  levelId?: number;
-
-  @ApiPropertyOptional({ description: 'Level name', example: 'Level 1' })
-  @IsOptional()
-  @IsString()
-  levelName?: string;
 
   @ApiPropertyOptional({ description: 'Route of the level', example: '/route/1' })
   @IsOptional()
@@ -102,6 +84,7 @@ export class UpdateCiltSequenceDTO {
   })
   @IsOptional()
   @IsString()
+  @Length(6, 6)
   secuenceColor?: string;
 
   @ApiPropertyOptional({ description: 'CILT type ID', example: 3 })
@@ -200,6 +183,7 @@ export class UpdateCiltSequenceDTO {
   })
   @IsOptional()
   @IsString()
+  @Length(1, 1)
   status?: string;
 
   @ApiProperty({ description: 'Update date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', example: '2025-05-30T11:00:00.000Z' })

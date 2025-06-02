@@ -119,6 +119,7 @@ export const stringConstants = {
   ciltFrequenciesNotFound: 'Cilt frequencies not found',
   oplMstrNotFound: 'OPL master not found',
   oplDetailsNotFound: 'OPL details not found',
+  oplSopNotFound: 'OPL/SOP not found',
   repositoryNotFound: 'Repository not found',
   oplLevelsNotFound: 'OPL Levels not found',
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',

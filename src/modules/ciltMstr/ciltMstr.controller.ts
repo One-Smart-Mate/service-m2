@@ -4,6 +4,7 @@ import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
 import { FindByUserDTO } from './models/dto/find-by-user.dto';
+import { FindBySiteDTO } from './models/dto/find-by-site.dto';
 
 @ApiTags('Cilt Master')
 @Controller('cilt-mstr')
@@ -30,6 +31,16 @@ export class CiltMstrController {
     return await this.ciltMstrService.findCiltsByUserId(
       findByUserDto.userId,
       findByUserDto.date
+    );
+  }
+
+  @Post('site')
+  @ApiOperation({ summary: 'Get all CILTs and generate executions for all users in a site for a specific date' })
+  @ApiBody({ type: FindBySiteDTO })
+  async findCiltsBySiteId(@Body() findBySiteDto: FindBySiteDTO) {
+    return await this.ciltMstrService.findCiltsBySiteId(
+      findBySiteDto.siteId,
+      findBySiteDto.date
     );
   }
 

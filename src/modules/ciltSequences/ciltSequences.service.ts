@@ -10,10 +10,10 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { SiteEntity } from '../site/entities/site.entity';
-import { LevelEntity } from '../level/entities/level.entity';
-import { PositionEntity } from '../position/entities/position.entity';
 import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
 import { CiltFrequenciesEntity } from '../ciltFrequencies/entities/ciltFrequencies.entity';
+import { CiltTypesEntity } from '../ciltTypes/entities/ciltTypes.entity';
+import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 
 @Injectable()
 export class CiltSequencesService {
@@ -22,14 +22,14 @@ export class CiltSequencesService {
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     @InjectRepository(SiteEntity)
     private readonly siteRepository: Repository<SiteEntity>,
-    @InjectRepository(LevelEntity)
-    private readonly levelRepository: Repository<LevelEntity>,
-    @InjectRepository(PositionEntity)
-    private readonly positionRepository: Repository<PositionEntity>,
     @InjectRepository(CiltMstrEntity)
     private readonly ciltMstrRepository: Repository<CiltMstrEntity>,
     @InjectRepository(CiltFrequenciesEntity)
     private readonly ciltFrequenciesRepository: Repository<CiltFrequenciesEntity>,
+    @InjectRepository(CiltTypesEntity)
+    private readonly ciltTypeRepository: Repository<CiltTypesEntity>,
+    @InjectRepository(OplMstr)
+    private readonly oplMstrRepository: Repository<OplMstr>,
   ) {}
 
   private async validateRelatedEntities(
@@ -60,6 +60,37 @@ export class CiltSequencesService {
       if (!frequency) {
         throw new NotFoundCustomException(
           NotFoundCustomExceptionType.CILT_FREQUENCIES,
+        );
+      }
+    }
+
+    if (dto.ciltTypeId) {
+      const ciltType = await this.ciltTypeRepository.findOneBy({
+        id: dto.ciltTypeId,
+      });
+      if (!ciltType) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_TYPES,
+        );
+      }
+    }
+    if (dto.referenceOplSopId) {
+      const referenceOplSop = await this.oplMstrRepository.findOneBy({
+        id: dto.referenceOplSopId,
+      });
+      if (!referenceOplSop) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.OPL_MSTR,
+        );
+      }
+    }
+    if (dto.remediationOplSopId) {
+      const remediationOplSop = await this.oplMstrRepository.findOneBy({
+        id: dto.remediationOplSopId,
+      });
+      if (!remediationOplSop) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.OPL_MSTR,
         );
       }
     }
