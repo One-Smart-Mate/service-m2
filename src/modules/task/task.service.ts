@@ -13,7 +13,9 @@ export class TaskService {
     private readonly logger: CustomLoggerService,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    name: 'dailySiteProcessingTask',
+  })
   async handleDailyTask() {
     try {
       const currentDate = new Date();
