@@ -200,6 +200,9 @@ export class CiltMstrService {
               toolsRequiered: seq.toolsRequired,
               selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
               status: 'A',
+              stoppageReason: Boolean(seq.stoppageReason),
+              machineStopped: Boolean(seq.machineStopped),
+              duration: seq.standardTime
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
             this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
@@ -435,6 +438,9 @@ export class CiltMstrService {
                 toolsRequiered: seq.toolsRequired,
                 selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
                 status: 'A',
+                stoppageReason: Boolean(seq.stoppageReason),
+                machineStopped: Boolean(seq.machineStopped),
+                duration: seq.standardTime
               };
               const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
               this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
