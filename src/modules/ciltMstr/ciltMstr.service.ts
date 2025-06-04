@@ -198,7 +198,7 @@ export class CiltMstrService {
               referenceOplSopId: seq.referenceOplSopId,
               remediationOplSopId: seq.remediationOplSopId ? Number(seq.remediationOplSopId) : null,
               toolsRequiered: seq.toolsRequired,
-              selectableWithoutProgramming: seq.selectableWithoutProgramming,
+              selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
               status: 'A',
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
@@ -433,7 +433,7 @@ export class CiltMstrService {
                 referenceOplSopId: seq.referenceOplSopId,
                 remediationOplSopId: seq.remediationOplSopId ? Number(seq.remediationOplSopId) : null,
                 toolsRequiered: seq.toolsRequired,
-                selectableWithoutProgramming: seq.selectableWithoutProgramming,
+                selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
                 status: 'A',
               };
               const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);

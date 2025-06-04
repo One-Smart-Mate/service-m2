@@ -12,6 +12,8 @@ import { MailService } from 'src/modules/mail/mail.service';
 import { FirebaseService } from 'src/modules/firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
+import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
+import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -119,7 +121,7 @@ export class CiltSequencesExecutionsService {
       Object.assign(execution, updateDTO);
       const updatedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
 
-      if (updateDTO.stoppageReason === 1) {
+      if (updateDTO.stoppageReason === true) {
         const position = await this.positionRepository.findOneBy({ nodeResponsableId: execution.positionId });
         if (position) {
           const tokens = await this.usersService.getUserToken(position.nodeResponsableId);
@@ -168,4 +170,60 @@ export class CiltSequencesExecutionsService {
       HandleException.exception(exception);
     }
   };
+
+  async start(startDTO: StartCiltSequencesExecutionDTO) {
+    try {
+      const execution = await this.findById(startDTO.id);
+      if (!execution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
+      }
+    
+      if (execution.secuenceStart) {
+        throw new Error('CILT sequence has already been started');
+      }
+    
+      const startDate = new Date(startDTO.startDate);
+      execution.secuenceStart = startDate;
+      return this.ciltSequencesExecutionsRepository.save(execution);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  async stop(stopDTO: StopCiltSequencesExecutionDTO) {
+    try {
+      const execution = await this.findById(stopDTO.id);
+      if (!execution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
+      }
+
+      if (!execution.secuenceStart) {
+        throw new Error('CILT sequence has not been started');
+      }
+
+      if (execution.secuenceStop) {
+        throw new Error('CILT sequence has already been finished');
+      }
+
+      const stopDate = new Date(stopDTO.stopDate);
+      const startDate = new Date(execution.secuenceStart);
+      const durationInSeconds = Math.floor((stopDate.getTime() - startDate.getTime()) / 1000);
+
+      Object.assign(execution, {
+        secuenceStop: stopDate,
+        realDuration: durationInSeconds,
+        initialParameter: stopDTO.initialParameter?.toString(),
+        evidenceAtCreation: stopDTO.evidenceAtCreation,
+        finalParameter: stopDTO.finalParameter?.toString(),
+        evidenceAtFinal: stopDTO.evidenceAtFinal,
+        nok: stopDTO.nok,
+        amTagId: stopDTO.amTagId
+      });
+
+      return this.ciltSequencesExecutionsRepository.save(execution);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
 } 
