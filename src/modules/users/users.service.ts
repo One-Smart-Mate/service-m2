@@ -29,6 +29,7 @@ import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
 import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class UsersService {
@@ -43,6 +44,7 @@ export class UsersService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(UsersPositionsEntity)
     private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
+    private readonly logger: CustomLoggerService,
   ) {}
 
   findUsersByPositionId = async (positionId: number) => {
@@ -423,73 +425,72 @@ export class UsersService {
   
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
-      const [user, emailIsNotUnique, site, roles] = await Promise.all([
-        this.userRepository.findOne({
-          where: { id: updateUserDTO.id },
-          relations: { userHasSites: { site: true } },
-        }),
-        this.userRepository.exists({
-          where: { email: updateUserDTO.email, id: Not(updateUserDTO.id) },
-        }),
+      this.logger.logProcess(`[UPDATE_USER] Starting update for user_id: ${updateUserDTO.id}`);
+  
+      const [user, site, roles] = await Promise.all([
+        this.userRepository.findOneBy({ id: updateUserDTO.id }),
         this.siteService.findById(updateUserDTO.siteId),
         this.roleService.findRolesByIds(updateUserDTO.roles),
       ]);
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-      if (emailIsNotUnique) {
-        throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-      }
-      if (!site) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      }
-      if (roles.length === 0) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
-      }
-
-      user.name = updateUserDTO.name;
-      user.email = updateUserDTO.email;
+  
+      if (!user) throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      if (!site) throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      if (roles.length === 0) throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
+  
+      const emailIsNotUnique = await this.userRepository.exists({
+        where: {
+          email: updateUserDTO.email,
+          id: Not(updateUserDTO.id),
+          siteCode: site.siteCode,
+        },
+      });
+      if (emailIsNotUnique) throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+  
+      let updatePayload: Partial<UserEntity> = {
+        name: updateUserDTO.name,
+        email: updateUserDTO.email,
+        status: updateUserDTO.status,
+        siteId: site.id,
+        siteCode: site.siteCode,
+        appVersion: process.env.APP_ENV,
+        uploadCardDataWithDataNet: updateUserDTO.uploadCardDataWithDataNet,
+        uploadCardEvidenceWithDataNet: updateUserDTO.uploadCardEvidenceWithDataNet,
+        updatedAt: new Date(),
+      };
+  
       if (updateUserDTO.password) {
-        user.password = await bcryptjs.hash(
+        updatePayload.password = await bcryptjs.hash(
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
       }
-
+  
       if (updateUserDTO.fastPassword) {
         if (!/^[0-9A-F]+$/i.test(updateUserDTO.fastPassword)) {
           throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
         }
-        
+  
         const existingUser = await this.userRepository.findOne({
-          where: { 
-            fastPassword: updateUserDTO.fastPassword, 
+          where: {
+            fastPassword: updateUserDTO.fastPassword,
             id: Not(updateUserDTO.id),
-            userHasSites: { site: { id: updateUserDTO.siteId } } 
-          }
+            siteId: site.id,
+          },
         });
-        
         if (existingUser) {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
-        
-        user.fastPassword = updateUserDTO.fastPassword;
+  
+        updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
-
-      user.status = updateUserDTO.status;
-      user.appVersion = process.env.APP_ENV;
-      user.siteCode = site.siteCode;
-      user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet;
-      user.uploadCardEvidenceWithDataNet =
-        updateUserDTO.uploadCardEvidenceWithDataNet;
-      user.status = updateUserDTO.status;  
-      user.updatedAt = new Date();
-
-      await this.userRepository.save(user);
-
+  
+      this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
+      await this.userRepository.update({ id: user.id }, updatePayload);
+      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
+  
       if (updateUserDTO.status === stringConstants.inactiveStatus) {
         const tokens = await this.getUserToken(user.id);
-        if (tokens && tokens.length > 0) {
+        if (tokens?.length > 0) {
           await this.firebaseService.sendMultipleMessage(
             new NotificationDTO(
               stringConstants.closeSessionTitle,
@@ -500,9 +501,10 @@ export class UsersService {
           );
         }
       }
-      
+  
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
+      this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
       console.log(exception);
       HandleException.exception(exception);
     }
@@ -518,7 +520,6 @@ export class UsersService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
       
-      // Check email uniqueness only if email is being updated
       if (updateUserPartialDTO.email && updateUserPartialDTO.email !== user.email) {
         const emailIsNotUnique = await this.userRepository.exists({
           where: { email: updateUserPartialDTO.email, id: Not(updateUserPartialDTO.id) },
@@ -531,12 +532,10 @@ export class UsersService {
         user.email = updateUserPartialDTO.email;
       }
       
-      // Update name if provided
       if (updateUserPartialDTO.name) {
         user.name = updateUserPartialDTO.name;
       }
       
-      // Update password if provided
       if (updateUserPartialDTO.password) {
         user.password = await bcryptjs.hash(
           updateUserPartialDTO.password,
@@ -544,13 +543,11 @@ export class UsersService {
         );
       }
       
-      // Update fast password if provided
       if (updateUserPartialDTO.fastPassword) {
         if (!/^[0-9A-F]+$/i.test(updateUserPartialDTO.fastPassword)) {
           throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
         }
         
-        // Check if fastPassword is already in use by another user at the same site
         const existingUsers = await this.userRepository.find({
           where: { 
             fastPassword: updateUserPartialDTO.fastPassword, 
@@ -559,7 +556,6 @@ export class UsersService {
           relations: { userHasSites: { site: true } }
         });
         
-        // Get user's sites
         const userSites = await this.userHasSiteRepository.find({
           where: { user: { id: user.id } },
           relations: { site: true }
@@ -567,7 +563,6 @@ export class UsersService {
         
         const userSiteIds = userSites.map(us => us.site.id);
         
-        // Check if any other user has the same fastPassword in the same sites
         const conflictingUser = existingUsers.find(u => 
           u.userHasSites.some(uhs => userSiteIds.includes(uhs.site.id))
         );
