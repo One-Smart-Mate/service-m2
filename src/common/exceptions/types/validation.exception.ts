@@ -21,6 +21,9 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.DUPLICATE_CARD_UUID:
         message = stringConstants.duplicateCardUUID;
         break;
+      case ValidationExceptionType.DUPLICATED_PRIORITY:
+        message = stringConstants.duplicatePriority;
+        break;
       case ValidationExceptionType.OVERWRITE_DEFINITIVE_SOLUTION:
         message = stringConstants.existDefinitiveSolution;
         break;
@@ -88,6 +91,7 @@ export enum ValidationExceptionType {
   DUPLICATED_LEVELMACHINEID,
   DUPLICATE_ROLE,
   DUPLICATE_CARD_UUID,
+  DUPLICATED_PRIORITY,
   OVERWRITE_PROVISIONAL_SOLUTION,
   OVERWRITE_DEFINITIVE_SOLUTION,
   USER_QUANTITY_EXCEEDED,
