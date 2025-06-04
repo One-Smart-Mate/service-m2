@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
 import { Repository } from 'typeorm';
@@ -7,6 +7,7 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 import { CreatePriorityDTO } from './models/dto/create.priority.dto';
 import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
@@ -15,6 +16,7 @@ import { SiteService } from '../site/site.service';
 import { UsersService } from '../users/users.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { IsNull, Not } from 'typeorm';
 
 @Injectable()
 export class PriorityService {
@@ -54,6 +56,21 @@ export class PriorityService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
 
+      const existingPriority = await this.priorityRepository.findOne({
+        where: {
+          siteId: createPriorityDTO.siteId,
+          priorityCode: createPriorityDTO.priorityCode,
+          deletedAt: IsNull()
+        }
+      });
+
+      if (existingPriority) {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_PRIORITY,
+          createPriorityDTO.priorityCode
+        );
+      }
+
       createPriorityDTO.siteCode = foundSite.siteCode;
       createPriorityDTO.createdAt = new Date();
 
@@ -71,6 +88,12 @@ export class PriorityService {
 
       return await this.priorityRepository.save(createPriorityDTO);
     } catch (exception) {
+      if (exception.code === 'ER_DUP_ENTRY') {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_PRIORITY,
+          createPriorityDTO.priorityCode
+        );
+      }
       HandleException.exception(exception);
     }
   };
@@ -83,6 +106,24 @@ export class PriorityService {
 
       if (!foundPriority) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+
+      if (updatepriorityDTO.priorityCode !== foundPriority.priorityCode) {
+        const existingPriority = await this.priorityRepository.findOne({
+          where: {
+            siteId: foundPriority.siteId,
+            priorityCode: updatepriorityDTO.priorityCode,
+            id: Not(updatepriorityDTO.id),
+            deletedAt: IsNull()
+          }
+        });
+
+        if (existingPriority) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATED_PRIORITY,
+            updatepriorityDTO.priorityCode
+          );
+        }
       }
 
       foundPriority.priorityCode = updatepriorityDTO.priorityCode;
@@ -108,6 +149,12 @@ export class PriorityService {
 
       return await this.priorityRepository.save(foundPriority);
     } catch (exception) {
+      if (exception.code === 'ER_DUP_ENTRY') {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_PRIORITY,
+          updatepriorityDTO.priorityCode
+        );
+      }
       HandleException.exception(exception);
     }
   };

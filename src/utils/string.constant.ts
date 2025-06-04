@@ -38,6 +38,7 @@ export const stringConstants = {
   welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
   none: 'None',
+  duplicatePriority: 'A priority with that code already exists',
 
   //Notifications for catalogs
   catalogsTitle: 'Cambio en estructura',
