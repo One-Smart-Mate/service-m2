@@ -246,4 +246,11 @@ export const stringConstants = {
 
   oplSopReferenceNotFound: 'OPL/SOP reference not found',
   oplSopRemediationNotFound: 'OPL/SOP remediation not found',
+
+  // CILT validation messages
+  ciltSequenceAlreadyStarted: 'The CILT sequence has already been started',
+  ciltSequenceNotActive: 'The CILT sequence is not active',
+  ciltSequenceInvalidDate: 'Invalid date format for the CILT sequence',
+  ciltSequenceAlreadyFinished: 'The CILT sequence has already been finished',
+  ciltSequenceNotStarted: 'The CILT sequence has not been started',
 };
