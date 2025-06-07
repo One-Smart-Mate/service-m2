@@ -29,8 +29,8 @@ export class CiltSequencesEntity {
   @Column("char", { name: "reference_point", nullable: true, length: 10 })
   referencePoint: string | null;
 
-  @Column("tinyint", { name: "order", nullable: true })
-  order: number | null;
+  @Column("tinyint", { name: "order", default: 1, nullable: false })
+  order: number;
 
   @Column("text", { name: "secuence_list", nullable: true })
   secuenceList: string | null;
