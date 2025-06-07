@@ -4,6 +4,7 @@ import { Brackets, Repository } from 'typeorm';
 import { CiltSecuencesScheduleEntity } from './entities/ciltSecuencesSchedule.entity';
 import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
 import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
+import { UpdateScheduleOrderDTO } from './models/dto/update-order.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -406,6 +407,17 @@ export class CiltSecuencesScheduleService {
         }
       }
 
+      // Found existing schedules for the same sequence
+      const existingSchedules = await this.ciltSecuencesScheduleRepository.find({
+        where: { secuenceId: createDto.secuenceId },
+        order: { order: 'DESC' },
+        take: 1
+      });
+
+      // Assign the next order number
+      const nextOrder = existingSchedules.length > 0 ? existingSchedules[0].order + 1 : 1;
+      createDto.order = nextOrder;
+
       const schedule = this.ciltSecuencesScheduleRepository.create(createDto);
       schedule.createdAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
@@ -478,6 +490,48 @@ export class CiltSecuencesScheduleService {
       schedule.deletedAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateOrder = async (updateOrderDto: UpdateScheduleOrderDTO) => {
+    try {
+      // Find the schedule to update
+      const scheduleToUpdate = await this.ciltSecuencesScheduleRepository.findOneBy({
+        id: updateOrderDto.scheduleId,
+      });
+      if (!scheduleToUpdate) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
+        );
+      }
+
+      // Find the schedule that currently has the new order
+      const scheduleWithNewOrder = await this.ciltSecuencesScheduleRepository.findOne({
+        where: {
+          secuenceId: scheduleToUpdate.secuenceId,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (scheduleWithNewOrder) {
+        // Swap orders
+        const oldOrder = scheduleToUpdate.order;
+        scheduleToUpdate.order = updateOrderDto.newOrder;
+        scheduleWithNewOrder.order = oldOrder;
+
+        // Save both schedules
+        await this.ciltSecuencesScheduleRepository.save(scheduleWithNewOrder);
+        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
+      } else {
+        // If no schedule has the new order, just update the order
+        scheduleToUpdate.order = updateOrderDto.newOrder;
+        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
+      }
+    } catch (exception) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };

@@ -75,6 +75,21 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.INVALID_SCHEDULE_TYPE:
         message = stringConstants.invalidScheduleType;
         break;
+      case ValidationExceptionType.CILT_SEQUENCE_ALREADY_STARTED:
+        message = stringConstants.ciltSequenceAlreadyStarted;
+        break;
+      case ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE:
+        message = stringConstants.ciltSequenceNotActive;
+        break;
+      case ValidationExceptionType.CILT_SEQUENCE_INVALID_DATE:
+        message = stringConstants.ciltSequenceInvalidDate;
+        break;
+      case ValidationExceptionType.CILT_SEQUENCE_NOT_STARTED:
+        message = stringConstants.ciltSequenceNotStarted;
+        break;
+      case ValidationExceptionType.CILT_SEQUENCE_ALREADY_FINISHED:
+        message = stringConstants.ciltSequenceAlreadyFinished;
+        break;
       default:
         message = 'Validation error';
     }
@@ -106,5 +121,10 @@ export enum ValidationExceptionType {
   INVALID_HEX_FORMAT,
   INVALID_DATE,
   INVALID_DAY_COLUMN,
-  INVALID_SCHEDULE_TYPE
+  INVALID_SCHEDULE_TYPE,
+  CILT_SEQUENCE_ALREADY_STARTED,
+  CILT_SEQUENCE_NOT_ACTIVE,
+  CILT_SEQUENCE_INVALID_DATE,
+  CILT_SEQUENCE_NOT_STARTED,
+  CILT_SEQUENCE_ALREADY_FINISHED
 }

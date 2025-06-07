@@ -24,6 +24,9 @@ export class CiltSecuencesScheduleEntity {
   @Column("int", { name: "secuence_id", nullable: true, unsigned: true })
   secuenceId: number | null;
 
+  @Column("tinyint", { name: "order", default: 1, nullable: false })
+  order: number;
+
   @Column("char", { name: "frecuency", nullable: true, length: 5 })
   frecuency: string | null;
 

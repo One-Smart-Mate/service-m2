@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { CiltSequencesEntity } from './entities/ciltSequences.entity';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
+import { UpdateSequenceOrderDTO } from './models/dto/update-order.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -138,15 +139,16 @@ export class CiltSequencesService {
     try {
       await this.validateRelatedEntities(dto);
 
-      if (!dto.order || dto.order <= 0) {
-        const { max } = await this.ciltSequencesRepository
-          .createQueryBuilder('seq')
-          .select('MAX(seq.`order`)', 'max')
-          .where('seq.site_id = :siteId', { siteId: dto.siteId })
-          .getRawOne<{ max: number }>();
+      // Found existing sequences for the same cilt master
+      const existingSequences = await this.ciltSequencesRepository.find({
+        where: { ciltMstrId: dto.ciltMstrId },
+        order: { order: 'DESC' },
+        take: 1
+      });
 
-        dto.order = (max ?? 0) + 1;
-      }
+      // Assign the next order number
+      const nextOrder = existingSequences.length > 0 ? existingSequences[0].order + 1 : 1;
+      dto.order = nextOrder;
 
       const sequence = this.ciltSequencesRepository.create(dto);
       return await this.ciltSequencesRepository.save(sequence);
@@ -161,6 +163,45 @@ export class CiltSequencesService {
       await this.validateRelatedEntities(updateDTO);
       Object.assign(sequence, updateDTO);
       return await this.ciltSequencesRepository.save(sequence);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateOrder = async (updateOrderDto: UpdateSequenceOrderDTO) => {
+    try {
+      // Find the sequence to update
+      const sequenceToUpdate = await this.ciltSequencesRepository.findOneBy({
+        id: updateOrderDto.sequenceId,
+      });
+      if (!sequenceToUpdate) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SEQUENCES,
+        );
+      }
+
+      // Find the sequence that currently has the new order
+      const sequenceWithNewOrder = await this.ciltSequencesRepository.findOne({
+        where: {
+          ciltMstrId: sequenceToUpdate.ciltMstrId,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (sequenceWithNewOrder) {
+        // Swap orders
+        const oldOrder = sequenceToUpdate.order;
+        sequenceToUpdate.order = updateOrderDto.newOrder;
+        sequenceWithNewOrder.order = oldOrder;
+
+        // Save both sequences
+        await this.ciltSequencesRepository.save(sequenceWithNewOrder);
+        return await this.ciltSequencesRepository.save(sequenceToUpdate);
+      } else {
+        // If no sequence has the new order, just update the order
+        sequenceToUpdate.order = updateOrderDto.newOrder;
+        return await this.ciltSequencesRepository.save(sequenceToUpdate);
+      }
     } catch (exception) {
       HandleException.exception(exception);
     }

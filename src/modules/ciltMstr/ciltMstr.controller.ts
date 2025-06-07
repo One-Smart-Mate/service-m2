@@ -5,6 +5,7 @@ import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
 import { FindByUserDTO } from './models/dto/find-by-user.dto';
 import { FindBySiteDTO } from './models/dto/find-by-site.dto';
+import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Cilt Master')
 @Controller('cilt-mstr')
@@ -70,5 +71,12 @@ export class CiltMstrController {
   @ApiBody({ type: UpdateCiltMstrDTO })
   async update(@Body() updateCiltDto: UpdateCiltMstrDTO) {
     return await this.ciltMstrService.update(updateCiltDto);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update CILT order' })
+  @ApiBody({ type: UpdateCiltOrderDTO })
+  async updateOrder(@Body() updateOrderDto: UpdateCiltOrderDTO) {
+    return await this.ciltMstrService.updateOrder(updateOrderDto);
   }
 }

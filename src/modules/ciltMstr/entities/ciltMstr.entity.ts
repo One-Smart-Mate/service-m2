@@ -50,7 +50,7 @@ export class CiltMstrEntity {
   @Column('varchar', { name: 'url_img_layout', length: 500, nullable: true })
   urlImgLayout: string | null;
 
-  @Column('int', { name: 'order', default: 1 })
+  @Column('tinyint', { name: 'order', default: 1, nullable: true })
   order: number;
 
   @Column('char', { name: 'status', length: 1, default: 'A', nullable: true })
