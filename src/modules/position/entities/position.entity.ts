@@ -47,8 +47,8 @@ export class PositionEntity {
   @Column({ name: 'route', type: 'varchar', length: 250, nullable: true })
   route: string | null;
 
-  @Column({ name: 'order', type: 'smallint', nullable: true, default: 1 })
-  order: number | null;
+  @Column({ name: 'order', type: 'tinyint', nullable: false, default: 1 })
+  order: number;
 
   @Column({ name: 'name', type: 'varchar', length: 45, nullable: true })
   name: string | null;

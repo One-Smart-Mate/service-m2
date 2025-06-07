@@ -19,7 +19,7 @@ export class OplDetailsEntity {
   @Column("int", { name: "opl_id", unsigned: true })
   oplId: number;
 
-  @Column("tinyint", { name: "order" })
+  @Column("tinyint", { name: "order", default: 1, nullable: false })
   order: number;
 
   @Column("enum", { name: "type", enum: ["texto", "imagen", "video", "pdf"] })

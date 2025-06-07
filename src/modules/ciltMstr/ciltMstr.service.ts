@@ -4,6 +4,7 @@ import { Repository, In, IsNull, Equal, Raw } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
+import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -70,6 +71,17 @@ export class CiltMstrService {
 
   create = async (createCiltDto: CreateCiltMstrDTO) => {
     try {
+      // Found existing CILTs for the same site
+      const existingCilts = await this.ciltRepository.find({
+        where: { siteId: createCiltDto.siteId },
+        order: { order: 'DESC' },
+        take: 1
+      });
+
+      // Assign the next order number
+      const nextOrder = existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
+      createCiltDto.order = nextOrder;
+
       const cilt = this.ciltRepository.create(createCiltDto);
       return await this.ciltRepository.save(cilt);
     } catch (exception) {
@@ -88,6 +100,43 @@ export class CiltMstrService {
 
       Object.assign(cilt, updateCiltDto);
       return await this.ciltRepository.save(cilt);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateOrder = async (updateOrderDto: UpdateCiltOrderDTO) => {
+    try {
+      // Find the CILT to update
+      const ciltToUpdate = await this.ciltRepository.findOneBy({
+        id: updateOrderDto.ciltMstrId,
+      });
+      if (!ciltToUpdate) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+      }
+
+      // Find the CILT that currently has the new order
+      const ciltWithNewOrder = await this.ciltRepository.findOne({
+        where: {
+          siteId: ciltToUpdate.siteId,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (ciltWithNewOrder) {
+        // Swap orders
+        const oldOrder = ciltToUpdate.order;
+        ciltToUpdate.order = updateOrderDto.newOrder;
+        ciltWithNewOrder.order = oldOrder;
+
+        // Save both CILTs
+        await this.ciltRepository.save(ciltWithNewOrder);
+        return await this.ciltRepository.save(ciltToUpdate);
+      } else {
+        // If no CILT has the new order, just update the order
+        ciltToUpdate.order = updateOrderDto.newOrder;
+        return await this.ciltRepository.save(ciltToUpdate);
+      }
     } catch (exception) {
       HandleException.exception(exception);
     }
