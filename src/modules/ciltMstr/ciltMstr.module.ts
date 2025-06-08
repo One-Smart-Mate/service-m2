@@ -15,6 +15,7 @@ import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { CiltSecuencesScheduleModule } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.module';
+import { LevelModule } from '../level/level.module';
 
 
 @Module({   
@@ -31,7 +32,8 @@ import { CiltSecuencesScheduleModule } from '../ciltSecuencesSchedule/ciltSecuen
       OplMstr
     ]),
     SiteModule,
-    forwardRef(() => CiltSecuencesScheduleModule)
+    forwardRef(() => CiltSecuencesScheduleModule),
+    LevelModule
   ],
   controllers: [CiltMstrController],
   providers: [CiltMstrService, CiltSecuencesScheduleService, CustomLoggerService],
