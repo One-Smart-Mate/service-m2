@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Between } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -84,6 +84,26 @@ export class CiltSequencesExecutionsService {
           ciltSecuenceId: ciltDetailsId,
           deletedAt: IsNull() 
         } 
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByCiltSequenceIdAndDate = async (ciltSequenceId: number, date: string) => {
+    try {
+      const scheduleDate = new Date(date + 'T00:00:00.000Z');
+      const startDate = new Date(scheduleDate);
+      const endDate = new Date(scheduleDate);
+      endDate.setUTCHours(23, 59, 59, 999);
+
+      return await this.ciltSequencesExecutionsRepository.find({
+        where: {
+          ciltSecuenceId: ciltSequenceId,
+          secuenceSchedule: Between(startDate, endDate),
+          status: 'A',
+          deletedAt: IsNull()
+        }
       });
     } catch (exception) {
       HandleException.exception(exception);

@@ -19,6 +19,7 @@ import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecue
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
+import { LevelService } from '../level/level.service';
 
 @Injectable()
 export class CiltMstrService {
@@ -38,6 +39,7 @@ export class CiltMstrService {
     @InjectRepository(OplMstr)
     private readonly oplMstrRepository: Repository<OplMstr>,
     private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
+    private readonly levelService: LevelService,
     private readonly logger: CustomLoggerService,
   ) {}
 
@@ -173,9 +175,17 @@ export class CiltMstrService {
           status: 'A',
           deletedAt: IsNull(),
         },
-        relations: ['ciltMstr'],
+        relations: ['ciltMstr', 'level'],
       });
       this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
+  
+      // Get level paths for all levels
+      const levelPaths = await Promise.all(
+        ciltPositionLevels.map(async (cpl) => {
+          const route = await this.levelService.getLevelPathById(cpl.levelId);
+          return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
+        })
+      );
   
       // 4) Unique CILT masters
       const ciltMasters = Array.from(
@@ -251,7 +261,9 @@ export class CiltMstrService {
               status: 'A',
               stoppageReason: Boolean(seq.stoppageReason),
               machineStopped: Boolean(seq.machineStopped),
-              duration: seq.standardTime
+              duration: seq.standardTime,
+              levelId: cpl.levelId,
+              route: await this.levelService.getLevelPathById(cpl.levelId)
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
             this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
@@ -293,6 +305,7 @@ export class CiltMstrService {
           .map(cpl => {
             // Master sequences
             const master = cpl.ciltMstr;
+            const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id);
             const sequences = (sequencesByMaster.get(master.id) ?? []).map(seq => {
               // Extract only seq fields, without ciltMstr relation
               const { ciltMstr, ...seqFields } = seq as any;
@@ -300,7 +313,12 @@ export class CiltMstrService {
                 .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
               return { ...seqFields, executions };
             });
-            return { ...master, sequences };
+            return { 
+              ...master, 
+              sequences,
+              levelId: levelInfo?.levelId,
+              route: levelInfo?.route
+            };
           });
   
         return {
@@ -414,9 +432,17 @@ export class CiltMstrService {
           status: 'A',
           deletedAt: IsNull(),
         },
-        relations: ['position'],
+        relations: ['position', 'level'],
       });
       this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
+
+      // Get level paths for all levels
+      const levelPaths = await Promise.all(
+        ciltPositionLevels.map(async (cpl) => {
+          const route = await this.levelService.getLevelPathById(cpl.levelId);
+          return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
+        })
+      );
 
       // 5) Get all users with these positions
       const positionIds = [...new Set(ciltPositionLevels.map(cpl => cpl.positionId))];
@@ -489,7 +515,9 @@ export class CiltMstrService {
                 status: 'A',
                 stoppageReason: Boolean(seq.stoppageReason),
                 machineStopped: Boolean(seq.machineStopped),
-                duration: seq.standardTime
+                duration: seq.standardTime,
+                levelId: cpl.levelId,
+                route: await this.levelService.getLevelPathById(cpl.levelId)
               };
               const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
               this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
@@ -529,11 +557,93 @@ export class CiltMstrService {
       return {
         siteId,
         date,
-        executions: allExecutions,
+        executions: allExecutions.map(exec => {
+          const levelInfo = levelPaths.find(lp => lp.ciltMstrId === exec.ciltId);
+          return {
+            ...exec,
+            levelId: levelInfo?.levelId,
+            route: levelInfo?.route
+          };
+        }),
         total: allExecutions.length
       }
     } catch (error) {
       HandleException.exception(error);
     }
+  }
+
+  async cloneCiltMaster(id: number) {
+    try {
+      // 1. Find the original CILT master
+      const originalCilt = await this.ciltRepository.findOne({
+        where: { id },
+        relations: ['sequences']
+      });
+      if (!originalCilt) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+      }
+
+      // 2. Get the next available order for sequences
+      const lastSequence = await this.ciltSequencesRepository.findOne({
+        where: { siteId: originalCilt.siteId },
+        order: { order: 'DESC' }
+      });
+      let nextSequenceOrder = lastSequence ? lastSequence.order + 1 : 1;
+
+      // 3. Start a transaction
+      const queryRunner = this.ciltRepository.manager.connection.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // 4. Create a new CILT master with the same data
+        const { id: originalId, sequences, createdAt, updatedAt, deletedAt, ...ciltData } = originalCilt;
+        const newCilt = this.ciltRepository.create({
+          ...ciltData,
+          ciltName: `${ciltData.ciltName} (Copy)`,
+          order: await this.getNextOrder(ciltData.siteId)
+        });
+        const savedCilt = await queryRunner.manager.save(CiltMstrEntity, newCilt);
+
+        // 5. Clone all sequences sequentially
+        const clonedSequences = [];
+        for (const sequence of sequences) {
+          const { id: seqId, createdAt: seqCreatedAt, updatedAt: seqUpdatedAt, deletedAt: seqDeletedAt, ...seqData } = sequence;
+          const newSequence = this.ciltSequencesRepository.create({
+            ...seqData,
+            ciltMstrId: savedCilt.id,
+            order: nextSequenceOrder++
+          });
+          const savedSequence = await queryRunner.manager.save(CiltSequencesEntity, newSequence);
+          clonedSequences.push(savedSequence);
+        }
+
+        // 6. Commit the transaction
+        await queryRunner.commitTransaction();
+
+        return {
+          ciltMaster: savedCilt,
+          sequences: clonedSequences
+        };
+      } catch (error) {
+        // 7. Rollback in case of error
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        // 8. Release the query runner
+        await queryRunner.release();
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  private async getNextOrder(siteId: number): Promise<number> {
+    const existingCilts = await this.ciltRepository.find({
+      where: { siteId },
+      order: { order: 'DESC' },
+      take: 1
+    });
+    return existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
   }
 }

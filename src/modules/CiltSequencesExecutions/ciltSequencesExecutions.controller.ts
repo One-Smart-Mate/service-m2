@@ -45,6 +45,17 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findByCiltDetailsId(ciltDetailsId);
   }
 
+  @Get('cilt-sequence/:ciltSequenceId/date/:date')
+  @ApiOperation({ summary: 'Get CILT sequence executions by CILT sequence ID and date' })
+  @ApiParam({ name: 'ciltSequenceId', type: 'number', description: 'CILT sequence ID' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in YYYY-MM-DD format' })
+  findByCiltSequenceIdAndDate(
+    @Param('ciltSequenceId') ciltSequenceId: number,
+    @Param('date') date: string
+  ) {
+    return this.ciltSequencesExecutionsService.findByCiltSequenceIdAndDate(ciltSequenceId, date);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT sequence execution by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution ID' })
