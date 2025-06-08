@@ -79,4 +79,11 @@ export class CiltMstrController {
   async updateOrder(@Body() updateOrderDto: UpdateCiltOrderDTO) {
     return await this.ciltMstrService.updateOrder(updateOrderDto);
   }
+
+  @Post('/clone/:id')
+  @ApiOperation({ summary: 'Clone a CILT master with its sequences' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
+  async cloneCiltMaster(@Param('id') id: number) {
+    return await this.ciltMstrService.cloneCiltMaster(id);
+  }
 }

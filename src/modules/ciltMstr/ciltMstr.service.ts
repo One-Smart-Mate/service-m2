@@ -536,4 +536,79 @@ export class CiltMstrService {
       HandleException.exception(error);
     }
   }
+
+  async cloneCiltMaster(id: number) {
+    try {
+      // 1. Find the original CILT master
+      const originalCilt = await this.ciltRepository.findOne({
+        where: { id },
+        relations: ['sequences']
+      });
+      if (!originalCilt) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+      }
+
+      // 2. Get the next available order for sequences
+      const lastSequence = await this.ciltSequencesRepository.findOne({
+        where: { siteId: originalCilt.siteId },
+        order: { order: 'DESC' }
+      });
+      let nextSequenceOrder = lastSequence ? lastSequence.order + 1 : 1;
+
+      // 3. Start a transaction
+      const queryRunner = this.ciltRepository.manager.connection.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // 4. Create a new CILT master with the same data
+        const { id: originalId, sequences, createdAt, updatedAt, deletedAt, ...ciltData } = originalCilt;
+        const newCilt = this.ciltRepository.create({
+          ...ciltData,
+          ciltName: `${ciltData.ciltName} (Copy)`,
+          order: await this.getNextOrder(ciltData.siteId)
+        });
+        const savedCilt = await queryRunner.manager.save(CiltMstrEntity, newCilt);
+
+        // 5. Clone all sequences sequentially
+        const clonedSequences = [];
+        for (const sequence of sequences) {
+          const { id: seqId, createdAt: seqCreatedAt, updatedAt: seqUpdatedAt, deletedAt: seqDeletedAt, ...seqData } = sequence;
+          const newSequence = this.ciltSequencesRepository.create({
+            ...seqData,
+            ciltMstrId: savedCilt.id,
+            order: nextSequenceOrder++
+          });
+          const savedSequence = await queryRunner.manager.save(CiltSequencesEntity, newSequence);
+          clonedSequences.push(savedSequence);
+        }
+
+        // 6. Commit the transaction
+        await queryRunner.commitTransaction();
+
+        return {
+          ciltMaster: savedCilt,
+          sequences: clonedSequences
+        };
+      } catch (error) {
+        // 7. Rollback in case of error
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        // 8. Release the query runner
+        await queryRunner.release();
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  private async getNextOrder(siteId: number): Promise<number> {
+    const existingCilts = await this.ciltRepository.find({
+      where: { siteId },
+      order: { order: 'DESC' },
+      take: 1
+    });
+    return existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
+  }
 }
