@@ -214,7 +214,7 @@ export class CiltMstrService {
       );
   
       // 7) Scheduled schedules for the date
-      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
+      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
       this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
   
       // 8) Upsert executions
@@ -226,6 +226,11 @@ export class CiltMstrService {
           );
           if (!isScheduled) continue;
   
+          // Get schedule details for this sequence
+          const scheduleDetails = scheduledSequences.find(
+            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
+          );
+
           const existing = await this.ciltSequencesExecutionsRepository.findOne({
             where: {
               ciltId: masterId,
@@ -263,7 +268,13 @@ export class CiltMstrService {
               machineStopped: Boolean(seq.machineStopped),
               duration: seq.standardTime,
               levelId: cpl.levelId,
-              route: await this.levelService.getLevelPathById(cpl.levelId)
+              route: await this.levelService.getLevelPathById(cpl.levelId),
+              allowExecuteBefore: Boolean(scheduleDetails.allowExecuteBefore),
+              allowExecuteBeforeMinutes: scheduleDetails.allowExecuteBeforeMinutes,
+              toleranceBeforeMinutes: scheduleDetails.toleranceBeforeMinutes,
+              toleranceAfterMinutes: scheduleDetails.toleranceAfterMinutes,
+              allowExecuteAfterDue: Boolean(scheduleDetails.allowExecuteAfterDue),
+              specialWarning: seq.specialWarning,
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
             this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
@@ -456,7 +467,7 @@ export class CiltMstrService {
       this.logger.logProcess('USER POSITIONS', userPositions);
 
       // 6) Get scheduled sequences for the date
-      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDateSimplified(date);
+      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
       this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
 
       // 7) Group users by their positions
@@ -479,12 +490,16 @@ export class CiltMstrService {
             );
             if (!isScheduled) continue;
 
+            // Get schedule details for this sequence
+            const scheduleDetails = scheduledSequences.find(
+              sch => sch.ciltId === masterId && sch.secuenceId === seq.id
+            );
+
             const existing = await this.ciltSequencesExecutionsRepository.findOne({
               where: {
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,
                 secuenceSchedule: scheduleDate,
-                userId: user.id,
                 status: 'A',
                 deletedAt: IsNull(),
               }
@@ -517,7 +532,13 @@ export class CiltMstrService {
                 machineStopped: Boolean(seq.machineStopped),
                 duration: seq.standardTime,
                 levelId: cpl.levelId,
-                route: await this.levelService.getLevelPathById(cpl.levelId)
+                route: await this.levelService.getLevelPathById(cpl.levelId),
+                allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
+                allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
+                toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
+                toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
+                allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
+                specialWarning: seq.specialWarning,
               };
               const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
               this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });

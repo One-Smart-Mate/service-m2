@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsISO8601, IsBoolean } from 'class-validator';
+import { IsOptional, IsNumber, IsString, IsISO8601, IsBoolean, IsEnum } from 'class-validator';
 
 export class CreateCiltSequencesExecutionDTO {
   @ApiProperty({ description: 'Site ID', required: false })
@@ -41,6 +41,16 @@ export class CreateCiltSequencesExecutionDTO {
   @IsOptional()
   @IsNumber()
   userWhoExecutedId?: number;
+
+  @ApiProperty({ description: 'Special warning', required: false })
+  @IsOptional()
+  @IsString()
+  specialWarning?: string;
+
+  @ApiProperty({ description: 'Machine status', required: false, enum: ['running', 'stop'] })
+  @IsOptional()
+  @IsEnum(['running', 'stop'])
+  machineStatus?: 'running' | 'stop' | null;
 
   @ApiProperty({ description: 'Sequence schedule in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()

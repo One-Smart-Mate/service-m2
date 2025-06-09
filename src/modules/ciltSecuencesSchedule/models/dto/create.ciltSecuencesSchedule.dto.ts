@@ -8,23 +8,24 @@ import {
   Min,
   Max,
   Matches,
-  IsEnum
+  IsEnum,
+  IsNotEmpty
 } from 'class-validator';
 import { ScheduleType } from 'src/utils/string.constant';
 
 export class CreateCiltSecuencesScheduleDto {
   @ApiProperty({ required: false, description: 'Site ID', default: 1 })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   siteId?: number;
 
   @ApiProperty({ required: false, description: 'CILT ID', default: 1 })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   ciltId?: number;
 
   @ApiProperty({ required: false, description: 'Sequence ID', default: 1 })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   secuenceId?: number;
 

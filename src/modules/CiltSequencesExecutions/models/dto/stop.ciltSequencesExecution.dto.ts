@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsISO8601, IsBoolean, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsISO8601, IsBoolean, IsOptional, IsString, IsEnum } from 'class-validator';
 
 export class StopCiltSequencesExecutionDTO {
   @ApiProperty({ description: 'Execution ID', default: 1 })
@@ -26,6 +26,11 @@ export class StopCiltSequencesExecutionDTO {
   @IsOptional()
   @IsString()
   finalParameter?: string;
+
+  @ApiProperty({ description: 'Machine status', required: false, enum: ['running', 'stop'] })
+  @IsOptional()
+  @IsEnum(['running', 'stop'])
+  machineStatus?: 'running' | 'stop' | null;
 
   @ApiProperty({ description: 'Whether evidence was captured at final', default: false })
   @IsOptional()

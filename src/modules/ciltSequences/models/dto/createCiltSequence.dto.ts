@@ -168,6 +168,15 @@ export class CreateCiltSequenceDTO {
   machineStopped?: number;
 
   @ApiPropertyOptional({
+    description: 'Special warning',
+    required: false,
+    example: 'Dangerous material',
+  })
+  @IsOptional()
+  @IsString()
+  specialWarning?: string;
+
+  @ApiPropertyOptional({
     description: 'Number of pictures at start',
     required: false,
     example: 1,

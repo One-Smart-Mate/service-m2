@@ -92,19 +92,13 @@ export class CiltSequencesExecutionsService {
 
   findByCiltSequenceIdAndDate = async (ciltSequenceId: number, date: string) => {
     try {
-      const scheduleDate = new Date(date + 'T00:00:00.000Z');
-      const startDate = new Date(scheduleDate);
-      const endDate = new Date(scheduleDate);
-      endDate.setUTCHours(23, 59, 59, 999);
-
-      return await this.ciltSequencesExecutionsRepository.find({
-        where: {
-          ciltSecuenceId: ciltSequenceId,
-          secuenceSchedule: Between(startDate, endDate),
-          status: 'A',
-          deletedAt: IsNull()
-        }
-      });
+      return await this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .where('execution.ciltSecuenceId = :ciltSequenceId', { ciltSequenceId })
+        .andWhere('DATE(execution.secuenceSchedule) = :date', { date })
+        .andWhere('execution.status = :status', { status: 'A' })
+        .andWhere('execution.deletedAt IS NULL')
+        .getMany();
     } catch (exception) {
       HandleException.exception(exception);
     }

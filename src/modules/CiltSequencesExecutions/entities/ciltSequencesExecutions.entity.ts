@@ -38,6 +38,14 @@ export class CiltSequencesExecutionsEntity {
   siteId: number | null;
 
   @Column("int", { 
+    name: "site_execution_id", 
+    nullable: true, 
+    unsigned: true,
+    comment: 'unique id of the site to keep track of its own ids'
+  })
+  siteExecutionId: number | null;
+
+  @Column("int", { 
     name: "position_id", 
     nullable: true, 
     unsigned: true,
@@ -92,6 +100,22 @@ export class CiltSequencesExecutionsEntity {
     comment: 'user that executed the sequence, it could be different from the user assigned to the sequence or not'
   })
   userWhoExecutedId: number | null;
+
+  @Column("varchar", { 
+    name: "special_warning", 
+    nullable: true, 
+    length: 100,
+    comment: 'specifies if there is any special precaution, such as dangerous material, dangerous area, etc'
+  })
+  specialWarning: string | null;
+  
+  @Column("enum", { 
+    name: "machine_status", 
+    nullable: true,
+    enum: ['running', 'stop'],
+    comment: 'indicates if the machine is running or stopped'
+  })
+  machineStatus: 'running' | 'stop' | null;
 
   @Column("datetime", { 
     name: "secuence_schedule", 
