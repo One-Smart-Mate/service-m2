@@ -154,6 +154,14 @@ export class UpdateCiltSequenceDTO {
   machineStopped?: number;
 
   @ApiPropertyOptional({
+    description: 'Special warning',
+    example: 'Dangerous material',
+  })
+  @IsOptional()
+  @IsString()
+  specialWarning?: string;
+
+  @ApiPropertyOptional({
     description: 'Number of pictures at start',
     example: 2,
   })

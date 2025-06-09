@@ -65,6 +65,14 @@ export class CiltSequencesEntity {
   @Column("tinyint", { name: "machine_stopped", default: 0, nullable: true })
   machineStopped: number | null;
 
+  @Column("varchar", { 
+    name: "special_warning", 
+    nullable: true, 
+    length: 100,
+    comment: 'specifies if there is any special precaution, such as dangerous material, dangerous area, etc'
+  })
+  specialWarning: string | null;
+
   @Column("tinyint", { name: "quantity_pictures_create", default: 1, nullable: true })
   quantityPicturesCreate: number | null;
 

@@ -9,17 +9,17 @@ export class UpdateCiltSecuencesScheduleDto {
   id: number;
 
   @ApiProperty({ required: false, description: 'Site ID' })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   siteId?: number;
 
   @ApiProperty({ required: false, description: 'CILT ID' })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   ciltId?: number;
 
   @ApiProperty({ required: false, description: 'Sequence ID' })
-  @IsOptional()
+  @IsNotEmpty()
   @IsNumber()
   secuenceId?: number;
 
