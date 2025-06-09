@@ -45,7 +45,9 @@ export class CiltMstrService {
 
   findAll = async () => {
     try {
-      return await this.ciltRepository.find();
+      return await this.ciltRepository.find({
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -53,7 +55,10 @@ export class CiltMstrService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltRepository.find({ where: { siteId } });
+      return await this.ciltRepository.find({ 
+        where: { siteId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -76,7 +81,7 @@ export class CiltMstrService {
       // Found existing CILTs for the same site
       const existingCilts = await this.ciltRepository.find({
         where: { siteId: createCiltDto.siteId },
-        order: { order: 'DESC' },
+        order: { order: 'ASC' },
         take: 1
       });
 

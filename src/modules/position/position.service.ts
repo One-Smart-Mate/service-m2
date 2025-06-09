@@ -25,7 +25,9 @@ export class PositionService {
 
   findAll = async () => {
     try {
-      return await this.positionRepository.find();
+      return await this.positionRepository.find({
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -45,7 +47,10 @@ export class PositionService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.positionRepository.find({ where: { siteId } });
+      return await this.positionRepository.find({ 
+        where: { siteId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -53,7 +58,10 @@ export class PositionService {
 
   findBySiteIdAndLevelId = async (siteId: number, levelId: number) => {
     try {
-      return await this.positionRepository.find({ where: { siteId, levelId } });
+      return await this.positionRepository.find({ 
+        where: { siteId, levelId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -61,7 +69,10 @@ export class PositionService {
 
   findByAreaId = async (areaId: number) => {
     try {
-      return await this.positionRepository.find({ where: { areaId } });
+      return await this.positionRepository.find({ 
+        where: { areaId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -73,6 +84,7 @@ export class PositionService {
         .createQueryBuilder('position')
         .innerJoin('users_positions', 'up', 'up.position_id = position.id')
         .where('up.user_id = :userId', { userId })
+        .orderBy('position.order', 'ASC')
         .getMany();
     } catch (exception) {
       HandleException.exception(exception);

@@ -99,7 +99,9 @@ export class CiltSequencesService {
 
   findAll = async () => {
     try {
-      return await this.ciltSequencesRepository.find();
+      return await this.ciltSequencesRepository.find({
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -107,7 +109,10 @@ export class CiltSequencesService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltSequencesRepository.find({ where: { siteId } });
+      return await this.ciltSequencesRepository.find({ 
+        where: { siteId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -115,7 +120,10 @@ export class CiltSequencesService {
 
   findByCiltMstrId = async (ciltMstrId: number) => {
     try {
-      return await this.ciltSequencesRepository.find({ where: { ciltMstrId } });
+      return await this.ciltSequencesRepository.find({ 
+        where: { ciltMstrId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
