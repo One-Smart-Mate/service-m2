@@ -20,7 +20,9 @@ export class OplDetailsService {
 
   findAll = async () => {
     try {
-      return await this.oplDetailsRepository.find();
+      return await this.oplDetailsRepository.find({
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -40,7 +42,10 @@ export class OplDetailsService {
 
   findByOplId = async (oplId: number) => {
     try {
-      const details = await this.oplDetailsRepository.findBy({ oplId });
+      const details = await this.oplDetailsRepository.find({ 
+        where: { oplId },
+        order: { order: 'ASC' }
+      });
       if (!details || details.length === 0) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
       }
