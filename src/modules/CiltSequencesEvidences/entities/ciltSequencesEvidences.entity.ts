@@ -10,7 +10,7 @@ import { CiltSequencesExecutionsEntity } from '../../CiltSequencesExecutions/ent
 import { PositionEntity } from '../../position/entities/position.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 
-@Entity('cilt_secuencies_evidences')
+@Entity('cilt_sequences_evidences')
 export class CiltSequencesEvidencesEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;
