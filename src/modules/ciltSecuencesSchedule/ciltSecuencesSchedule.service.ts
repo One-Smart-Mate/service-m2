@@ -88,7 +88,7 @@ export class CiltSecuencesScheduleService {
         where: { secuenceId: sequenceId },
       });
 
-      // Obtener las ejecuciones para cada schedule
+      // Get the executions for each schedule
       const schedulesWithExecutions = await Promise.all(
         schedules.map(async (schedule) => {
           const executions = await this.ciltSequencesExecutionsRepository.find({

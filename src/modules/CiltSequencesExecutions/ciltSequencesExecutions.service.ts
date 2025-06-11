@@ -95,7 +95,7 @@ export class CiltSequencesExecutionsService {
 
   findByCiltSequenceIdAndDate = async (ciltSequenceId: number, date: string) => {
     try {
-      // Primero obtenemos la secuencia
+      // First we get the sequence
       const sequence = await this.ciltSequencesRepository.findOne({
         where: { id: ciltSequenceId }
       });
@@ -104,7 +104,7 @@ export class CiltSequencesExecutionsService {
         return null;
       }
 
-      // Luego obtenemos las ejecuciones
+      // Then we get the executions
       const executions = await this.ciltSequencesExecutionsRepository
         .createQueryBuilder('execution')
         .where('execution.ciltSecuenceId = :ciltSequenceId', { ciltSequenceId })
@@ -113,7 +113,7 @@ export class CiltSequencesExecutionsService {
         .andWhere('execution.deletedAt IS NULL')
         .getMany();
 
-      // Devolvemos la secuencia con sus ejecuciones
+      // We return the sequence with its executions
       return {
         ...sequence,
         executions
