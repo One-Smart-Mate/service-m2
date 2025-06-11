@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Between } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -12,6 +12,10 @@ import { MailService } from 'src/modules/mail/mail.service';
 import { FirebaseService } from 'src/modules/firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
+import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
+import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
+import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
+import { CiltSequencesEntity } from 'src/modules/CiltSequences/entities/ciltSequences.entity';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -23,6 +27,8 @@ export class CiltSequencesExecutionsService {
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
     private readonly firebaseService: FirebaseService,
+    @InjectRepository(CiltSequencesEntity)
+    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
   ) {}
 
   findAll = async () => {
@@ -87,6 +93,36 @@ export class CiltSequencesExecutionsService {
     }
   };
 
+  findByCiltSequenceIdAndDate = async (ciltSequenceId: number, date: string) => {
+    try {
+      // First we get the sequence
+      const sequence = await this.ciltSequencesRepository.findOne({
+        where: { id: ciltSequenceId }
+      });
+
+      if (!sequence) {
+        return null;
+      }
+
+      // Then we get the executions
+      const executions = await this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .where('execution.ciltSecuenceId = :ciltSequenceId', { ciltSequenceId })
+        .andWhere('DATE(execution.secuenceSchedule) = :date', { date })
+        .andWhere('execution.status = :status', { status: 'A' })
+        .andWhere('execution.deletedAt IS NULL')
+        .getMany();
+
+      // We return the sequence with its executions
+      return {
+        ...sequence,
+        executions
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const execution = await this.ciltSequencesExecutionsRepository.findOne({ 
@@ -119,7 +155,7 @@ export class CiltSequencesExecutionsService {
       Object.assign(execution, updateDTO);
       const updatedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
 
-      if (updateDTO.stoppageReason === 1) {
+      if (updateDTO.stoppageReason === true) {
         const position = await this.positionRepository.findOneBy({ nodeResponsableId: execution.positionId });
         if (position) {
           const tokens = await this.usersService.getUserToken(position.nodeResponsableId);
@@ -168,4 +204,87 @@ export class CiltSequencesExecutionsService {
       HandleException.exception(exception);
     }
   };
+
+  async start(startDTO: StartCiltSequencesExecutionDTO) {
+    try {
+      const execution = await this.findById(startDTO.id);
+      if (!execution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
+      }
+    
+      if (execution.secuenceStart) {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_STARTED);
+      }
+
+      if (execution.status !== 'A') {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
+      }
+    
+      const startDate = new Date(startDTO.startDate);
+      if (isNaN(startDate.getTime())) {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_INVALID_DATE);
+      }
+
+      execution.secuenceStart = startDate;
+      execution.updatedAt = new Date();
+      
+      try {
+        return await this.ciltSequencesExecutionsRepository.save(execution);
+      } catch (saveError) {
+        throw new Error(`Failed to save CILT sequence execution: ${saveError.message}`);
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  async stop(stopDTO: StopCiltSequencesExecutionDTO) {
+    try {
+      const execution = await this.findById(stopDTO.id);
+      if (!execution) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
+      }
+
+      if (!execution.secuenceStart) {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_STARTED);
+      }
+
+      if (execution.secuenceStop) {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_FINISHED);
+      }
+
+      if (execution.status !== 'A') {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
+      }
+
+      const stopDate = new Date(stopDTO.stopDate);
+      if (isNaN(stopDate.getTime())) {
+        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_INVALID_DATE);
+      }
+
+      const startDate = new Date(execution.secuenceStart);
+      const durationInSeconds = Math.floor((stopDate.getTime() - startDate.getTime()) / 1000);
+
+      Object.assign(execution, {
+        secuenceStop: stopDate,
+        realDuration: durationInSeconds,
+        initialParameter: stopDTO.initialParameter?.toString(),
+        evidenceAtCreation: stopDTO.evidenceAtCreation,
+        finalParameter: stopDTO.finalParameter?.toString(),
+        evidenceAtFinal: stopDTO.evidenceAtFinal,
+        nok: stopDTO.nok,
+        amTagId: stopDTO.amTagId,
+        updatedAt: new Date()
+      });
+
+      try {
+        return await this.ciltSequencesExecutionsRepository.save(execution);
+      } catch (saveError) {
+        throw new Error(`Failed to save CILT sequence execution: ${saveError.message}`);
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
 } 

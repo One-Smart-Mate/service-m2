@@ -10,7 +10,7 @@ export class CreateOplMstrDTO {
   @ApiProperty({ description: 'Site ID of the OPL' })
   @IsNotEmpty()
   @IsNumber()
-  siteId: bigint;
+  siteId: number;
 
   @ApiProperty({ description: 'Objective of the OPL', required: false })
   @IsOptional()

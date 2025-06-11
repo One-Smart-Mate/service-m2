@@ -9,6 +9,7 @@ import { MailModule } from '../mail/mail.module';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { UsersPositionsEntity } from './entities/users.positions.entity';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { UsersPositionsEntity } from './entities/users.positions.entity';
     FirebaseModule,
     TypeOrmModule.forFeature([UserEntity, UserHasSitesEntity, UsersPositionsEntity]),
   ],
-  providers: [UsersService],
+  providers: [UsersService, CustomLoggerService],
   controllers: [UsersController],
   exports: [UsersService],
 })

@@ -1,6 +1,14 @@
 export const LANG_ES = 'ES';
 export const LANG_EN = 'EN';
 
+export enum ScheduleType {
+  DAILY = 'dai',
+  WEEKLY = 'wee',
+  MONTHLY = 'mon',
+  YEARLY = 'yea',
+  MANUAL = 'man'
+}
+
 export const stringConstants = {
   primaryColor: '#FF5A5F',
   
@@ -30,6 +38,7 @@ export const stringConstants = {
   welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
   none: 'None',
+  duplicatePriority: 'A priority with that code already exists',
 
   //Notifications for catalogs
   catalogsTitle: 'Cambio en estructura',
@@ -111,10 +120,11 @@ export const stringConstants = {
   ciltFrequenciesNotFound: 'Cilt frequencies not found',
   oplMstrNotFound: 'OPL master not found',
   oplDetailsNotFound: 'OPL details not found',
+  oplSopNotFound: 'OPL/SOP not found',
   repositoryNotFound: 'Repository not found',
   oplLevelsNotFound: 'OPL Levels not found',
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',
-  ciltMstrPositionLevelsNotFound: 'CILT Position Level not found',
+  ciltMstrPositionLevelsNotFound: 'CILT Master Position Levels not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
@@ -228,4 +238,19 @@ export const stringConstants = {
       }
     }
   },
+
+  // Schedule validation messages
+  invalidScheduleType: `Invalid schedule type. Must be one of: ${Object.values(ScheduleType).join(', ')}`,
+  invalidDateProvided: 'Invalid date provided',
+  invalidDayColumn: 'Invalid day column',
+
+  oplSopReferenceNotFound: 'OPL/SOP reference not found',
+  oplSopRemediationNotFound: 'OPL/SOP remediation not found',
+
+  // CILT validation messages
+  ciltSequenceAlreadyStarted: 'The CILT sequence has already been started',
+  ciltSequenceNotActive: 'The CILT sequence is not active',
+  ciltSequenceInvalidDate: 'Invalid date format for the CILT sequence',
+  ciltSequenceAlreadyFinished: 'The CILT sequence has already been finished',
+  ciltSequenceNotStarted: 'The CILT sequence has not been started',
 };

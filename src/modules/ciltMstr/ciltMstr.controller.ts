@@ -4,6 +4,8 @@ import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
 import { FindByUserDTO } from './models/dto/find-by-user.dto';
+import { FindBySiteDTO } from './models/dto/find-by-site.dto';
+import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Cilt Master')
 @Controller('cilt-mstr')
@@ -23,13 +25,6 @@ export class CiltMstrController {
     return await this.ciltMstrService.findBySiteId(siteId);
   }
 
-  @Get('position/:positionId')
-  @ApiOperation({ summary: 'Get all CILTs by position ID' })
-  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
-  async findByPositionId(@Param('positionId') positionId: number) {
-    return await this.ciltMstrService.findByPositionId(positionId);
-  }
-
   @Post('user')
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
   @ApiBody({ type: FindByUserDTO })
@@ -37,6 +32,16 @@ export class CiltMstrController {
     return await this.ciltMstrService.findCiltsByUserId(
       findByUserDto.userId,
       findByUserDto.date
+    );
+  }
+
+  @Post('site')
+  @ApiOperation({ summary: 'Get all CILTs and generate executions for all users in a site for a specific date' })
+  @ApiBody({ type: FindBySiteDTO })
+  async findCiltsBySiteId(@Body() findBySiteDto: FindBySiteDTO) {
+    return await this.ciltMstrService.findCiltsBySiteId(
+      findBySiteDto.siteId,
+      findBySiteDto.date
     );
   }
 
@@ -66,5 +71,19 @@ export class CiltMstrController {
   @ApiBody({ type: UpdateCiltMstrDTO })
   async update(@Body() updateCiltDto: UpdateCiltMstrDTO) {
     return await this.ciltMstrService.update(updateCiltDto);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update CILT order' })
+  @ApiBody({ type: UpdateCiltOrderDTO })
+  async updateOrder(@Body() updateOrderDto: UpdateCiltOrderDTO) {
+    return await this.ciltMstrService.updateOrder(updateOrderDto);
+  }
+
+  @Post('/clone/:id')
+  @ApiOperation({ summary: 'Clone a CILT master with its sequences' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
+  async cloneCiltMaster(@Param('id') id: number) {
+    return await this.ciltMstrService.cloneCiltMaster(id);
   }
 }

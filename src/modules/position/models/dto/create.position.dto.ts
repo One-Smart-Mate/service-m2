@@ -5,7 +5,7 @@ import {
   IsOptional,
   IsString,
   MaxLength,
-  IsDate,
+  IsISO8601
 } from 'class-validator';
 
 export class CreatePositionDto {
@@ -26,12 +26,12 @@ export class CreatePositionDto {
   @MaxLength(20)
   siteType: string | null;
 
-  @ApiProperty({ description: 'The service generate this', example: 2, type: 'number' })
+  @ApiProperty({ description: 'Area ID', example: 2, type: 'number' })
   @IsInt()
   @IsOptional()
   areaId: number | null;
 
-  @ApiProperty({ description: 'The service generate this', example: 'Development', type: 'string', maxLength: 100 })
+  @ApiProperty({ description: 'Area Name', example: 'Development', type: 'string', maxLength: 100 })
   @IsString()
   @IsOptional()
   @MaxLength(100)
@@ -53,6 +53,11 @@ export class CreatePositionDto {
   @IsOptional()
   @MaxLength(250)
   route: string | null;
+
+  @ApiProperty({ description: 'Order', example: 1, type: 'number' })
+  @IsInt()
+  @IsOptional()
+  order: number | null;
 
   @ApiProperty({ description: 'Name of the position', example: 'Software Engineer', type: 'string', maxLength: 45 })
   @IsString()
@@ -87,4 +92,8 @@ export class CreatePositionDto {
   @IsInt({ each: true })
   @IsOptional()
   userIds: number[] | null;
+
+  @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
+  @IsISO8601()
+  createdAt: string;
 }

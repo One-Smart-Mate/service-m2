@@ -1,0 +1,43 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsOptional, IsString, IsISO8601 } from 'class-validator';
+
+export class UpdateCiltSequencesFrequenciesDTO {
+  @ApiProperty({ description: 'Sequence frequency ID' })
+  @IsNumber()
+  id: number;
+
+  @ApiProperty({ description: 'Site ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  siteId?: number;
+
+  @ApiProperty({ description: 'Position ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  positionId?: number;
+
+  @ApiProperty({ description: 'CILT ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  ciltId?: number;
+
+  @ApiProperty({ description: 'Sequence ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  secuencyId?: number;
+
+  @ApiProperty({ description: 'Frequency ID', required: false })
+  @IsOptional()
+  @IsNumber()
+  frecuencyId?: number;
+
+  @ApiProperty({ description: 'Frequency code', default: 'IT', required: false })
+  @IsOptional()
+  @IsString()
+  frecuencyCode?: string;
+
+  @ApiProperty({ description: 'Status', required: false, default: 'A' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+} 

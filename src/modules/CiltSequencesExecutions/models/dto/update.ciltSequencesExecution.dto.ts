@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsNumber, IsString, IsISO8601 } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsNumber, IsString, IsISO8601, IsBoolean, IsEnum } from 'class-validator';
 
 export class UpdateCiltSequencesExecutionDTO {
   @ApiProperty({ description: 'Execution ID' })
@@ -47,17 +47,52 @@ export class UpdateCiltSequencesExecutionDTO {
   @IsNumber()
   userWhoExecutedId?: number;
 
+  @ApiProperty({ description: 'Special warning', required: false })
+  @IsOptional()
+  @IsString()
+  specialWarning?: string;
+
+  @ApiProperty({ description: 'Machine status', required: false, enum: ['running', 'stop'] })
+  @IsOptional()
+  @IsEnum(['running', 'stop'])
+  machineStatus?: 'running' | 'stop' | null;
+
   @ApiProperty({ description: 'Sequence schedule in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()
   @IsISO8601()
   secuenceSchedule?: string;
 
-  @ApiProperty({ description: 'Sequence start time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
+  @ApiProperty({ description: 'Allow execute before', required: false })
+  @IsOptional()
+  @IsBoolean()
+  allowExecuteBefore?: boolean;
+
+  @ApiProperty({ description: 'Allow execute before minutes', required: false })
+  @IsOptional()
+  @IsNumber()
+  allowExecuteBeforeMinutes?: number;
+
+  @ApiProperty({ description: 'Tolerance before minutes', required: false })
+  @IsOptional()
+  @IsNumber()
+  toleranceBeforeMinutes?: number;
+
+  @ApiProperty({ description: 'Tolerance after minutes', required: false })
+  @IsOptional()
+  @IsNumber()
+  toleranceAfterMinutes?: number;
+
+  @ApiProperty({ description: 'Allow execute after due', required: false })
+  @IsOptional()
+  @IsBoolean()
+  allowExecuteAfterDue?: boolean;
+
+  @ApiProperty({ description: 'Sequence start time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()
   @IsISO8601()
   secuenceStart?: string;
 
-  @ApiProperty({ description: 'Sequence stop time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z', required: false })
+  @ApiProperty({ description: 'Sequence stop time in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', required: false })
   @IsOptional()
   @IsISO8601()
   secuenceStop?: string;
@@ -84,8 +119,8 @@ export class UpdateCiltSequencesExecutionDTO {
 
   @ApiProperty({ description: 'Evidence at creation', required: false })
   @IsOptional()
-  @IsNumber()
-  evidenceAtCreation?: number;
+  @IsBoolean()
+  evidenceAtCreation?: boolean;
 
   @ApiProperty({ description: 'Final parameter', required: false })
   @IsOptional()
@@ -94,23 +129,23 @@ export class UpdateCiltSequencesExecutionDTO {
 
   @ApiProperty({ description: 'Evidence at final', required: false })
   @IsOptional()
-  @IsNumber()
-  evidenceAtFinal?: number;
+  @IsBoolean()
+  evidenceAtFinal?: boolean;
 
   @ApiProperty({ description: 'NOK status', required: false })
   @IsOptional()
-  @IsNumber()
-  nok?: number;
+  @IsBoolean()
+  nok?: boolean;
 
   @ApiProperty({ description: 'Stoppage reason', required: false })
   @IsOptional()
-  @IsNumber()
-  stoppageReason?: number;
+  @IsBoolean()
+  stoppageReason?: boolean;
 
   @ApiProperty({ description: 'Machine stopped', required: false })
   @IsOptional()
-  @IsNumber()
-  machineStopped?: number;
+  @IsBoolean()
+  machineStopped?: boolean;
 
   @ApiProperty({ description: 'AM tag ID', required: false })
   @IsOptional()
@@ -149,8 +184,8 @@ export class UpdateCiltSequencesExecutionDTO {
 
   @ApiProperty({ description: 'Remediation OPL/SOP ID', required: false })
   @IsOptional()
-  @IsString()
-  remediationOplSopId?: string;
+  @IsNumber()
+  remediationOplSopId?: number;
 
   @ApiProperty({ description: 'Tools required', required: false })
   @IsOptional()
@@ -159,8 +194,8 @@ export class UpdateCiltSequencesExecutionDTO {
 
   @ApiProperty({ description: 'Selectable without programming', required: false })
   @IsOptional()
-  @IsNumber()
-  selectableWithoutProgramming?: number;
+  @IsBoolean()
+  selectableWithoutProgramming?: boolean;
 
   @ApiProperty({ description: 'Status (A=Active, I=Inactive, D=Draft)', required: false })
   @IsOptional()

@@ -24,7 +24,7 @@ export enum NotFoundCustomExceptionType {
   REPOSITORY,
   OPLLEVELS,
   CILT_SECUENCES_SCHEDULE,
-  CILT_MSTR_POSITION_LEVELS
+  CILT_MSTR_POSITION_LEVELS,
 }
 
 export class NotFoundCustomException extends HttpException {
