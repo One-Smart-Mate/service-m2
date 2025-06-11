@@ -15,6 +15,7 @@ import { stringConstants } from 'src/utils/string.constant';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
 import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
+import { CiltSequencesEntity } from 'src/modules/CiltSequences/entities/ciltSequences.entity';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -26,6 +27,8 @@ export class CiltSequencesExecutionsService {
     private readonly usersService: UsersService,
     private readonly mailService: MailService,
     private readonly firebaseService: FirebaseService,
+    @InjectRepository(CiltSequencesEntity)
+    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
   ) {}
 
   findAll = async () => {
@@ -92,13 +95,29 @@ export class CiltSequencesExecutionsService {
 
   findByCiltSequenceIdAndDate = async (ciltSequenceId: number, date: string) => {
     try {
-      return await this.ciltSequencesExecutionsRepository
+      // First we get the sequence
+      const sequence = await this.ciltSequencesRepository.findOne({
+        where: { id: ciltSequenceId }
+      });
+
+      if (!sequence) {
+        return null;
+      }
+
+      // Then we get the executions
+      const executions = await this.ciltSequencesExecutionsRepository
         .createQueryBuilder('execution')
         .where('execution.ciltSecuenceId = :ciltSequenceId', { ciltSequenceId })
         .andWhere('DATE(execution.secuenceSchedule) = :date', { date })
         .andWhere('execution.status = :status', { status: 'A' })
         .andWhere('execution.deletedAt IS NULL')
         .getMany();
+
+      // We return the sequence with its executions
+      return {
+        ...sequence,
+        executions
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }

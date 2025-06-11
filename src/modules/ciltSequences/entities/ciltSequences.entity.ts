@@ -3,7 +3,7 @@ import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 import { CiltFrequenciesEntity } from '../../ciltFrequencies/entities/ciltFrequencies.entity';
 
-@Entity('cilt_secuences')
+@Entity('cilt_sequences')
 export class CiltSequencesEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;

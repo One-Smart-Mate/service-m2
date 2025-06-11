@@ -10,7 +10,7 @@ import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.
 import { SiteEntity } from '../../site/entities/site.entity';
 import { ScheduleType } from 'src/utils/string.constant';
 
-@Entity('cilt_secuences_schedule')
+@Entity('cilt_sequences_schedule')
 export class CiltSecuencesScheduleEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;

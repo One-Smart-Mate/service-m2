@@ -16,7 +16,7 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { OplMstr } from '../../oplMstr/entities/oplMstr.entity';
 import { CiltSequencesEvidencesEntity } from '../../CiltSequencesEvidences/entities/ciltSequencesEvidences.entity';
 
-@Entity('cilt_secuencies_executions', {
+@Entity('cilt_sequences_executions', {
   comment: 'Save the information of the sequences when executing a CILT procedure, a record is generated for each frequency when a CILT is generated; it specifies the date/time when it should be executed'
 })
 @Index("fk_cilt_executions_level_id_idx", ["levelId"])

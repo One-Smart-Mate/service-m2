@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
-@Entity('cilt_secuences_frecuencies_OLD')
+@Entity('cilt_sequences_frequencies_OLD')
 export class CiltSequencesFrequenciesEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id" })
   id: number;

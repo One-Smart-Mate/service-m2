@@ -10,6 +10,7 @@ import { CiltMstrModule } from '../ciltMstr/ciltMstr.module';
 import { CiltSequencesModule } from '../ciltSequences/ciltSequences.module';
 import { SiteModule } from '../site/site.module';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
 @Module({
   imports: [
@@ -17,14 +18,15 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
       CiltSecuencesScheduleEntity,
       CiltMstrEntity,
       CiltSequencesEntity,
-      SiteEntity
+      SiteEntity,
+      CiltSequencesExecutionsEntity
     ]),
     forwardRef(() => CiltMstrModule),
-    CiltSequencesModule,
-    SiteModule
+    forwardRef(() => CiltSequencesModule),
+    forwardRef(() => SiteModule),
   ],
   controllers: [CiltSecuencesScheduleController],
   providers: [CiltSecuencesScheduleService, CustomLoggerService],
-  exports: [CiltSecuencesScheduleService]
+  exports: [CiltSecuencesScheduleService],
 })
 export class CiltSecuencesScheduleModule {} 

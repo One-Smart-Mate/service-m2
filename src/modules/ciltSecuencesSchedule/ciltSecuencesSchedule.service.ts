@@ -17,6 +17,8 @@ import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.ent
 import { SiteEntity } from '../site/entities/site.entity';
 import { CiltMstrService } from '../ciltMstr/ciltMstr.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { CiltSequencesExecutionsEntity } from '../ciltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class CiltSecuencesScheduleService {
@@ -31,7 +33,9 @@ export class CiltSecuencesScheduleService {
     private readonly siteRepository: Repository<SiteEntity>,
     @Inject(forwardRef(() => CiltMstrService))
     private readonly ciltMstrService: CiltMstrService,
-    private readonly logger: CustomLoggerService
+    private readonly logger: CustomLoggerService,
+    @InjectRepository(CiltSequencesExecutionsEntity)
+    private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>
   ) {}
 
   findAll = async () => {
@@ -80,9 +84,28 @@ export class CiltSecuencesScheduleService {
 
   findBySequenceId = async (sequenceId: number) => {
     try {
-      return await this.ciltSecuencesScheduleRepository.find({
+      const schedules = await this.ciltSecuencesScheduleRepository.find({
         where: { secuenceId: sequenceId },
       });
+
+      // Get the executions for each schedule
+      const schedulesWithExecutions = await Promise.all(
+        schedules.map(async (schedule) => {
+          const executions = await this.ciltSequencesExecutionsRepository.find({
+            where: { 
+              ciltSecuenceId: sequenceId,
+              status: 'A',
+              deletedAt: IsNull()
+            }
+          });
+          return {
+            ...schedule,
+            executions
+          };
+        })
+      );
+
+      return schedulesWithExecutions;
     } catch (exception) {
       HandleException.exception(exception);
     }
