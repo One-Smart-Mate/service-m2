@@ -1,5 +1,4 @@
 import { Exclude } from 'class-transformer';
-import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 import { UserHasSitesEntity } from 'src/modules/users/entities/user.has.sites.entity';
 import { CiltMstrEntity } from 'src/modules/ciltMstr/entities/ciltMstr.entity';
 import {
