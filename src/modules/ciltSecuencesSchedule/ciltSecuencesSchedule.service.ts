@@ -13,12 +13,12 @@ import {
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { stringConstants } from '../../utils/string.constant';
 import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
-import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CiltMstrService } from '../ciltMstr/ciltMstr.service';
 import { CustomLoggerService } from '../../common/logger/logger.service';
-import { CiltSequencesExecutionsEntity } from '../ciltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { IsNull } from 'typeorm';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
 @Injectable()
 export class CiltSecuencesScheduleService {

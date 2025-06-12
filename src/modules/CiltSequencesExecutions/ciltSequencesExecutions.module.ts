@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltSequencesExecutionsController } from './ciltSequencesExecutions.controller';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
-import { CiltSequencesEntity } from '../CiltSequences/entities/ciltSequences.entity';
 import { CiltMstrModule } from '../ciltMstr/ciltMstr.module';
 import { CiltSequencesModule } from '../ciltSequences/ciltSequences.module';
 import { SiteModule } from '../site/site.module';
@@ -16,6 +15,7 @@ import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 
 @Module({
   imports: [
