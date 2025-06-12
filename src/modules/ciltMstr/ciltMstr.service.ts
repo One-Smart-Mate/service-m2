@@ -12,8 +12,8 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
-import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
-import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from '../CiltSequencesExecutions/models/dto/create.ciltSequencesExecution.dto';
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
