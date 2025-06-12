@@ -15,7 +15,7 @@ import { stringConstants } from 'src/utils/string.constant';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
 import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
-import { CiltSequencesEntity } from 'src/modules/CiltSequences/entities/ciltSequences.entity';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
