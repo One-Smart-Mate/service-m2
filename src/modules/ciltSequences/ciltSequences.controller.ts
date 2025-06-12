@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltSequencesService } from './ciltSequences.service';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
+import { UpdateSequenceOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Cilt Sequences')
 @Controller('cilt-sequences')
@@ -22,32 +23,11 @@ export class CiltSequencesController {
     return await this.ciltSequencesService.findBySiteId(siteId);
   }
 
-  @Get('position/:positionId')
-  @ApiOperation({ summary: 'Get all CILT sequences by position ID' })
-  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
-  async findByPositionId(@Param('positionId') positionId: number) {
-    return await this.ciltSequencesService.findByPositionId(positionId);
-  }
-
-  @Get('area/:areaId')
-  @ApiOperation({ summary: 'Get all CILT sequences by area ID' })
-  @ApiParam({ name: 'areaId', type: 'number', description: 'Area ID' })
-  async findByAreaId(@Param('areaId') areaId: number) {
-    return await this.ciltSequencesService.findByAreaId(areaId);
-  }
-
   @Get('cilt/:ciltMstrId')
   @ApiOperation({ summary: 'Get all CILT sequences by CILT master ID' })
   @ApiParam({ name: 'ciltMstrId', type: 'number', description: 'CILT master ID' })
   async findByCiltMstrId(@Param('ciltMstrId') ciltMstrId: number) {
     return await this.ciltSequencesService.findByCiltMstrId(ciltMstrId);
-  }
-
-  @Get('level/:levelId')
-  @ApiOperation({ summary: 'Get all CILT sequences by level ID' })
-  @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
-  async findByLevelId(@Param('levelId') levelId: number) {
-    return await this.ciltSequencesService.findByLevelId(levelId);
   }
 
   @Get(':id')
@@ -69,5 +49,12 @@ export class CiltSequencesController {
   @ApiBody({ type: UpdateCiltSequenceDTO })
   async update(@Body() updateCiltSequenceDto: UpdateCiltSequenceDTO) {
     return await this.ciltSequencesService.update(updateCiltSequenceDto);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update sequence order' })
+  @ApiBody({ type: UpdateSequenceOrderDTO })
+  async updateOrder(@Body() updateOrderDto: UpdateSequenceOrderDTO) {
+    return await this.ciltSequencesService.updateOrder(updateOrderDto);
   }
 } 

@@ -8,9 +8,10 @@ import {
   Delete,
 } from '@nestjs/common';
 import { PositionService } from './position.service';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
 import { UsersService } from '../users/users.service';
 
 
@@ -75,5 +76,11 @@ export class PositionController {
   @Put('/update')
   update(@Body() updatePositionDto: UpdatePositionDto) {
     return this.positionService.update(updatePositionDto);
+  }
+
+  @Put('/update-order')
+  @ApiOperation({ summary: 'Update position order' })
+  updateOrder(@Body() updateOrderDto: UpdatePositionOrderDTO) {
+    return this.positionService.updateOrder(updateOrderDto);
   }
 }

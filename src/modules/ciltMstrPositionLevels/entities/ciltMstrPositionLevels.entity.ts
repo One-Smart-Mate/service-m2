@@ -2,9 +2,6 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  DeleteDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -17,28 +14,39 @@ export class CiltMstrPositionLevelsEntity {
   @PrimaryGeneratedColumn({ type: 'int', unsigned: true, name: 'id' })
   id: number;
 
-  @Column({ type: 'bigint', unsigned: true, name: 'site_id' })
+  @Column({ type: 'int', unsigned: true, name: 'site_id' })
   siteId: number;
 
-  @Column({ type: 'int', name: 'cilt_mstr_id' })
+  @Column({ type: 'int', unsigned: true, name: 'cilt_mstr_id' })
   ciltMstrId: number;
 
   @Column({ type: 'int', unsigned: true, name: 'position_id' })
   positionId: number;
 
-  @Column({ type: 'bigint', unsigned: true, name: 'level_id' })
+  @Column({ type: 'int', unsigned: true, name: 'level_id' })
   levelId: number;
 
-  @Column({ type: 'char', length: 1, name: 'status', default: 'A' })
-  status: string;
+  @Column({ type: 'char', length: 1, name: 'status', default: 'A', nullable: true })
+  status: string | null;
 
-  @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
-  createdAt: Date;
+  @Column({ 
+    type: 'timestamp', 
+    name: 'created_at', 
+    nullable: true,
+    default: () => 'CURRENT_TIMESTAMP'
+  })
+  createdAt: Date | null;
 
-  @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
-  updatedAt: Date;
+  @Column({ 
+    type: 'timestamp', 
+    name: 'updated_at', 
+    nullable: true,
+    default: () => 'CURRENT_TIMESTAMP',
+    onUpdate: 'CURRENT_TIMESTAMP'
+  })
+  updatedAt: Date | null;
 
-  @DeleteDateColumn({ type: 'timestamp', name: 'deleted_at', nullable: true })
+  @Column({ type: 'timestamp', name: 'deleted_at', nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => CiltMstrEntity)
@@ -52,4 +60,4 @@ export class CiltMstrPositionLevelsEntity {
   @ManyToOne(() => LevelEntity)
   @JoinColumn({ name: 'level_id' })
   level: LevelEntity;
-} 
+}

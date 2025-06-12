@@ -3,6 +3,8 @@ import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/s
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
+import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
+import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
 
 @ApiTags('Cilt Sequences Executions')
 @Controller('cilt-sequences-executions')
@@ -43,6 +45,17 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findByCiltDetailsId(ciltDetailsId);
   }
 
+  @Get('cilt-sequence/:ciltSequenceId/date/:date')
+  @ApiOperation({ summary: 'Get CILT sequence executions by CILT sequence ID and date' })
+  @ApiParam({ name: 'ciltSequenceId', type: 'number', description: 'CILT sequence ID' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in YYYY-MM-DD format' })
+  findByCiltSequenceIdAndDate(
+    @Param('ciltSequenceId') ciltSequenceId: number,
+    @Param('date') date: string
+  ) {
+    return this.ciltSequencesExecutionsService.findByCiltSequenceIdAndDate(ciltSequenceId, date);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT sequence execution by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution ID' })
@@ -57,11 +70,30 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
   }
 
+  @Put("/start")
+  @ApiOperation({ summary: 'Start a CILT sequence execution' })
+  @ApiBody({ type: StartCiltSequencesExecutionDTO })
+  @ApiResponse({ status: 200, description: 'CILT sequence execution started successfully' })
+  @ApiResponse({ status: 404, description: 'CILT sequence execution not found' })
+  start(@Body() startDTO: StartCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.start(startDTO);
+  }
+
   @Put("/update")
   @ApiOperation({ summary: 'Update a CILT sequence execution' })
   @ApiBody({ type: UpdateCiltSequencesExecutionDTO })
   update(@Body() updateCiltSequencesExecutionDTO: UpdateCiltSequencesExecutionDTO) {
     return this.ciltSequencesExecutionsService.update(updateCiltSequencesExecutionDTO);
+  }
+
+  @Put("/stop")
+  @ApiOperation({ summary: 'Finish a CILT sequence execution' })
+  @ApiBody({ type: StopCiltSequencesExecutionDTO })
+  @ApiResponse({ status: 200, description: 'CILT sequence execution finished successfully' })
+  @ApiResponse({ status: 404, description: 'CILT sequence execution not found' })
+  @ApiResponse({ status: 400, description: 'CILT sequence has not been started or has already been finished' })
+  stop(@Body() stopDTO: StopCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.stop(stopDTO);
   }
 
   @Delete(':id')

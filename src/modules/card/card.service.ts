@@ -948,7 +948,7 @@ export class CardService {
           new NotificationDTO(
             stringConstants.cardAssignedTitle.replace(
               '[card_id]',
-              card.id.toString(),
+              card.siteCardId.toString(),
             ),
             stringConstants.cardAssignedDescription,
             stringConstants.emptyNotificationType,

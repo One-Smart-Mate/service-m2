@@ -1,21 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { CiltSecuencesScheduleEntity } from './entities/ciltSecuencesSchedule.entity';
 import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
 import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
+import { UpdateScheduleOrderDTO } from './models/dto/update-order.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 import { stringConstants } from 'src/utils/string.constant';
+import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { SiteEntity } from '../site/entities/site.entity';
+import { CiltMstrService } from '../ciltMstr/ciltMstr.service';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { CiltSequencesExecutionsEntity } from '../ciltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { IsNull } from 'typeorm';
 
 @Injectable()
 export class CiltSecuencesScheduleService {
   constructor(
     @InjectRepository(CiltSecuencesScheduleEntity)
     private readonly ciltSecuencesScheduleRepository: Repository<CiltSecuencesScheduleEntity>,
+    @InjectRepository(CiltMstrEntity)
+    private readonly ciltMstrRepository: Repository<CiltMstrEntity>,
+    @InjectRepository(CiltSequencesEntity)
+    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    @InjectRepository(SiteEntity)
+    private readonly siteRepository: Repository<SiteEntity>,
+    @Inject(forwardRef(() => CiltMstrService))
+    private readonly ciltMstrService: CiltMstrService,
+    private readonly logger: CustomLoggerService,
+    @InjectRepository(CiltSequencesExecutionsEntity)
+    private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>
   ) {}
 
   findAll = async () => {
@@ -62,6 +82,35 @@ export class CiltSecuencesScheduleService {
     }
   };
 
+  findBySequenceId = async (sequenceId: number) => {
+    try {
+      const schedules = await this.ciltSecuencesScheduleRepository.find({
+        where: { secuenceId: sequenceId },
+      });
+
+      // Get the executions for each schedule
+      const schedulesWithExecutions = await Promise.all(
+        schedules.map(async (schedule) => {
+          const executions = await this.ciltSequencesExecutionsRepository.find({
+            where: { 
+              ciltSecuenceId: sequenceId,
+              status: 'A',
+              deletedAt: IsNull()
+            }
+          });
+          return {
+            ...schedule,
+            executions
+          };
+        })
+      );
+
+      return schedulesWithExecutions;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   /**
    * Validate that the dynamically built day column is safe to use in SQL
    * This prevents SQL injection by ensuring only valid day column names are used
@@ -92,7 +141,7 @@ export class CiltSecuencesScheduleService {
 
       // Verify it's a valid date
       if (isNaN(date.getTime())) {
-        throw new Error('Invalid date provided');
+        throw new ValidationException(ValidationExceptionType.INVALID_DATE);
       }
 
       // Get date components
@@ -106,7 +155,7 @@ export class CiltSecuencesScheduleService {
 
       // Validate day column for security
       if (!this.validateDayColumn(dayColumn)) {
-        throw new Error('Invalid day column');
+        throw new ValidationException(ValidationExceptionType.INVALID_DAY_COLUMN);
       }
 
       // Calculate week of month (1-based)
@@ -114,16 +163,6 @@ export class CiltSecuencesScheduleService {
       const firstWeekDay = firstDayOfMonth.getDay();
       const offsetDate = date.getDate() + firstWeekDay - 1;
       const weekOfMonth = Math.floor(offsetDate / 7) + 1;
-
-      // Log for debugging
-      console.log('Query parameters:', {
-        dateStr,
-        dayOfWeekNum,
-        dayColumn,
-        dayOfMonth,
-        month,
-        weekOfMonth,
-      });
 
       // Create query to get all active schedules
       const queryBuilder = this.ciltSecuencesScheduleRepository
@@ -144,8 +183,6 @@ export class CiltSecuencesScheduleService {
           });
 
           // wee: Weekly schedule - check if the current day of week is enabled
-          // CRITICAL: Must verify that the specific day column equals 1
-          // For example, if today is Sunday, check if the 'sun' field is 1
           qb.orWhere(
             `(schedule.scheduleType = :weeklyType AND schedule.${dayColumn} = 1)`,
             { weeklyType: 'wee' },
@@ -198,7 +235,6 @@ export class CiltSecuencesScheduleService {
           );
 
           // 3. Specific week of specific month with day of week
-          // (e.g., first Tuesday of March every year)
           qb.orWhere(
             `(
             schedule.scheduleType = :yearlyType3 AND 
@@ -216,9 +252,6 @@ export class CiltSecuencesScheduleService {
       // Order by schedule time for better organization
       queryBuilder.orderBy('schedule.schedule', 'ASC');
 
-      // Log the generated SQL for debugging
-      console.log('Generated SQL:', queryBuilder.getSql());
-
       // Execute query and return results
       const results = await queryBuilder.getMany();
 
@@ -227,16 +260,8 @@ export class CiltSecuencesScheduleService {
         this.isScheduleActiveForDate(schedule, dateStr),
       );
 
-      // Log if there's a discrepancy
-      if (results.length !== validatedResults.length) {
-        console.warn(
-          `Query returned ${results.length} results but only ${validatedResults.length} are valid`,
-        );
-      }
-
       return validatedResults;
     } catch (exception) {
-      console.error('Error in findSchedulesForDate:', exception);
       HandleException.exception(exception);
       return [];
     }
@@ -383,10 +408,46 @@ export class CiltSecuencesScheduleService {
 
   create = async (createDto: CreateCiltSecuencesScheduleDto) => {
     try {
+      // Validar que existan las entidades relacionadas
+      if (createDto.siteId) {
+        const site = await this.siteRepository.findOneBy({ id: createDto.siteId });
+        if (!site) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+        }
+      }
+
+      if (createDto.ciltId) {
+        const cilt = await this.ciltMstrRepository.findOneBy({ id: createDto.ciltId });
+        if (!cilt) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+        }
+      }
+
+      if (createDto.secuenceId) {
+        const sequence = await this.ciltSequencesRepository.findOneBy({ id: createDto.secuenceId });
+        if (!sequence) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+        }
+      }
+
+      // Found existing schedules for the same sequence
+      const existingSchedules = await this.ciltSecuencesScheduleRepository.find({
+        where: { secuenceId: createDto.secuenceId },
+        order: { order: 'DESC' },
+        take: 1
+      });
+
+      // Assign the next order number
+      const nextOrder = existingSchedules.length > 0 ? existingSchedules[0].order + 1 : 1;
+      createDto.order = nextOrder;
+
       const schedule = this.ciltSecuencesScheduleRepository.create(createDto);
       schedule.createdAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };
@@ -402,10 +463,35 @@ export class CiltSecuencesScheduleService {
         );
       }
 
+      // Validar que existan las entidades relacionadas
+      if (updateDto.siteId) {
+        const site = await this.siteRepository.findOneBy({ id: updateDto.siteId });
+        if (!site) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+        }
+      }
+
+      if (updateDto.ciltId) {
+        const cilt = await this.ciltMstrRepository.findOneBy({ id: updateDto.ciltId });
+        if (!cilt) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+        }
+      }
+
+      if (updateDto.secuenceId) {
+        const sequence = await this.ciltSequencesRepository.findOneBy({ id: updateDto.secuenceId });
+        if (!sequence) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+        }
+      }
+
       Object.assign(schedule, updateDto);
       schedule.updatedAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };
@@ -427,6 +513,48 @@ export class CiltSecuencesScheduleService {
       schedule.deletedAt = new Date();
       return await this.ciltSecuencesScheduleRepository.save(schedule);
     } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateOrder = async (updateOrderDto: UpdateScheduleOrderDTO) => {
+    try {
+      // Find the schedule to update
+      const scheduleToUpdate = await this.ciltSecuencesScheduleRepository.findOneBy({
+        id: updateOrderDto.scheduleId,
+      });
+      if (!scheduleToUpdate) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
+        );
+      }
+
+      // Find the schedule that currently has the new order
+      const scheduleWithNewOrder = await this.ciltSecuencesScheduleRepository.findOne({
+        where: {
+          secuenceId: scheduleToUpdate.secuenceId,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (scheduleWithNewOrder) {
+        // Swap orders
+        const oldOrder = scheduleToUpdate.order;
+        scheduleToUpdate.order = updateOrderDto.newOrder;
+        scheduleWithNewOrder.order = oldOrder;
+
+        // Save both schedules
+        await this.ciltSecuencesScheduleRepository.save(scheduleWithNewOrder);
+        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
+      } else {
+        // If no schedule has the new order, just update the order
+        scheduleToUpdate.order = updateOrderDto.newOrder;
+        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
+      }
+    } catch (exception) {
+      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+        throw exception;
+      }
       HandleException.exception(exception);
     }
   };

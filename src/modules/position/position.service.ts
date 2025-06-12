@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PositionEntity } from './entities/position.entity';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
 import { LevelService } from '../level/level.service';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
@@ -24,7 +25,9 @@ export class PositionService {
 
   findAll = async () => {
     try {
-      return await this.positionRepository.find();
+      return await this.positionRepository.find({
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -44,7 +47,10 @@ export class PositionService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.positionRepository.find({ where: { siteId } });
+      return await this.positionRepository.find({ 
+        where: { siteId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -52,7 +58,10 @@ export class PositionService {
 
   findBySiteIdAndLevelId = async (siteId: number, levelId: number) => {
     try {
-      return await this.positionRepository.find({ where: { siteId, levelId } });
+      return await this.positionRepository.find({ 
+        where: { siteId, levelId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -60,7 +69,10 @@ export class PositionService {
 
   findByAreaId = async (areaId: number) => {
     try {
-      return await this.positionRepository.find({ where: { areaId } });
+      return await this.positionRepository.find({ 
+        where: { areaId },
+        order: { order: 'ASC' }
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -72,6 +84,7 @@ export class PositionService {
         .createQueryBuilder('position')
         .innerJoin('users_positions', 'up', 'up.position_id = position.id')
         .where('up.user_id = :userId', { userId })
+        .orderBy('position.order', 'ASC')
         .getMany();
     } catch (exception) {
       HandleException.exception(exception);
@@ -96,6 +109,17 @@ export class PositionService {
       const lastLevel = await this.levelService.findLastLevelFromNode(createPositionDto.levelId);
       createPositionDto.areaId = lastLevel.area_id;
       createPositionDto.areaName = lastLevel.area_name;
+
+      // Found existing positions for the same site
+      const existingPositions = await this.positionRepository.find({
+        where: { siteId: createPositionDto.siteId },
+        order: { order: 'DESC' },
+        take: 1
+      });
+
+      // Assign the next order number
+      const nextOrder = existingPositions.length > 0 ? existingPositions[0].order + 1 : 1;
+      createPositionDto.order = nextOrder;
 
       const position = this.positionRepository.create({
         ...createPositionDto,
@@ -154,4 +178,40 @@ export class PositionService {
     }
   };
 
+  updateOrder = async (updateOrderDto: UpdatePositionOrderDTO) => {
+    try {
+      // Find the position to update
+      const positionToUpdate = await this.positionRepository.findOneBy({
+        id: updateOrderDto.positionId,
+      });
+      if (!positionToUpdate) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
+      }
+
+      // Find the position that currently has the new order
+      const positionWithNewOrder = await this.positionRepository.findOne({
+        where: {
+          siteId: positionToUpdate.siteId,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (positionWithNewOrder) {
+        // Swap orders
+        const oldOrder = positionToUpdate.order;
+        positionToUpdate.order = updateOrderDto.newOrder;
+        positionWithNewOrder.order = oldOrder;
+
+        // Save both positions
+        await this.positionRepository.save(positionWithNewOrder);
+        return await this.positionRepository.save(positionToUpdate);
+      } else {
+        // If no position has the new order, just update the order
+        positionToUpdate.order = updateOrderDto.newOrder;
+        return await this.positionRepository.save(positionToUpdate);
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

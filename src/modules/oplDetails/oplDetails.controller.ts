@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
 import { OplDetailsService } from './oplDetails.service';
 import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailsDTO } from './models/dto/updateOplDetails.dto';
+import { UpdateOplDetailOrderDTO } from './models/dto/update-order.dto';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 
 @ApiTags('Opl Details')
@@ -45,5 +46,13 @@ export class OplDetailsController {
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
   async update(@Body() updateOplDetailsDto: UpdateOplDetailsDTO) {
     return await this.oplDetailsService.update(updateOplDetailsDto);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update OPL detail order' })
+  @ApiResponse({ status: 200, description: 'OPL detail order updated successfully'})
+  @ApiResponse({ status: 404, description: 'OPL detail not found' })
+  async updateOrder(@Body() updateOrderDto: UpdateOplDetailOrderDTO) {
+    return await this.oplDetailsService.updateOrder(updateOrderDto);
   }
 } 

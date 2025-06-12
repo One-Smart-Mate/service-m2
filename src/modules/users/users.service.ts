@@ -29,6 +29,7 @@ import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
 import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class UsersService {
@@ -43,6 +44,7 @@ export class UsersService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(UsersPositionsEntity)
     private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
+    private readonly logger: CustomLoggerService,
   ) {}
 
   findUsersByPositionId = async (positionId: number) => {
@@ -174,6 +176,19 @@ export class UsersService {
     return this.userRepository.save(user);
   };
 
+  updateLastLogin = async (user: UserEntity) => {
+    const exists = await this.userRepository.existsBy({ email: user.email });
+    if (!exists) {
+      throw new BadRequestException('The user does not exist');
+    }
+  
+    return this.userRepository.update(user.id, {
+      lastLoginWeb: user.lastLoginWeb,
+      lastLoginApp: user.lastLoginApp,
+      updatedAt: new Date(),
+    });
+  };
+  
   getUserRoles = async (userId: number): Promise<string[]> => {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -201,13 +216,13 @@ export class UsersService {
     try {
       const users = await this.userRepository.find({
         where: { userHasSites: { site: { id: siteId } } },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
 
       return tokens;
@@ -226,13 +241,13 @@ export class UsersService {
           userHasSites: { site: { id: siteId } },
           id: Not(userId),
         },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       const tokens = users.flatMap(user => [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
   
       return tokens;
@@ -245,7 +260,7 @@ export class UsersService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
-        select: ['android_token', 'ios_token', 'web_token'],
+        select: ['androidToken', 'iosToken', 'webToken'],
       });
 
       if (!user) {
@@ -253,9 +268,9 @@ export class UsersService {
       }
 
       const tokens = [
-        user.android_token ? { token: user.android_token, type: stringConstants.OS_ANDROID } : null,
-        user.ios_token ? { token: user.ios_token, type: stringConstants.OS_IOS } : null,
-        user.web_token ? { token: user.web_token, type: stringConstants.OS_WEB } : null
+        user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
+        user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
+        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null);
 
       return tokens;
@@ -410,73 +425,72 @@ export class UsersService {
   
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
-      const [user, emailIsNotUnique, site, roles] = await Promise.all([
-        this.userRepository.findOne({
-          where: { id: updateUserDTO.id },
-          relations: { userHasSites: { site: true } },
-        }),
-        this.userRepository.exists({
-          where: { email: updateUserDTO.email, id: Not(updateUserDTO.id) },
-        }),
+      this.logger.logProcess(`[UPDATE_USER] Starting update for user_id: ${updateUserDTO.id}`);
+  
+      const [user, site, roles] = await Promise.all([
+        this.userRepository.findOneBy({ id: updateUserDTO.id }),
         this.siteService.findById(updateUserDTO.siteId),
         this.roleService.findRolesByIds(updateUserDTO.roles),
       ]);
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-      if (emailIsNotUnique) {
-        throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-      }
-      if (!site) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      }
-      if (roles.length === 0) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
-      }
-
-      user.name = updateUserDTO.name;
-      user.email = updateUserDTO.email;
+  
+      if (!user) throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      if (!site) throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      if (roles.length === 0) throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
+  
+      const emailIsNotUnique = await this.userRepository.exists({
+        where: {
+          email: updateUserDTO.email,
+          id: Not(updateUserDTO.id),
+          siteCode: site.siteCode,
+        },
+      });
+      if (emailIsNotUnique) throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+  
+      let updatePayload: Partial<UserEntity> = {
+        name: updateUserDTO.name,
+        email: updateUserDTO.email,
+        status: updateUserDTO.status,
+        siteId: site.id,
+        siteCode: site.siteCode,
+        appVersion: process.env.APP_ENV,
+        uploadCardDataWithDataNet: updateUserDTO.uploadCardDataWithDataNet,
+        uploadCardEvidenceWithDataNet: updateUserDTO.uploadCardEvidenceWithDataNet,
+        updatedAt: new Date(),
+      };
+  
       if (updateUserDTO.password) {
-        user.password = await bcryptjs.hash(
+        updatePayload.password = await bcryptjs.hash(
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
       }
-
+  
       if (updateUserDTO.fastPassword) {
         if (!/^[0-9A-F]+$/i.test(updateUserDTO.fastPassword)) {
           throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
         }
-        
+  
         const existingUser = await this.userRepository.findOne({
-          where: { 
-            fastPassword: updateUserDTO.fastPassword, 
+          where: {
+            fastPassword: updateUserDTO.fastPassword,
             id: Not(updateUserDTO.id),
-            userHasSites: { site: { id: updateUserDTO.siteId } } 
-          }
+            siteId: site.id,
+          },
         });
-        
         if (existingUser) {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
-        
-        user.fastPassword = updateUserDTO.fastPassword;
+  
+        updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
-
-      user.status = updateUserDTO.status;
-      user.appVersion = process.env.APP_ENV;
-      user.siteCode = site.siteCode;
-      user.uploadCardDataWithDataNet = updateUserDTO.uploadCardDataWithDataNet;
-      user.uploadCardEvidenceWithDataNet =
-        updateUserDTO.uploadCardEvidenceWithDataNet;
-      user.status = updateUserDTO.status;  
-      user.updatedAt = new Date();
-
-      await this.userRepository.save(user);
-
+  
+      this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
+      await this.userRepository.update({ id: user.id }, updatePayload);
+      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
+  
       if (updateUserDTO.status === stringConstants.inactiveStatus) {
         const tokens = await this.getUserToken(user.id);
-        if (tokens && tokens.length > 0) {
+        if (tokens?.length > 0) {
           await this.firebaseService.sendMultipleMessage(
             new NotificationDTO(
               stringConstants.closeSessionTitle,
@@ -487,10 +501,83 @@ export class UsersService {
           );
         }
       }
-      
+  
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
+      this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
       console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { id: updateUserPartialDTO.id },
+      });
+      
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      
+      if (updateUserPartialDTO.email && updateUserPartialDTO.email !== user.email) {
+        const emailIsNotUnique = await this.userRepository.exists({
+          where: { email: updateUserPartialDTO.email, id: Not(updateUserPartialDTO.id) },
+        });
+        
+        if (emailIsNotUnique) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.email = updateUserPartialDTO.email;
+      }
+      
+      if (updateUserPartialDTO.name) {
+        user.name = updateUserPartialDTO.name;
+      }
+      
+      if (updateUserPartialDTO.password) {
+        user.password = await bcryptjs.hash(
+          updateUserPartialDTO.password,
+          stringConstants.SALT_ROUNDS,
+        );
+      }
+      
+      if (updateUserPartialDTO.fastPassword) {
+        if (!/^[0-9A-F]+$/i.test(updateUserPartialDTO.fastPassword)) {
+          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+        }
+        
+        const existingUsers = await this.userRepository.find({
+          where: { 
+            fastPassword: updateUserPartialDTO.fastPassword, 
+            id: Not(updateUserPartialDTO.id)
+          },
+          relations: { userHasSites: { site: true } }
+        });
+        
+        const userSites = await this.userHasSiteRepository.find({
+          where: { user: { id: user.id } },
+          relations: { site: true }
+        });
+        
+        const userSiteIds = userSites.map(us => us.site.id);
+        
+        const conflictingUser = existingUsers.find(u => 
+          u.userHasSites.some(uhs => userSiteIds.includes(uhs.site.id))
+        );
+        
+        if (conflictingUser) {
+          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+        }
+        
+        user.fastPassword = updateUserPartialDTO.fastPassword;
+      }
+      
+      user.updatedAt = new Date();
+      
+      return await this.userRepository.save(user);
+    } catch (exception) {
       HandleException.exception(exception);
     }
   };
@@ -616,15 +703,15 @@ export class UsersService {
   
       switch (setAppTokenDTO.osName) {
         case stringConstants.OS_ANDROID:
-          user.android_token = setAppTokenDTO.appToken;
+          user.androidToken = setAppTokenDTO.appToken;
           user.androidVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_IOS:
-          user.ios_token = setAppTokenDTO.appToken;
+          user.iosToken = setAppTokenDTO.appToken;
           user.iosVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_WEB:
-          user.web_token = setAppTokenDTO.appToken;
+          user.webToken = setAppTokenDTO.appToken;
           user.webVersion = setAppTokenDTO.osVersion;
           break;
         default:
@@ -647,13 +734,13 @@ export class UsersService {
   
       switch (osName) {
         case stringConstants.OS_ANDROID:
-          user.android_token = null;
+          user.androidToken = null;
           break;
         case stringConstants.OS_IOS:
-          user.ios_token = null;
+          user.iosToken = null;
           break;
         case stringConstants.OS_WEB:
-          user.web_token = null;
+          user.webToken = null;
           break;
         default:
           throw new Error('OS no reconocido');

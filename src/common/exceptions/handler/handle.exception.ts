@@ -1,12 +1,10 @@
-import { Logger } from '@nestjs/common';
 import { NotFoundCustomException } from '../types/notFound.exception';
-import { SqlException } from '../types/sql.exception';
 import { ValidationException } from '../types/validation.exception';
+import { SqlException } from '../types/sql.exception';
 
 export class HandleException {
   static exception(exception: any) {
-    Logger.error(exception);
-    if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
+    if (exception instanceof NotFoundCustomException || exception instanceof ValidationException) {
       throw exception;
     }
     throw new SqlException(exception);

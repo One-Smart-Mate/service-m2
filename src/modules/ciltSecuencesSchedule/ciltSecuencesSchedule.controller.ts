@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltSecuencesScheduleService } from './ciltSecuencesSchedule.service';
 import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
 import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
+import { UpdateScheduleOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('CILT Secuences Schedule')
 @Controller('cilt-secuences-schedule')
@@ -69,5 +70,19 @@ export class CiltSecuencesScheduleController {
   @ApiParam({ name: 'id', type: 'number', description: 'Schedule ID' })
   async delete(@Param('id') id: number) {
     return await this.ciltSecuencesScheduleService.delete(id);
+  }
+
+  @Get('/sequences/:sequenceId')
+  @ApiOperation({ summary: 'Get all schedules by sequence ID' })
+  @ApiParam({ name: 'sequenceId', type: 'number', description: 'Sequence ID' })
+  async findBySequenceId(@Param('sequenceId') sequenceId: number) {
+    return await this.ciltSecuencesScheduleService.findBySequenceId(sequenceId);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update schedule order' })
+  @ApiBody({ type: UpdateScheduleOrderDTO })
+  async updateOrder(@Body() updateOrderDto: UpdateScheduleOrderDTO) {
+    return await this.ciltSecuencesScheduleService.updateOrder(updateOrderDto);
   }
 } 

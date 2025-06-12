@@ -50,7 +50,7 @@ export class AuthService {
         user.lastLoginApp = now;
       }
       
-      await this.usersSevice.update(user);
+      await this.usersSevice.updateLastLogin(user);
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 

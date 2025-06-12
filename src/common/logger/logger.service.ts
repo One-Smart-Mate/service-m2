@@ -4,12 +4,14 @@ import { Injectable, Logger } from '@nestjs/common';
 export class CustomLoggerService {
   private readonly logger = new Logger();
 
-  // Códigos ANSI para colores
+  
   private readonly colors = {
     yellow: '\x1b[33m',
     cyan: '\x1b[36m',
     red: '\x1b[31m',
     green: '\x1b[32m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
     reset: '\x1b[0m'
   };
 
@@ -30,5 +32,9 @@ export class CustomLoggerService {
 
   logEmail(content: string, info?: any) {
     this.logger.log(`${this.colors.green}[EMAIL]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+  }
+
+  logProcess(content: string, info?: any) {
+    this.logger.log(`${this.colors.magenta}[PROCESS]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
   }
 } 
