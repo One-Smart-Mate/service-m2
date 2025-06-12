@@ -1,5 +1,6 @@
+import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
-import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
+
 
 @Entity("cilt_frecuencies")
 export class CiltFrequenciesEntity {

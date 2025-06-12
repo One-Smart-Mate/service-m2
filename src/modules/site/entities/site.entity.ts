@@ -9,6 +9,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
+import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
 
 @Entity('sites')
 @Index('idx_site_code', ['siteCode'], { unique: true })

@@ -4,18 +4,18 @@ import { Repository, IsNull, Between } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
-import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
-import { PositionEntity } from 'src/modules/position/entities/position.entity';
-import { UsersService } from 'src/modules/users/users.service';
-import { MailService } from 'src/modules/mail/mail.service';
-import { FirebaseService } from 'src/modules/firebase/firebase.service';
+import { HandleException } from '../../common/exceptions/handler/handle.exception';
+import { NotFoundCustomException, NotFoundCustomExceptionType } from '../../common/exceptions/types/notFound.exception';
+import { PositionEntity } from '../position/entities/position.entity';
+import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
-import { stringConstants } from 'src/utils/string.constant';
+import { stringConstants } from '../../utils/string.constant';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
-import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
-import { CiltSequencesEntity } from 'src/modules/CiltSequences/entities/ciltSequences.entity';
+import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
