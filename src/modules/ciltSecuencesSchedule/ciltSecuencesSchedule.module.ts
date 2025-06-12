@@ -9,7 +9,7 @@ import { SiteEntity } from '../site/entities/site.entity';
 import { CiltMstrModule } from '../ciltMstr/ciltMstr.module';
 import { CiltSequencesModule } from '../ciltSequences/ciltSequences.module';
 import { SiteModule } from '../site/site.module';
-import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { CustomLoggerService } from '../../common/logger/logger.service';
 import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
 @Module({
