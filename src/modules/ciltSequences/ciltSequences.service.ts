@@ -5,11 +5,11 @@ import { CiltSequencesEntity } from './entities/ciltSequences.entity';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
 import { UpdateSequenceOrderDTO } from './models/dto/update-order.dto';
-import { HandleException } from 'src/common/exceptions/handler/handle.exception';
+import { HandleException } from '../../common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
-} from 'src/common/exceptions/types/notFound.exception';
+} from '../../common/exceptions/types/notFound.exception';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
 import { CiltFrequenciesEntity } from '../ciltFrequencies/entities/ciltFrequencies.entity';
