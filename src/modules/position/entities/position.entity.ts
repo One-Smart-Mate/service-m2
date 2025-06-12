@@ -44,12 +44,6 @@ export class PositionEntity {
   @Column({ name: 'node_responsable_name', type: 'varchar', length: 100, nullable: true })
   nodeResponsableName: string | null;
 
-  @Column({ name: 'node_responsable_id', type: 'int', nullable: true })
-  nodeResponsableId: number;
-
-  @Column({ name: 'node_responsable_name', type: 'varchar', length: 100, nullable: true })
-  nodeResponsableName: string;
-
   @Column({ name: 'route', type: 'varchar', length: 250, nullable: true })
   route: string | null;
 
