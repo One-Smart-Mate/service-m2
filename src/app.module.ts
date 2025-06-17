@@ -37,6 +37,7 @@ import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/cil
 import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/ciltMstrPositionLevels.module';
 import { TaskModule } from './modules/task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { IaModule } from './modules/ia/ia.module';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     CiltSecuencesScheduleModule,
     CiltMstrPositionLevelsModule,
     TaskModule,
+    IaModule,
   ],
   controllers: [AppController],
   providers: [

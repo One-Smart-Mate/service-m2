@@ -26,6 +26,7 @@
     "migration:revert": "npx typeorm-ts-node-commonjs migration:revert -d ./src/config/data-source.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^10.4.17",
     "@nestjs/config": "^3.3.0",
