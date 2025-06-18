@@ -3,7 +3,8 @@ import {
   PrimaryGeneratedColumn, 
   Column,
   ManyToOne,
-  JoinColumn
+  JoinColumn,
+  DeleteDateColumn
 } from 'typeorm';
 import { OplMstr } from '../../oplMstr/entities/oplMstr.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
@@ -46,7 +47,7 @@ export class OplDetailsEntity {
   })
   updatedAt: Date | null;
 
-  @Column("timestamp", { name: "deleted_at", nullable: true })
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => OplMstr)

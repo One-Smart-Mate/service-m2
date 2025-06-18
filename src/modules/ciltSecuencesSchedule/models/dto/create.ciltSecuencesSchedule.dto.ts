@@ -9,7 +9,9 @@ import {
   Max,
   Matches,
   IsEnum,
-  IsNotEmpty
+  IsNotEmpty,
+  IsArray,
+  ArrayMinSize
 } from 'class-validator';
 import { ScheduleType } from 'src/utils/string.constant';
 
@@ -36,18 +38,20 @@ export class CreateCiltSecuencesScheduleDto {
   frecuency?: string;
 
   @ApiProperty({ 
-    description: 'Schedule time in format HH:mm:ss', 
-    required: false, 
-    default: '08:00:00',
-    example: '08:00:00',
-    type: 'string'
+    description: 'Array of schedule times in format HH:mm:ss', 
+    required: true, 
+    example: ['08:00:00', '14:00:00', '20:00:00'],
+    type: [String],
+    isArray: true
   })
-  @IsOptional()
-  @IsString()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
   @Matches(/^([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/, {
-    message: 'Schedule must be in format HH:mm:ss'
+    message: 'Each schedule must be in format HH:mm:ss',
+    each: true
   })
-  schedule?: string;
+  schedules: string[];
 
   @ApiProperty({ 
     required: false, 

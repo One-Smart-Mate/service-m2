@@ -13,6 +13,7 @@ import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { LevelEntity } from '../level/entities/level.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { In } from 'typeorm';
+import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 
 @Injectable()
 export class OplMstrService {
@@ -109,25 +110,14 @@ export class OplMstrService {
   findOplMstrBySiteId = async (siteId: number) => {
     try {
       const opls = await this.oplRepository.find({
-        where: {
-          siteId,
-          deletedAt: null
-        },
-        order: {
-          id: 'ASC'
-        }
-      });
-
-      const oplIds = opls.map(opl => opl.id);
-      const details = await this.oplDetailsRepository.find({
-        where: { oplId: In(oplIds) },
+        where: { siteId },
         order: { order: 'ASC' }
       });
-
-      return opls.map(opl => ({
-        ...opl,
-        details: details.filter(detail => detail.oplId === opl.id)
-      }));
+      
+      if (!opls || opls.length === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+      return opls;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -153,6 +143,57 @@ export class OplMstrService {
 
       Object.assign(opl, updateOplDto);
       return await this.oplRepository.save(opl);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateOrder = async (updateOrderDto: UpdateOplMstrOrderDTO) => {
+    try {
+      // Find the detail to update
+      const oplToUpdate = await this.oplRepository.findOneBy({
+        id: updateOrderDto.oplId,
+      });
+      if (!oplToUpdate) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+
+      // Find the detail that currently has the new order
+      const detailWithNewOrder = await this.oplDetailsRepository.findOne({
+        where: {
+          oplId: oplToUpdate.id,
+          order: updateOrderDto.newOrder,
+        },
+      });
+
+      if (detailWithNewOrder) {
+        // Swap orders
+        const oldOrder = oplToUpdate.order;
+        oplToUpdate.order = updateOrderDto.newOrder;
+        detailWithNewOrder.order = oldOrder;
+
+        // Save both details
+        await this.oplDetailsRepository.save(detailWithNewOrder);
+        return await this.oplDetailsRepository.save(oplToUpdate);
+      } else {
+        // If no detail has the new order, just update the order
+        oplToUpdate.order = updateOrderDto.newOrder;
+        return await this.oplDetailsRepository.save(oplToUpdate);
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+
+  delete = async (id: number) => {
+    try {
+      const opl = await this.oplRepository.findOneBy({ id });
+      if (!opl) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+      
+      return await this.oplRepository.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }
