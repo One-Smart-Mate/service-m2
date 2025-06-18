@@ -439,11 +439,19 @@ export class CiltSecuencesScheduleService {
 
       // Assign the next order number
       const nextOrder = existingSchedules.length > 0 ? existingSchedules[0].order + 1 : 1;
-      createDto.order = nextOrder;
 
-      const schedule = this.ciltSecuencesScheduleRepository.create(createDto);
-      schedule.createdAt = new Date();
-      return await this.ciltSecuencesScheduleRepository.save(schedule);
+      // Crear un schedule para cada horario en el array
+      const schedules = await Promise.all(createDto.schedules.map(async (scheduleTime, index) => {
+        const schedule = this.ciltSecuencesScheduleRepository.create({
+          ...createDto,
+          schedule: scheduleTime,
+          order: nextOrder + index,
+          createdAt: new Date()
+        });
+        return await this.ciltSecuencesScheduleRepository.save(schedule);
+      }));
+
+      return schedules;
     } catch (exception) {
       if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
         throw exception;
