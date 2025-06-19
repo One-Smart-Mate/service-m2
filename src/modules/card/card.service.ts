@@ -763,7 +763,8 @@ export class CardService {
       const queryBuilder = await this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMechanic])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -794,7 +795,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('(card.status = :statusC OR card.status = :statusR)', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(

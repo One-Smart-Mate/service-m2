@@ -41,7 +41,10 @@ import { IaModule } from './modules/ia/ia.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     typeOrmConfig,
     ScheduleModule.forRoot(),
     UsersModule,
