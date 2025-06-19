@@ -1,7 +1,8 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
 import { CustomLoggerService } from '../../common/logger/logger.service';
-import { iaDataSource } from '../../config/ia-db.config';
+import { DataSource } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
 export class IaService implements OnModuleInit {
@@ -22,15 +23,18 @@ export class IaService implements OnModuleInit {
         'users_positions'
     ];
 
-    constructor(private readonly logger: CustomLoggerService) {
+    constructor(
+        private readonly logger: CustomLoggerService,
+        @InjectDataSource('iaConnection') private readonly iaDataSource: DataSource
+    ) { 
         this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     }
 
     async onModuleInit() {
         try {
-            if (!iaDataSource.isInitialized) {
-                await iaDataSource.initialize();
+            if (!this.iaDataSource.isInitialized) {
+                await this.iaDataSource.initialize();
                 this.logger.logIA('Database connection established');
             }
         } catch (error) {
@@ -40,7 +44,7 @@ export class IaService implements OnModuleInit {
     }
 
     private async getTableStructure(tableName: string): Promise<string> {
-        const queryRunner = iaDataSource.createQueryRunner();
+        const queryRunner = this.iaDataSource.createQueryRunner();
         try {
             await queryRunner.connect();
             const createTable = await queryRunner.query(`SHOW CREATE TABLE ${tableName}`);
@@ -67,8 +71,8 @@ export class IaService implements OnModuleInit {
 
     async convertToSQL(naturalLanguage: string): Promise<{ sql: string; refinedData: any }> {
         try {
-            if (!iaDataSource.isInitialized) {
-                await iaDataSource.initialize();
+            if (!this.iaDataSource.isInitialized) {
+                await this.iaDataSource.initialize();
             }
 
             this.logger.logIA(`Available tables: ${this.availableTables.join(', ')}`);
@@ -135,7 +139,7 @@ export class IaService implements OnModuleInit {
             }
 
             // Execute SQL query
-            const queryRunner = iaDataSource.createQueryRunner();
+            const queryRunner = this.iaDataSource.createQueryRunner();
             try {
                 await queryRunner.connect();
                 const result = await queryRunner.query(sql);
