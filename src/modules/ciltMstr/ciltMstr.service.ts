@@ -240,7 +240,7 @@ export class CiltMstrService {
             where: {
               ciltId: masterId,
               ciltSecuenceId: seq.id,
-              secuenceSchedule: scheduleDate,
+              secuenceSchedule: new Date(scheduleDetails.schedule),
               status: 'A',
               deletedAt: IsNull(),
             }
@@ -257,7 +257,7 @@ export class CiltMstrService {
               ciltSecuenceId: seq.id,
               userId: user.id,
               userWhoExecutedId: user.id,
-              secuenceSchedule: scheduleDate,
+              secuenceSchedule: new Date(scheduleDetails.schedule),
               standardOk: seq.standardOk,
               referencePoint: seq.referencePoint,
               secuenceList: seq.secuenceList,
@@ -293,7 +293,7 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: scheduleDate,
+          secuenceSchedule: In(scheduledSequences.map(ss => new Date(ss.schedule))),
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },
@@ -504,7 +504,7 @@ export class CiltMstrService {
               where: {
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,
-                secuenceSchedule: scheduleDate,
+                secuenceSchedule: new Date(scheduleDetails.schedule),
                 status: 'A',
                 deletedAt: IsNull(),
               }
@@ -521,7 +521,7 @@ export class CiltMstrService {
                 ciltSecuenceId: seq.id,
                 userId: user.id,
                 userWhoExecutedId: user.id,
-                secuenceSchedule: scheduleDate,
+                secuenceSchedule: new Date(scheduleDetails.schedule),
                 standardOk: seq.standardOk,
                 referencePoint: seq.referencePoint,
                 secuenceList: seq.secuenceList,
@@ -558,7 +558,7 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: scheduleDate,
+          secuenceSchedule: In(scheduledSequences.map(ss => new Date(ss.schedule))),
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },
