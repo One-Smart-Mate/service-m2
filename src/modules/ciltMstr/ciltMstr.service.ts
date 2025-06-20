@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Equal, Raw } from 'typeorm';
+import { Repository, In, IsNull, Equal, Raw, Between } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -153,6 +153,12 @@ export class CiltMstrService {
     try {
       // Change date to midnight local
       const scheduleDate = new Date(date);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
   
       // 1) Search user
       const user = await this.userRepository.findOneBy({ id: userId });
@@ -236,11 +242,22 @@ export class CiltMstrService {
             sch => sch.ciltId === masterId && sch.secuenceId === seq.id
           );
 
+          const executionDate = new Date(scheduleDate);
+          if (scheduleDetails?.schedule) {
+              const timeParts = scheduleDetails.schedule.split(':');
+              if (timeParts.length === 3) {
+                  executionDate.setHours(Number(timeParts[0]));
+                  executionDate.setMinutes(Number(timeParts[1]));
+                  executionDate.setSeconds(Number(timeParts[2]));
+              }
+          }
+
           const existing = await this.ciltSequencesExecutionsRepository.findOne({
             where: {
               ciltId: masterId,
               ciltSecuenceId: seq.id,
-              secuenceSchedule: new Date(scheduleDetails.schedule),
+              userId: user.id,
+              secuenceSchedule: executionDate,
               status: 'A',
               deletedAt: IsNull(),
             }
@@ -257,7 +274,7 @@ export class CiltMstrService {
               ciltSecuenceId: seq.id,
               userId: user.id,
               userWhoExecutedId: user.id,
-              secuenceSchedule: new Date(scheduleDetails.schedule),
+              secuenceSchedule: executionDate,
               standardOk: seq.standardOk,
               referencePoint: seq.referencePoint,
               secuenceList: seq.secuenceList,
@@ -274,11 +291,11 @@ export class CiltMstrService {
               duration: seq.standardTime,
               levelId: cpl.levelId,
               route: await this.levelService.getLevelPathById(cpl.levelId),
-              allowExecuteBefore: Boolean(scheduleDetails.allowExecuteBefore),
-              allowExecuteBeforeMinutes: scheduleDetails.allowExecuteBeforeMinutes,
-              toleranceBeforeMinutes: scheduleDetails.toleranceBeforeMinutes,
-              toleranceAfterMinutes: scheduleDetails.toleranceAfterMinutes,
-              allowExecuteAfterDue: Boolean(scheduleDetails.allowExecuteAfterDue),
+              allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
+              allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
+              toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
+              toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
+              allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
               specialWarning: seq.specialWarning,
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
@@ -293,7 +310,8 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: In(scheduledSequences.map(ss => new Date(ss.schedule))),
+          secuenceSchedule: Between(dayStart, dayEnd),
+          userId: userId,
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },
@@ -404,6 +422,12 @@ export class CiltMstrService {
     try {
       // Change date to midnight local
       const scheduleDate = new Date(date);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
   
       // 1) Get all CILTs for the site
       const ciltMasters = await this.ciltRepository.find({
@@ -500,11 +524,22 @@ export class CiltMstrService {
               sch => sch.ciltId === masterId && sch.secuenceId === seq.id
             );
 
+            const executionDate = new Date(scheduleDate);
+            if (scheduleDetails?.schedule) {
+                const timeParts = scheduleDetails.schedule.split(':');
+                if (timeParts.length === 3) {
+                    executionDate.setHours(Number(timeParts[0]));
+                    executionDate.setMinutes(Number(timeParts[1]));
+                    executionDate.setSeconds(Number(timeParts[2]));
+                }
+            }
+
             const existing = await this.ciltSequencesExecutionsRepository.findOne({
               where: {
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,
-                secuenceSchedule: new Date(scheduleDetails.schedule),
+                userId: user.id,
+                secuenceSchedule: executionDate,
                 status: 'A',
                 deletedAt: IsNull(),
               }
@@ -521,7 +556,7 @@ export class CiltMstrService {
                 ciltSecuenceId: seq.id,
                 userId: user.id,
                 userWhoExecutedId: user.id,
-                secuenceSchedule: new Date(scheduleDetails.schedule),
+                secuenceSchedule: executionDate,
                 standardOk: seq.standardOk,
                 referencePoint: seq.referencePoint,
                 secuenceList: seq.secuenceList,
@@ -558,7 +593,7 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: In(scheduledSequences.map(ss => new Date(ss.schedule))),
+          secuenceSchedule: Between(dayStart, dayEnd),
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },
