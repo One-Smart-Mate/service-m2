@@ -38,6 +38,7 @@ import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/c
 import { TaskModule } from './modules/task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { IaModule } from './modules/ia/ia.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { IaModule } from './modules/ia/ia.module';
     CiltMstrPositionLevelsModule,
     TaskModule,
     IaModule,
+    WhatsappModule,
   ],
   controllers: [AppController],
   providers: [

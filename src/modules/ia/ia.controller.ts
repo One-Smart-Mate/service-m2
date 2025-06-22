@@ -34,6 +34,10 @@ export class IaController {
         refinedData: {
           type: 'object',
           description: 'SQL query results'
+        },
+        beautifiedData: {
+          type: 'string',
+          description: 'Formatted query results for display'
         }
       }
     }
