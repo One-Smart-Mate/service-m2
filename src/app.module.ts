@@ -39,6 +39,7 @@ import { TaskModule } from './modules/task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { IaModule } from './modules/ia/ia.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reason.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
     TaskModule,
     IaModule,
     WhatsappModule,
+    AmDiscardReasonModule,
   ],
   controllers: [AppController],
   providers: [

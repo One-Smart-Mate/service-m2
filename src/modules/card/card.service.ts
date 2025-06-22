@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -767,9 +767,17 @@ export class CardService {
     try {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMechanic])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .select("IFNULL(card.mechanic_name, 'Sin asignar')", 'mechanic')
+        .addSelect('card.cardType_name', 'cardTypeName')
+        .addSelect(
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') THEN 1 END)",
+          'active',
+        )
+        .addSelect(
+          "COUNT(CASE WHEN card.status IN ('C', 'R') THEN 1 END)",
+          'closed',
+        )
+        .where('card.site_id = :siteId', { siteId });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -782,10 +790,60 @@ export class CardService {
       }
 
       const result = await queryBuilder
-        .groupBy('cardTypeName, mechanic')
+        .groupBy('mechanic, cardTypeName')
         .getRawMany();
 
-      return result;
+      if (!result.length) {
+        return { categories: [], series: [] };
+      }
+
+      const categoriesSet = new Set<string>();
+      result.forEach((item) => {
+        categoriesSet.add(item.mechanic);
+      });
+
+      const categories = Array.from(categoriesSet);
+      const categoryIndexMap = new Map<string, number>();
+      categories.forEach((category, index) => {
+        categoryIndexMap.set(category, index);
+      });
+
+      const seriesMap = new Map<string, { name: string; data: number[] }>();
+
+      result.forEach((item) => {
+        const activeSeriesName = `${item.cardTypeName} - A`;
+        const closedSeriesName = `${item.cardTypeName} - C/R)`;
+
+        if (!seriesMap.has(activeSeriesName)) {
+          seriesMap.set(activeSeriesName, {
+            name: activeSeriesName,
+            data: Array(categories.length).fill(0),
+          });
+        }
+        if (!seriesMap.has(closedSeriesName)) {
+          seriesMap.set(closedSeriesName, {
+            name: closedSeriesName,
+            data: Array(categories.length).fill(0),
+          });
+        }
+
+        const categoryIndex = categoryIndexMap.get(item.mechanic);
+        if (categoryIndex === undefined) return;
+
+        const activeCount = Number(item.active);
+        if (activeCount > 0) {
+          seriesMap.get(activeSeriesName).data[categoryIndex] = activeCount;
+        }
+
+        const closedCount = Number(item.closed);
+        if (closedCount > 0) {
+          seriesMap.get(closedSeriesName).data[categoryIndex] = closedCount;
+        }
+      });
+      
+      const series = Array.from(seriesMap.values()).filter(s => s.data.some(d => d > 0));
+
+      return { categories, series };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1103,10 +1161,17 @@ export class CardService {
   };
 
   async getCardsByLevelId(siteId: number, levelId: number) {
-    const cards = await this.cardRepository.find({
-      where: { siteId, nodeId: levelId, deletedAt: null },
-      order: { siteCardId: 'DESC' },
-    });
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .where('card.siteId = :siteId', { siteId })
+      .andWhere('card.nodeId = :levelId', { levelId })
+      .andWhere('card.deletedAt IS NULL')
+      .andWhere('card.status != :statusC AND card.status != :statusR', {
+        statusC: 'C',
+        statusR: 'R',
+      })
+      .orderBy('card.siteCardId', 'DESC')
+      .getMany();
     return cards;
   }
 
