@@ -81,11 +81,11 @@ export class UserEntity {
   @Column({
     name: 'fast_password',
     type: 'varchar',
-    length: 6,
+    length: 4,
     nullable: true,
     comment:
       'Used to identify users quickly; only accepts hexadecimal values',
-  })
+  })  
   fastPassword?: string;
 
   @Column({
@@ -159,7 +159,6 @@ export class UserEntity {
   @Column({ name: 'last_login_app', type: 'timestamp', nullable: true })
   lastLoginApp?: Date;
 
-  // Relaciones
   @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
   userRoles: UserRoleEntity[];
 

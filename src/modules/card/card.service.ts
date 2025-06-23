@@ -32,9 +32,9 @@ import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
-import { stringify } from 'querystring';
 import { UserEntity } from '../users/entities/user.entity';
-import { NotFoundException } from '@nestjs/common';
+import { DiscardCardDto } from './models/dto/discard.card.dto';
+import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
 
 @Injectable()
 export class CardService {
@@ -54,6 +54,8 @@ export class CardService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(AmDiscardReasonEntity)
+    private readonly amDiscardReasonRepository: Repository<AmDiscardReasonEntity>,
   ) {}
 
   findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
@@ -1213,6 +1215,76 @@ export class CardService {
         }
       }
       return cards;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  async discardCard(dto: DiscardCardDto) {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: dto.cardId },
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      const discardReason = await this.amDiscardReasonRepository.findOne({
+        where: { id: dto.amDiscardReasonId, siteId: card.siteId },
+      });
+
+      if (!discardReason) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.AM_DISCARD_REASON,
+        );
+      }
+
+      card.status = stringConstants.CANCELLED;
+      card.amDiscardReasonId = dto.amDiscardReasonId;
+      card.discardReason = dto.discardReason;
+      card.updatedAt = new Date();
+
+      return await this.cardRepository.save(card);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteDiscardedCardsGroupedByUser = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select(QUERY_CONSTANTS.findSiteDiscardedCardsGroupedByUser)
+        .leftJoin(
+          'am_discard_reasons',
+          'adr',
+          'adr.id = card.am_discard_reason_id',
+        )
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status = :status', {
+          status: stringConstants.CANCELLED,
+        });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
+        .groupBy('responsibleName, discardReason, cardTypeName')
+        .getRawMany();
+
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -21,7 +21,7 @@ import { MailService } from '../mail/mail.service';
 @Injectable()
 export class FileUploadService {
   private readonly logger = new Logger(FileUploadService.name);
-
+  
   constructor(
     private readonly roleService: RolesService,
     private readonly userService: UsersService,
@@ -85,17 +85,17 @@ export class FileUploadService {
 
     const roleAssignments = new Map<string, RoleEntity>();
 
-    data.forEach((record, index) => {
+    for (const record of data) {
       const { Name, Email, Role } = record;
 
       if (!Name || !Email || !Role) {
         processedUsers.push({
           email: Email || stringConstants.emailIsMissing,
           name: Name || '',
-          reason: "",
-          registered: false
+          reason: '',
+          registered: false,
         });
-        return;
+        continue;
       }
 
       const normalizedEmail = Email.toLowerCase();
@@ -105,9 +105,9 @@ export class FileUploadService {
           email: normalizedEmail,
           name: Name,
           reason: stringConstants.duplicatedEmailAtRow,
-          registered: false
+          registered: false,
         });
-        return;
+        continue;
       } else {
         existingEmailsInFile.add(normalizedEmail);
       }
@@ -117,9 +117,9 @@ export class FileUploadService {
           email: normalizedEmail,
           name: Name,
           reason: stringConstants.duplicatedEmailAtRow,
-          registered: false
+          registered: false,
         });
-        return;
+        continue;
       }
 
       const role = rolesMap.get(Role.toLowerCase());
@@ -127,10 +127,10 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: "",
-          registered: false
+          reason: '',
+          registered: false,
         });
-        return;
+        continue;
       }
 
       roleAssignments.set(normalizedEmail, role);
@@ -146,11 +146,12 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: "",
-          registered: true
+          reason: '',
+          registered: true,
         });
       } else {
-        const fastPassword = generateRandomHex(6);
+        const fastPassword =
+          await this.userService.generateUniqueFastPassword(siteId);
         usersToCreate.push({
           name: Name,
           email: normalizedEmail,
@@ -163,13 +164,14 @@ export class FileUploadService {
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
-          reason: "",
-          registered: true
+          reason: '',
+          registered: true,
         });
       }
-    });
+    }
 
-    const savedUsers = await this.userService.saveImportedNewUsers(usersToCreate);
+    const savedUsers =
+      await this.userService.saveImportedNewUsers(usersToCreate);
 
     savedUsers.forEach((newUser) => {
       usersAndSites.push({

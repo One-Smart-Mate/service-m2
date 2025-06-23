@@ -54,14 +54,25 @@ export class AmDiscardReasonService {
     }
   }
 
-  async update(id: number, updateAmDiscardReasonDto: UpdateAmDiscardReasonDto) {
+  async update(updateAmDiscardReasonDto: UpdateAmDiscardReasonDto) {
     try {
-      const reason = await this.amDiscardReasonRepository.findOneBy({ id });
+      const reason = await this.amDiscardReasonRepository.findOneBy({ id: updateAmDiscardReasonDto.id });
       if (!reason) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.AM_DISCARD_REASON);
       }
       Object.assign(reason, updateAmDiscardReasonDto);
       return await this.amDiscardReasonRepository.save(reason);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+  async delete(id: number) {
+    try {
+      const reason = await this.amDiscardReasonRepository.findOneBy({ id });
+      if (!reason) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.AM_DISCARD_REASON);
+      }
+      return await this.amDiscardReasonRepository.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -48,4 +48,10 @@ export const QUERY_CONSTANTS = {
       COUNT(*) AS issued,
       SUM(IF(card.user_definitive_solution_id IS NOT NULL, 1, 0)) AS eradicated
     `,
+  findSiteDiscardedCardsGroupedByUser: `
+    responsable_name as responsibleName,
+    adr.discard_reason as discardReason,
+    card.cardType_name as cardTypeName,
+    COUNT(*) AS totalCards
+  `,
 };
