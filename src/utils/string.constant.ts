@@ -34,9 +34,12 @@ export const stringConstants = {
   emailIsMissing: 'The e-mail is missing',
   duplicateLevelMachineId: 'A record with that level machine id already exists',
   invalidHexFormat: 'Invalid hexadecimal format',
+  invalidFastPasswordFormat:
+    'Invalid fast password format, it must be 4 letters',
   resetPasswordEmailSubject: 'Reset Your Password - OSM',
   welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  
   none: 'None',
   duplicatePriority: 'A priority with that code already exists',
 

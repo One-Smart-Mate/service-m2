@@ -47,6 +47,27 @@ export class UsersService {
     private readonly logger: CustomLoggerService,
   ) {}
 
+  async generateUniqueFastPassword(siteId: number): Promise<string> {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const length = 4;
+    while (true) {
+      const fastPassword = Array.from({ length }, () =>
+        chars.charAt(Math.floor(Math.random() * chars.length)),
+      ).join('');
+
+      const existingUser = await this.userRepository.findOne({
+        where: {
+          fastPassword,
+          userHasSites: { site: { id: siteId } },
+        },
+      });
+
+      if (!existingUser) {
+        return fastPassword;
+      }
+    }
+  }
+
   findUsersByPositionId = async (positionId: number) => {
     try {
       const users = await this.userRepository.find({
@@ -362,27 +383,9 @@ export class UsersService {
 
       let fastPassword = createUserDTO.fastPassword;
       if (!fastPassword) {
-        fastPassword = generateRandomHex(6);
-        
-        let isUnique = false;
-        let attempts = 0;
-        const maxAttempts = 10;
-        
-        while (!isUnique && attempts < maxAttempts) {
-          const existingUser = await this.userRepository.findOne({
-            where: { 
-              fastPassword, 
-              userHasSites: { site: { id: createUserDTO.siteId } } 
-            }
-          });
-          
-          if (!existingUser) {
-            isUnique = true;
-          } else {
-            fastPassword = generateRandomHex(6);
-            attempts++;
-          }
-        }
+        fastPassword = await this.generateUniqueFastPassword(
+          createUserDTO.siteId,
+        );
       }
 
       if (!user) {
@@ -412,7 +415,17 @@ export class UsersService {
       }
       const appUrl = process.env.URL_WEB;
 
-      await this.mailService.sendWelcomeEmail(userSite.user, appUrl, createUserDTO.translation);
+      try {
+        await this.mailService.sendWelcomeEmail(
+          userSite.user,
+          appUrl,
+          createUserDTO.translation,
+        );
+      } catch (error) {
+        this.logger.logProcess(
+          `[CREATE_USER] Welcome email for ${userSite.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
+        );
+      }
 
       return await this.userHasSiteRepository.save(userSite);
     } catch (exception) {
@@ -462,22 +475,29 @@ export class UsersService {
         );
       }
   
-      if (updateUserDTO.fastPassword) {
-        if (!/^[0-9A-F]+$/i.test(updateUserDTO.fastPassword)) {
-          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+      if (!updateUserDTO.fastPassword) {
+        updatePayload.fastPassword = await this.generateUniqueFastPassword(
+          site.id,
+        );
+      } else {
+        if (!/^[a-zA-Z]{4}$/.test(updateUserDTO.fastPassword)) {
+          throw new ValidationException(
+            ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
+          );
         }
-  
+
         const existingUser = await this.userRepository.findOne({
           where: {
             fastPassword: updateUserDTO.fastPassword,
+            userHasSites: { site: { id: site.id } },
             id: Not(updateUserDTO.id),
-            siteId: site.id,
           },
         });
+
         if (existingUser) {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
-  
+
         updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
   
@@ -541,33 +561,30 @@ export class UsersService {
       }
       
       if (updateUserPartialDTO.fastPassword) {
-        if (!/^[0-9A-F]+$/i.test(updateUserPartialDTO.fastPassword)) {
-          throw new ValidationException(ValidationExceptionType.INVALID_HEX_FORMAT);
+        if (!/^[a-zA-Z]{4}$/.test(updateUserPartialDTO.fastPassword)) {
+          throw new ValidationException(
+            ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
+          );
         }
-        
-        const existingUsers = await this.userRepository.find({
-          where: { 
-            fastPassword: updateUserPartialDTO.fastPassword, 
-            id: Not(updateUserPartialDTO.id)
-          },
-          relations: { userHasSites: { site: true } }
-        });
-        
+
         const userSites = await this.userHasSiteRepository.find({
           where: { user: { id: user.id } },
-          relations: { site: true }
+          select: ['site'],
         });
-        
-        const userSiteIds = userSites.map(us => us.site.id);
-        
-        const conflictingUser = existingUsers.find(u => 
-          u.userHasSites.some(uhs => userSiteIds.includes(uhs.site.id))
-        );
-        
-        if (conflictingUser) {
+        const userSiteIds = userSites.map((us) => us.site.id);
+
+        const existingUser = await this.userRepository.findOne({
+          where: {
+            fastPassword: updateUserPartialDTO.fastPassword,
+            userHasSites: { site: { id: In(userSiteIds) } },
+            id: Not(updateUserPartialDTO.id),
+          },
+        });
+
+        if (existingUser) {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
-        
+
         user.fastPassword = updateUserPartialDTO.fastPassword;
       }
       
