@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 
 @Entity('am_discard_reasons')
@@ -29,6 +30,24 @@ export class AmDiscardReasonEntity {
     comment: 'Reason for discarding a card.',
   })
   discardReason: string | null;
+
+  @Column("datetime", {
+    name: "created_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP"
+  })
+  createdAt: Date | null;
+
+  @Column("datetime", {
+    name: "updated_at",
+    nullable: true,
+    default: () => "CURRENT_TIMESTAMP",
+    onUpdate: "CURRENT_TIMESTAMP"
+  })
+  updatedAt: Date | null;
+
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
+  deletedAt: Date | null;
 
   @ManyToOne(() => SiteEntity)
   @JoinColumn({ name: 'site_id' })

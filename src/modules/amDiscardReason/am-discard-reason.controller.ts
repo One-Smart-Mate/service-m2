@@ -5,7 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
-  Patch,
+  Put,
   Post,
   Query,
 } from '@nestjs/common';
@@ -67,9 +67,8 @@ export class AmDiscardReasonController {
     return this.amDiscardReasonsService.findOne(id);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @ApiOperation({ summary: 'Update a discard reason' })
-  @ApiParam({ name: 'id', type: 'number', description: 'Discard reason ID' })
   @ApiBody({ type: UpdateAmDiscardReasonDto })
   @ApiResponse({
     status: 200,
@@ -77,9 +76,17 @@ export class AmDiscardReasonController {
   })
   @ApiResponse({ status: 404, description: 'Discard reason not found' })
   update(
-    @Param('id', ParseIntPipe) id: number,
     @Body() updateAmDiscardReasonDto: UpdateAmDiscardReasonDto,
   ) {
-    return this.amDiscardReasonsService.update(id, updateAmDiscardReasonDto);
+    return this.amDiscardReasonsService.update(updateAmDiscardReasonDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a discard reason' })
+  @ApiParam({ name: 'id', type: 'number', description: 'Discard reason ID' })
+  @ApiResponse({ status: 200, description: 'Discard reason deleted successfully' })
+  @ApiResponse({ status: 404, description: 'Discard reason not found' })
+  delete(@Param('id', ParseIntPipe) id: number) {
+    return this.amDiscardReasonsService.delete(id);
   }
 } 

@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { CardService } from './card.service';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
+import { DiscardCardDto } from './models/dto/discard.card.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -251,5 +252,24 @@ export class CardController {
   @ApiParam({ name: 'userId' })
   findUserCards(@Param('userId') userId: number) {
     return this.cardService.findUserCards(userId);
+  }
+
+  @Post('/discard')
+  @ApiBody({ type: DiscardCardDto })
+  discardCard(@Body() dto: DiscardCardDto) {
+    return this.cardService.discardCard(dto);
+  }
+
+  @Get('/site/discarded-cards/:siteId')
+  findSiteDiscardedCardsGroupedByUser(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.cardService.findSiteDiscardedCardsGroupedByUser(
+      siteId,
+      startDate,
+      endDate,
+    );
   }
 }

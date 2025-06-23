@@ -5,7 +5,7 @@ import { stringConstants } from 'src/utils/string.constant';
 export class FastLoginDTO {
   @ApiProperty({
     description: 'The fast password of the user',
-    example: 'A1B2C3D4',
+    example: 'AaDb',
   })
   @IsString()
   fastPassword: string;
