@@ -94,7 +94,8 @@ export const stringConstants = {
   A: 'A',
   P: 'P',
   V: 'V',
-  mechanic: 'mechanic',
+  CANCELLED: 'C',
+  mechanic: 'mechanic'  ,
 
   //status
   activeStatus: 'A',

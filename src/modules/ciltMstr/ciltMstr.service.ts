@@ -267,8 +267,15 @@ export class CiltMstrService {
             await this.ciltSequencesExecutionsRepository.save(existing);
             this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
           } else {
+            const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+              where: { siteId: cpl.siteId },
+              order: { siteExecutionId: 'DESC' },
+            });
+            const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
             const dto: Partial<CiltSequencesExecutionsEntity> = {
               siteId: cpl.siteId,
+              siteExecutionId: nextSiteExecutionId,
               positionId: cpl.positionId,
               ciltId: masterId,
               ciltSecuenceId: seq.id,
@@ -340,16 +347,24 @@ export class CiltMstrService {
             // Master sequences
             const master = cpl.ciltMstr;
             const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id);
-            const sequences = (sequencesByMaster.get(master.id) ?? []).map(seq => {
-              // Extract only seq fields, without ciltMstr relation
-              const { ciltMstr, ...seqFields } = seq as any;
-              const executions = (executionsBySequence.get(seq.id) ?? [])
-                .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
-              return { ...seqFields, executions };
-            });
+            const sequencesWithExecutions = (sequencesByMaster.get(master.id) ?? [])
+              .map(seq => {
+                const executions = (executionsBySequence.get(seq.id) ?? [])
+                  .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
+                
+                // Excluir secuencias que no tengan ejecuciones
+                if (executions.length === 0) {
+                  return null;
+                }
+                
+                const { ciltMstr, ...seqFields } = seq as any;
+                return { ...seqFields, executions };
+              })
+              .filter(seq => seq !== null);
+
             return { 
               ...master, 
-              sequences,
+              sequences: sequencesWithExecutions,
               levelId: levelInfo?.levelId,
               route: levelInfo?.route
             };
@@ -549,8 +564,15 @@ export class CiltMstrService {
               await this.ciltSequencesExecutionsRepository.save(existing);
               this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
             } else {
+              const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+                where: { siteId: cpl.siteId },
+                order: { siteExecutionId: 'DESC' },
+              });
+              const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
               const dto: Partial<CiltSequencesExecutionsEntity> = {
                 siteId: cpl.siteId,
+                siteExecutionId: nextSiteExecutionId,
                 positionId: cpl.positionId,
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,

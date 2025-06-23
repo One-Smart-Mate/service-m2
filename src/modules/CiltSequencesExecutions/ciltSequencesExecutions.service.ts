@@ -216,7 +216,7 @@ export class CiltSequencesExecutionsService {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_STARTED);
       }
 
-      if (execution.status !== 'A') {
+      if (execution.status === stringConstants.inactiveStatus) {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
       }
     
@@ -229,7 +229,7 @@ export class CiltSequencesExecutionsService {
       execution.updatedAt = new Date();
       
       try {
-        return await this.ciltSequencesExecutionsRepository.save(execution);
+        return await this.ciltSequencesExecutionsRepository.update(execution.id, execution);
       } catch (saveError) {
         throw new Error(`Failed to save CILT sequence execution: ${saveError.message}`);
       }
@@ -253,7 +253,7 @@ export class CiltSequencesExecutionsService {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_FINISHED);
       }
 
-      if (execution.status !== 'A') {
+      if (execution.status !== stringConstants.activeStatus) {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
       }
 
@@ -266,6 +266,7 @@ export class CiltSequencesExecutionsService {
       const durationInSeconds = Math.floor((stopDate.getTime() - startDate.getTime()) / 1000);
 
       Object.assign(execution, {
+        status: stringConstants.inactiveStatus,
         secuenceStop: stopDate,
         realDuration: durationInSeconds,
         initialParameter: stopDTO.initialParameter?.toString(),
@@ -277,11 +278,10 @@ export class CiltSequencesExecutionsService {
         updatedAt: new Date()
       });
 
-      try {
-        return await this.ciltSequencesExecutionsRepository.save(execution);
-      } catch (saveError) {
-        throw new Error(`Failed to save CILT sequence execution: ${saveError.message}`);
-      }
+
+      await this.ciltSequencesExecutionsRepository.update(execution.id, execution);
+      
+      return this.findById(execution.id);
     } catch (exception) {
       HandleException.exception(exception);
     }
