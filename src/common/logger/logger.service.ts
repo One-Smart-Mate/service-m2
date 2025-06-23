@@ -28,6 +28,10 @@ export class CustomLoggerService extends Logger {
     );
   }
 
+  logWhatsapp(content: string, info?: any) {
+    this.log(`${this.colors.blue}[WHATSAPP]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+  }
+
   logEmail(content: string, info?: any) {
     this.log(`${this.colors.green}[EMAIL]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
   }

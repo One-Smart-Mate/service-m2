@@ -38,6 +38,8 @@ import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/c
 import { TaskModule } from './modules/task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { IaModule } from './modules/ia/ia.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reason.module';
 
 @Module({
   imports: [
@@ -78,6 +80,8 @@ import { IaModule } from './modules/ia/ia.module';
     CiltMstrPositionLevelsModule,
     TaskModule,
     IaModule,
+    WhatsappModule,
+    AmDiscardReasonModule,
   ],
   controllers: [AppController],
   providers: [

@@ -317,10 +317,7 @@ export class UsersService {
         id: user.id,
         name: user.name,
         email: user.email,
-        roles: user.userRoles.map((userRole) => ({
-          id: userRole.role.id,
-          name: userRole.role.name,
-        })),
+        roles: user.userRoles.map((userRole) => userRole.role.name).join(','),
         sites: user.userHasSites.map((userHasSite) => ({
           id: userHasSite.site.id,
           name: userHasSite.site.name,
@@ -826,5 +823,12 @@ export class UsersService {
     } catch (exception) {
       HandleException.exception(exception);
     }
+  };
+
+  findOneByFastPassword = (fastPassword: string) => {
+    return this.userRepository.findOne({
+      where: { fastPassword },
+      relations: { userHasSites: { site: true } },
+    });
   };
 }

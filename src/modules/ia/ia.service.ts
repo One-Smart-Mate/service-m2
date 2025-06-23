@@ -69,7 +69,30 @@ export class IaService implements OnModuleInit {
         return result;
     }
 
-    async convertToSQL(naturalLanguage: string): Promise<{ sql: string; refinedData: any }> {
+    private beautifyData(data: any[]): string {
+        if (!data || data.length === 0) {
+            return 'No se encontraron resultados para tu consulta.';
+        }
+    
+        const keys = Object.keys(data[0]);
+        if (keys.length === 1 && keys[0].toLowerCase().includes('count')) {
+            const countValue = data[0][keys[0]];
+            return `El resultado de tu consulta es: ${countValue}.`;
+        }
+    
+        let response = 'Aquí están los resultados de tu consulta:\n\n';
+        data.forEach((row, index) => {
+            response += `*Registro ${index + 1}:*\n`;
+            for (const [key, value] of Object.entries(row)) {
+                const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                response += `  - *${formattedKey}:* ${value}\n`;
+            }
+            response += '\n';
+        });
+        return response.trim();
+    }
+
+    async convertToSQL(naturalLanguage: string): Promise<{ sql: string; refinedData: any, beautifiedData: string }> {
         try {
             if (!this.iaDataSource.isInitialized) {
                 await this.iaDataSource.initialize();
@@ -142,11 +165,16 @@ export class IaService implements OnModuleInit {
             const queryRunner = this.iaDataSource.createQueryRunner();
             try {
                 await queryRunner.connect();
-                const result = await queryRunner.query(sql);
+                const rawResult = await queryRunner.query(sql);
                 this.logger.logIA(`SQL query executed: ${sql.substring(0, 100)}...`);
+                
+                const refinedData = this.formatQueryResult(rawResult)
+                const beautifiedData = this.beautifyData(refinedData);
+
                 return { 
                     sql, 
-                    refinedData: this.formatQueryResult(result)
+                    refinedData: refinedData,
+                    beautifiedData
                 };
             } finally {
                 await queryRunner.release();

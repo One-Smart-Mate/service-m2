@@ -25,6 +25,7 @@ export enum NotFoundCustomExceptionType {
   OPLLEVELS,
   CILT_SECUENCES_SCHEDULE,
   CILT_MSTR_POSITION_LEVELS,
+  AM_DISCARD_REASON,
 }
 
 export class NotFoundCustomException extends HttpException {
@@ -100,6 +101,9 @@ export class NotFoundCustomException extends HttpException {
         break;
       case NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS:
         message = stringConstants.ciltMstrPositionLevelsNotFound;
+        break;
+      case NotFoundCustomExceptionType.AM_DISCARD_REASON:
+        message = stringConstants.amDiscardReasonNotFound;
         break;
       default:
         message = 'Resource not found';
