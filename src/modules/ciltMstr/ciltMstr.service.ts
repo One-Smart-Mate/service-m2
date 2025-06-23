@@ -352,7 +352,7 @@ export class CiltMstrService {
                 const executions = (executionsBySequence.get(seq.id) ?? [])
                   .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
                 
-                // Excluir secuencias que no tengan ejecuciones
+                // Exclude sequences that have no executions
                 if (executions.length === 0) {
                   return null;
                 }
