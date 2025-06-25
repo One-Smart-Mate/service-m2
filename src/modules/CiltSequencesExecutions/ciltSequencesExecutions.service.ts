@@ -287,4 +287,18 @@ export class CiltSequencesExecutionsService {
     }
   }
 
+  async findAllByUserIdAndDate(userId: number, date: string) {
+    try {
+      const [year, month, day] = date.split('-').map(Number);
+      
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      return await this.ciltSequencesExecutionsRepository.find({
+        where: { userId, secuenceSchedule: Between(startOfDay, endOfDay), status: 'I', deletedAt: IsNull() }
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 } 

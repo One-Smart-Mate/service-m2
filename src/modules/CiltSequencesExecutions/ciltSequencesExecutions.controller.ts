@@ -104,4 +104,12 @@ export class CiltSequencesExecutionsController {
   softDelete(@Param('id') id: number) {
     return this.ciltSequencesExecutionsService.softDelete(+id);
   }
+
+  @Get('user/:userId/date/:date')
+  @ApiOperation({ summary: 'Get all CILT sequence executions by user ID and date' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in YYYY-MM-DD format' })
+  findAllByUserIdAndDate(@Param('userId') userId: number, @Param('date') date: string) {
+    return this.ciltSequencesExecutionsService.findAllByUserIdAndDate(userId, date);
+  }
 } 

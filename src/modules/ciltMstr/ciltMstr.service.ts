@@ -370,13 +370,19 @@ export class CiltMstrService {
               })
               .filter(seq => seq !== null);
 
+            // Solo incluir masters que tengan secuencias con ejecuciones
+            if (sequencesWithExecutions.length === 0) {
+              return null;
+            }
+
             return { 
               ...master, 
               sequences: sequencesWithExecutions,
               levelId: levelInfo?.levelId,
               route: levelInfo?.route
             };
-          });
+          })
+          .filter(master => master !== null);
   
         return {
           id: up.position.id,
