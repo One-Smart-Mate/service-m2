@@ -264,6 +264,15 @@ export class CiltMstrService {
           });
   
           if (existing) {
+            // No modificar ejecuciones que ya fueron completadas
+            if (existing.secuenceStart && existing.secuenceStop) {
+              this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
+                id: existing.id, 
+                secuenceStart: existing.secuenceStart, 
+                secuenceStop: existing.secuenceStop 
+              });
+              continue;
+            }
             await this.ciltSequencesExecutionsRepository.save(existing);
             this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
           } else {
@@ -561,6 +570,15 @@ export class CiltMstrService {
             });
 
             if (existing) {
+              // Not modify executions that have already been completed
+              if (existing.secuenceStart && existing.secuenceStop) {
+                this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
+                  id: existing.id, 
+                  secuenceStart: existing.secuenceStart, 
+                  secuenceStop: existing.secuenceStop 
+                });
+                continue;
+              }
               await this.ciltSequencesExecutionsRepository.save(existing);
               this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
             } else {
