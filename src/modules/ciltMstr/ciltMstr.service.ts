@@ -258,7 +258,6 @@ export class CiltMstrService {
               ciltSecuenceId: seq.id,
               userId: user.id,
               secuenceSchedule: executionDate,
-              status: 'A',
               deletedAt: IsNull(),
             }
           });
@@ -564,7 +563,6 @@ export class CiltMstrService {
                 ciltSecuenceId: seq.id,
                 userId: user.id,
                 secuenceSchedule: executionDate,
-                status: 'A',
                 deletedAt: IsNull(),
               }
             });
