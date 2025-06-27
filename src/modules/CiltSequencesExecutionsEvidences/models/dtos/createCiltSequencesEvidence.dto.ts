@@ -17,10 +17,10 @@ export class CreateCiltSequencesEvidenceDTO {
   @IsNumber()
   ciltId?: number;
 
-  @ApiProperty({ description: 'CILT Executions Evidence ID', required: false })
+  @ApiProperty({ description: 'CILT Sequences Executions ID', required: false })
   @IsOptional()
   @IsNumber()
-  ciltExecutionsEvidencesId?: number;
+  ciltSequencesExecutionsId?: number;
 
   @ApiProperty({ 
     description: 'Evidence URL', 

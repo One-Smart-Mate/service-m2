@@ -16,6 +16,9 @@ import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequences
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
+import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
+import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -29,6 +32,7 @@ export class CiltSequencesExecutionsService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    private readonly ciltSequencesExecutionsEvidencesService: CiltSequencesExecutionsEvidencesService,
   ) {}
 
   findAll = async () => {
@@ -287,4 +291,45 @@ export class CiltSequencesExecutionsService {
     }
   }
 
+  async findAllByUserIdAndDate(userId: number, date: string) {
+    try {
+      const [year, month, day] = date.split('-').map(Number);
+      
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+
+      return await this.ciltSequencesExecutionsRepository.find({
+        where: { userId, secuenceSchedule: Between(startOfDay, endOfDay), status: 'I', deletedAt: IsNull() }
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  async createEvidence(createEvidenceDTO: CreateEvidenceDTO) {
+    try {
+      const execution = await this.findById(createEvidenceDTO.executionId);
+      
+      const fullEvidenceDTO: CreateCiltSequencesEvidenceDTO = {
+        siteId: execution.siteId,
+        positionId: execution.positionId,
+        ciltId: execution.ciltId,
+        ciltSequencesExecutionsId: createEvidenceDTO.executionId,
+        evidenceUrl: createEvidenceDTO.evidenceUrl,
+        createdAt: createEvidenceDTO.createdAt,
+      };
+
+      return await this.ciltSequencesExecutionsEvidencesService.create(fullEvidenceDTO);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+  async deleteEvidence(id: number) {
+    try {
+      return await this.ciltSequencesExecutionsEvidencesService.delete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+  
 } 

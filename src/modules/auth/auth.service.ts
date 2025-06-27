@@ -17,6 +17,8 @@ import { HandleException } from 'src/common/exceptions/handler/handle.exception'
 import { SiteService } from '../site/site.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
+import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
+import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
 export class AuthService {
@@ -134,6 +136,34 @@ export class AuthService {
 
       return {
         access_token,
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateLastLogin = async (data: UpdateLastLoginDTO) => {
+    try {
+      const user = await this.usersSevice.findById(data.userId);
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const loginDate = new Date(data.date);
+      
+      if (data.platform === stringConstants.OS_WEB) {
+        user.lastLoginWeb = loginDate;
+      } else if ([stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(data.platform)) {
+        user.lastLoginApp = loginDate;
+      }
+      
+      await this.usersSevice.updateLastLogin(user);
+
+      return {
+        userId: user.id,
+        platform: data.platform,
+        lastLoginDate: loginDate,
       };
     } catch (exception) {
       HandleException.exception(exception);

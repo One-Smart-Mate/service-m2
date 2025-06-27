@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CiltSequencesEvidencesEntity } from './entities/ciltSequencesEvidences.entity';
+import { CiltSequencesExecutionsEvidencesEntity } from './entities/ciltSequencesExecutionsEvidences.entity';
 import { CreateCiltSequencesEvidenceDTO } from './models/dtos/createCiltSequencesEvidence.dto';
 import { UpdateCiltSequencesEvidenceDTO } from './models/dtos/updateCiltSequencesEvidence.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
@@ -11,15 +11,15 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
-export class CiltSequencesEvidencesService {
+export class CiltSequencesExecutionsEvidencesService {
   constructor(
-    @InjectRepository(CiltSequencesEvidencesEntity)
-    private readonly ciltSequencesEvidencesRepository: Repository<CiltSequencesEvidencesEntity>,
+    @InjectRepository(CiltSequencesExecutionsEvidencesEntity)
+    private readonly ciltSequencesExecutionsEvidencesRepository: Repository<CiltSequencesExecutionsEvidencesEntity>,
   ) {}
 
   findAll = async () => {
     try {
-      return await this.ciltSequencesEvidencesRepository.find();
+      return await this.ciltSequencesExecutionsEvidencesRepository.find();
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -27,7 +27,7 @@ export class CiltSequencesEvidencesService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltSequencesEvidencesRepository.find({ where: { siteId } });
+      return await this.ciltSequencesExecutionsEvidencesRepository.find({ where: { siteId } });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -35,7 +35,7 @@ export class CiltSequencesEvidencesService {
 
   findByPositionId = async (positionId: number) => {
     try {
-      return await this.ciltSequencesEvidencesRepository.find({ where: { positionId } });
+      return await this.ciltSequencesExecutionsEvidencesRepository.find({ where: { positionId } });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -43,7 +43,7 @@ export class CiltSequencesEvidencesService {
 
   findByCiltId = async (ciltId: number) => {
     try {
-      return await this.ciltSequencesEvidencesRepository.find({ where: { ciltId } });
+      return await this.ciltSequencesExecutionsEvidencesRepository.find({ where: { ciltId } });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -51,12 +51,12 @@ export class CiltSequencesEvidencesService {
 
   findById = async (id: number) => {
     try {
-      const ciltEvidence = await this.ciltSequencesEvidencesRepository.findOne({
+      const ciltEvidence = await this.ciltSequencesExecutionsEvidencesRepository.findOne({
         where: { id },
       });
       if (!ciltEvidence) {
         throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES,
+          NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS_EVIDENCES,
         );
       }
       return ciltEvidence;
@@ -69,10 +69,10 @@ export class CiltSequencesEvidencesService {
     createCiltSequencesEvidenceDTO: CreateCiltSequencesEvidenceDTO,
   ) => {
     try {
-      const ciltEvidence = this.ciltSequencesEvidencesRepository.create(
+      const ciltEvidence = this.ciltSequencesExecutionsEvidencesRepository.create(
         createCiltSequencesEvidenceDTO,
       );
-      return await this.ciltSequencesEvidencesRepository.save(ciltEvidence);
+      return await this.ciltSequencesExecutionsEvidencesRepository.save(ciltEvidence);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -83,8 +83,27 @@ export class CiltSequencesEvidencesService {
   ) => {
     try {
       const ciltEvidence = await this.findById(updateCiltSequencesEvidenceDTO.id);
+      if (!ciltEvidence) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS_EVIDENCES,
+        );
+      }
       Object.assign(ciltEvidence, updateCiltSequencesEvidenceDTO);
-      return await this.ciltSequencesEvidencesRepository.save(ciltEvidence);
+      return await this.ciltSequencesExecutionsEvidencesRepository.save(ciltEvidence);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  delete = async (id: number) => {
+    try {
+      const ciltEvidence = await this.findById(id);
+      if (!ciltEvidence) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS_EVIDENCES,
+        );
+      }
+      return await this.ciltSequencesExecutionsEvidencesRepository.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

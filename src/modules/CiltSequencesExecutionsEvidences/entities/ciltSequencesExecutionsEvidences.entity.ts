@@ -4,14 +4,15 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { CiltSequencesExecutionsEntity } from '../../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { PositionEntity } from '../../position/entities/position.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 
-@Entity('cilt_sequences_evidences')
-export class CiltSequencesEvidencesEntity {
+@Entity('cilt_sequences_executions_evidences')
+export class CiltSequencesExecutionsEvidencesEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;
 
@@ -24,8 +25,8 @@ export class CiltSequencesEvidencesEntity {
   @Column("int", { name: "cilt_id", nullable: true, unsigned: true })
   ciltId: number | null;
 
-  @Column("int", { name: "cilt_executions_evidences_id", nullable: true, unsigned: true })
-  ciltExecutionsEvidencesId: number | null;
+  @Column("int", { name: "cilt_sequences_executions_id", nullable: true, unsigned: true })
+  ciltSequencesExecutionsId: number | null;
 
   @Column("varchar", { name: "evidence_url", nullable: true, length: 500 })
   evidenceUrl: string | null;
@@ -40,7 +41,7 @@ export class CiltSequencesEvidencesEntity {
   @Column("timestamp", { name: "updated_at", nullable: true })
   updatedAt: Date | null;
 
-  @Column("timestamp", { name: "deleted_at", nullable: true })
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => CiltMstrEntity)
@@ -48,8 +49,8 @@ export class CiltSequencesEvidencesEntity {
   cilt: CiltMstrEntity;
 
   @ManyToOne(() => CiltSequencesExecutionsEntity, (execution) => execution.evidences)
-  @JoinColumn({ name: 'cilt_executions_evidences_id' })
-  ciltExecutionsEvidences: CiltSequencesExecutionsEntity;
+  @JoinColumn({ name: 'cilt_sequences_executions_id' })
+  ciltSequencesExecutions: CiltSequencesExecutionsEntity;
 
   @ManyToOne(() => PositionEntity)
   @JoinColumn({ name: 'position_id' })

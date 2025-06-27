@@ -31,7 +31,7 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
 import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
-import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
+import { CiltSequencesExecutionsEvidencesModule } from './modules/CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
 import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/ciltMstrPositionLevels.module';
@@ -71,7 +71,7 @@ import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reas
     CiltSequencesModule,
     CiltSequencesFrequenciesModule,
     CiltSequencesExecutionsModule,
-    CiltSequencesEvidencesModule,
+    CiltSequencesExecutionsEvidencesModule,
     OplMstrModule,
     OplDetailsModule,
     RepositoryModule,

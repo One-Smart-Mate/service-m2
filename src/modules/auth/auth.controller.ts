@@ -12,6 +12,7 @@ import { AuthGuard } from './guard/auth.guard';
 import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
+import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -36,5 +37,11 @@ export class AuthController {
   @ApiBody({ type: ResestPasswordDTO })
   resetPassword(@Body() resetPasswordDto: ResestPasswordDTO, @Request() req) {
     return this.authService.resetPassword(resetPasswordDto, req.user?.email);
+  }
+
+  @Post('update-last-login')
+  @ApiBody({ type: UpdateLastLoginDTO })
+  updateLastLogin(@Body() updateLastLoginDto: UpdateLastLoginDTO) {
+    return this.authService.updateLastLogin(updateLastLoginDto);
   }
 }
