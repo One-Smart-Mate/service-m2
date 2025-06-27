@@ -12,7 +12,7 @@ export enum NotFoundCustomExceptionType {
   ROLES,
   CARD,
   POSITION,
-  CILT_SEQUENCES_EVIDENCES,
+  CILT_SEQUENCES_EXECUTIONS_EVIDENCES,
   CILT_SEQUENCES_EXECUTIONS,
   CILT_MSTR,
   CILT_TYPES,
@@ -63,8 +63,8 @@ export class NotFoundCustomException extends HttpException {
       case NotFoundCustomExceptionType.POSITION:
         message = stringConstants.positionNotFound;
         break;
-      case NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES:
-        message = stringConstants.ciltSequencesEvidencesNotFound;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS_EVIDENCES:
+        message = stringConstants.ciltSequencesExecutionsEvidencesNotFound;
         break;
       case NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS:
         message = stringConstants.ciltSequencesExecutionsNotFound;

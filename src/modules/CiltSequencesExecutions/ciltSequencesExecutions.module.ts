@@ -16,6 +16,7 @@ import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UsersModule } from '../users/users.module';
 import { RolesModule } from '../roles/roles.module';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { CiltSequencesExecutionsEvidencesModule } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.ent
     forwardRef(() => FirebaseModule),
     UsersModule,
     RolesModule,
+    CiltSequencesExecutionsEvidencesModule,
   ],
   controllers: [CiltSequencesExecutionsController],
   providers: [CiltSequencesExecutionsService, CustomLoggerService],

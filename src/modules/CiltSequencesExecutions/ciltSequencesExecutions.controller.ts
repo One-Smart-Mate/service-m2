@@ -5,6 +5,8 @@ import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequenc
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
+import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
+import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 
 @ApiTags('Cilt Sequences Executions')
 @Controller('cilt-sequences-executions')
@@ -111,5 +113,19 @@ export class CiltSequencesExecutionsController {
   @ApiParam({ name: 'date', type: 'string', description: 'Date in YYYY-MM-DD format' })
   findAllByUserIdAndDate(@Param('userId') userId: number, @Param('date') date: string) {
     return this.ciltSequencesExecutionsService.findAllByUserIdAndDate(userId, date);
+  }
+
+  @Post('evidence/create')
+  @ApiOperation({ summary: 'Create a new CILT sequence execution evidence' })
+  @ApiBody({ type: CreateEvidenceDTO })
+  createEvidence(@Body() createEvidenceDTO: CreateEvidenceDTO) {
+    return this.ciltSequencesExecutionsService.createEvidence(createEvidenceDTO);
+  }
+
+  @Delete('evidence/:id')
+  @ApiOperation({ summary: 'Delete a CILT sequence execution evidence by ID' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution evidence ID' })
+  deleteEvidence(@Param('id') id: number) {
+    return this.ciltSequencesExecutionsService.deleteEvidence(id);
   }
 } 
