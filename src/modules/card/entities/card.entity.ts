@@ -1,5 +1,6 @@
 import { Exclude } from 'class-transformer';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('cards')
 export class CardEntity {
@@ -429,7 +430,54 @@ export class CardEntity {
   })
   evidenceImps: number;
 
-
+  @Column({
+    type: 'enum',
+    enum: ['AM', 'CILT'],
+    nullable: true,
+    default: 'AM',
+    name: 'tag_origin',
+    comment: 'Show if a card was created from AM or due to the result of a CILT sequence'
+  })
+  tagOrigin: 'AM' | 'CILT' | null;
+  
+  @Column({ 
+    type: 'int', 
+    nullable: true, 
+    default: 0, 
+    name: 'cilt_secuence_execution_id', 
+    comment: 'indicates if this table was originated in a CILT sequence, the number of the execution' 
+  })
+  ciltSecuenceExecutionId: number | null;
+  
+  @Column({ 
+    type: 'varchar', 
+    nullable: true, 
+    name: 'route', 
+    length: 250, 
+    comment: 'text path where the card is located, example: /area1/machine1/zone1' 
+  })
+  route: string | null;
+  
+  @Column({
+    type: 'int',
+    unsigned: true,
+    nullable: true,
+    name: 'am_discard_reason_id'
+  })
+  amDiscardReasonId: number | null;
+  
+  @ManyToOne(() => AmDiscardReasonEntity)
+  @JoinColumn({ name: 'am_discard_reason_id' })
+  amDiscardReason: AmDiscardReasonEntity;
+  
+  @Column({
+    type: 'varchar',
+    length: 45,
+    nullable: true,
+    name: 'discard_reason',
+    comment: 'if the manager discarded a card instead of assigning it a definitive solution, here the preclassifier of the discard reason is stored, comes from the am_discard_reasons table'
+  })
+  discardReason: string | null;
 
   @Column({
     type: 'varchar',

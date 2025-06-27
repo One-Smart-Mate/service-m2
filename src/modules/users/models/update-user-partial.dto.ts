@@ -29,13 +29,15 @@ export class UpdateUserPartialDTO {
   @IsString()
   password?: string;
 
-  @ApiProperty({ 
-    description: 'Fast password for quick access (hexadecimal format)', 
+  @ApiProperty({
+    description: 'Fast password for quick access (4 letters)',
     required: false,
-    example: 'A1B2C3'
+    example: 'aBcD',
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9A-Fa-f]+$/, { message: 'Fast password must be in hexadecimal format' })
+  @Matches(/^[a-zA-Z]{4}$/, {
+    message: 'Fast password must be 4 letters',
+  })
   fastPassword?: string;
 } 

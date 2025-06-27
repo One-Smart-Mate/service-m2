@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
 import { OplDetailsService } from './oplDetails.service';
 import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailsDTO } from './models/dto/updateOplDetails.dto';
@@ -54,5 +54,13 @@ export class OplDetailsController {
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
   async updateOrder(@Body() updateOrderDto: UpdateOplDetailOrderDTO) {
     return await this.oplDetailsService.updateOrder(updateOrderDto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an OPL detail (soft delete)' })
+  @ApiResponse({ status: 200, description: 'OPL detail deleted successfully'})
+  @ApiResponse({ status: 404, description: 'OPL detail not found' })
+  async delete(@Param('id') id: number) {
+    return await this.oplDetailsService.delete(id);
   }
 } 

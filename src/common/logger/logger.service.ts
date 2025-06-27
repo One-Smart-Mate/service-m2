@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
-export class CustomLoggerService {
-  private readonly logger = new Logger();
-
-  
+export class CustomLoggerService extends Logger {
   private readonly colors = {
     yellow: '\x1b[33m',
     cyan: '\x1b[36m',
@@ -16,25 +13,34 @@ export class CustomLoggerService {
   };
 
   logRequest(path: string, body: any) {
-    this.logger.log(`${this.colors.yellow}[REQUEST]${this.colors.reset} ${path} ${JSON.stringify(body)}`);
+    this.log(`${this.colors.yellow}[REQUEST]${this.colors.reset} ${path} ${JSON.stringify(body)}`);
   }
 
   logFirebase(message: string) {
-    this.logger.log(`${this.colors.cyan}[FIREBASE]${this.colors.reset} ${message}`);
+    this.log(`${this.colors.cyan}[FIREBASE]${this.colors.reset} ${message}`);
   }
 
-  logException(controller: string, method: string, error: any) {
-    this.logger.error(
-      `${this.colors.red}[EXCEPTION]${this.colors.yellow}[${controller}_${method}]${this.colors.reset} ${error.message}`,
-      error.stack
+  logException(context: string, method: string, error: any) {
+    this.error(
+      `Error in ${context}.${method}: ${error.message}`,
+      error.stack,
+      context
     );
   }
 
+  logWhatsapp(content: string, info?: any) {
+    this.log(`${this.colors.blue}[WHATSAPP]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+  }
+
   logEmail(content: string, info?: any) {
-    this.logger.log(`${this.colors.green}[EMAIL]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+    this.log(`${this.colors.green}[EMAIL]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
   }
 
   logProcess(content: string, info?: any) {
-    this.logger.log(`${this.colors.magenta}[PROCESS]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+    this.log(`${this.colors.magenta}[PROCESS]${this.colors.reset} ${content} ${info ? JSON.stringify(info) : ''}`);
+  }
+
+  logIA(message: string) {
+    this.log(`[IA] ${message}`);
   }
 } 

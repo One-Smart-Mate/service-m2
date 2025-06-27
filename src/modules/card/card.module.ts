@@ -13,6 +13,7 @@ import { UserEntity } from '../users/entities/user.entity';
 import { LevelModule } from '../level/level.module';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { FirebaseModule } from '../firebase/firebase.module';
+import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { FirebaseModule } from '../firebase/firebase.module';
     UsersModule,
     LevelModule,
     FirebaseModule,
-    TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity]),
+    TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],
   controllers: [CardController],
   providers: [CardService],

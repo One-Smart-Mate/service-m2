@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { OplMstrService } from './oplMstr.service';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
 import { UpdateOplMstrDTO } from './models/dto/updateOplMstr.dto';
+import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Opl Master')
 @Controller('opl-mstr')
@@ -53,5 +54,22 @@ export class OplMstrController {
   @ApiResponse({ status: 404, description: 'OPL not found' })
   async update(@Body() updateOplDto: UpdateOplMstrDTO) {
     return await this.oplMstrService.update(updateOplDto);
+  }
+
+  @Put("/update-order")
+  @ApiOperation({ summary: 'Update OPL order' })
+  @ApiResponse({ status: 200, description: 'OPL order updated successfully'})
+  @ApiResponse({ status: 404, description: 'OPL not found' })
+  async updateOrder(@Body() updateOrderDto: UpdateOplMstrOrderDTO) {
+    return await this.oplMstrService.updateOrder(updateOrderDto);
+  }   
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete an OPL master (soft delete)' })
+  @ApiParam({ name: 'id', type: 'number', description: 'OPL master ID' })
+  @ApiResponse({ status: 200, description: 'OPL master deleted successfully'})
+  @ApiResponse({ status: 404, description: 'OPL master not found' })
+  async delete(@Param('id') id: number) {
+    return await this.oplMstrService.delete(id);
   }
 } 

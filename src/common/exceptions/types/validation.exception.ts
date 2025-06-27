@@ -90,6 +90,9 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.CILT_SEQUENCE_ALREADY_FINISHED:
         message = stringConstants.ciltSequenceAlreadyFinished;
         break;
+      case ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT:
+        message = stringConstants.invalidFastPasswordFormat;
+        break;
       default:
         message = 'Validation error';
     }
@@ -126,5 +129,6 @@ export enum ValidationExceptionType {
   CILT_SEQUENCE_NOT_ACTIVE,
   CILT_SEQUENCE_INVALID_DATE,
   CILT_SEQUENCE_NOT_STARTED,
-  CILT_SEQUENCE_ALREADY_FINISHED
+  CILT_SEQUENCE_ALREADY_FINISHED,
+  INVALID_FAST_PASSWORD_FORMAT
 }

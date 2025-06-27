@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Equal, Raw } from 'typeorm';
+import { Repository, In, IsNull, Equal, Raw, Between } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -153,6 +153,12 @@ export class CiltMstrService {
     try {
       // Change date to midnight local
       const scheduleDate = new Date(date);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
   
       // 1) Search user
       const user = await this.userRepository.findOneBy({ id: userId });
@@ -236,28 +242,54 @@ export class CiltMstrService {
             sch => sch.ciltId === masterId && sch.secuenceId === seq.id
           );
 
+          const executionDate = new Date(scheduleDate);
+          if (scheduleDetails?.schedule) {
+              const timeParts = scheduleDetails.schedule.split(':');
+              if (timeParts.length === 3) {
+                  executionDate.setHours(Number(timeParts[0]));
+                  executionDate.setMinutes(Number(timeParts[1]));
+                  executionDate.setSeconds(Number(timeParts[2]));
+              }
+          }
+
           const existing = await this.ciltSequencesExecutionsRepository.findOne({
             where: {
               ciltId: masterId,
               ciltSecuenceId: seq.id,
-              secuenceSchedule: scheduleDate,
-              status: 'A',
+              userId: user.id,
+              secuenceSchedule: executionDate,
               deletedAt: IsNull(),
             }
           });
   
           if (existing) {
+            // No modificar ejecuciones que ya fueron completadas
+            if (existing.secuenceStart && existing.secuenceStop) {
+              this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
+                id: existing.id, 
+                secuenceStart: existing.secuenceStart, 
+                secuenceStop: existing.secuenceStop 
+              });
+              continue;
+            }
             await this.ciltSequencesExecutionsRepository.save(existing);
             this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
           } else {
+            const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+              where: { siteId: cpl.siteId },
+              order: { siteExecutionId: 'DESC' },
+            });
+            const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
             const dto: Partial<CiltSequencesExecutionsEntity> = {
               siteId: cpl.siteId,
+              siteExecutionId: nextSiteExecutionId,
               positionId: cpl.positionId,
               ciltId: masterId,
               ciltSecuenceId: seq.id,
               userId: user.id,
               userWhoExecutedId: user.id,
-              secuenceSchedule: scheduleDate,
+              secuenceSchedule: executionDate,
               standardOk: seq.standardOk,
               referencePoint: seq.referencePoint,
               secuenceList: seq.secuenceList,
@@ -274,11 +306,11 @@ export class CiltMstrService {
               duration: seq.standardTime,
               levelId: cpl.levelId,
               route: await this.levelService.getLevelPathById(cpl.levelId),
-              allowExecuteBefore: Boolean(scheduleDetails.allowExecuteBefore),
-              allowExecuteBeforeMinutes: scheduleDetails.allowExecuteBeforeMinutes,
-              toleranceBeforeMinutes: scheduleDetails.toleranceBeforeMinutes,
-              toleranceAfterMinutes: scheduleDetails.toleranceAfterMinutes,
-              allowExecuteAfterDue: Boolean(scheduleDetails.allowExecuteAfterDue),
+              allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
+              allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
+              toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
+              toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
+              allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
               specialWarning: seq.specialWarning,
             };
             const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
@@ -293,7 +325,8 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: scheduleDate,
+          secuenceSchedule: Between(dayStart, dayEnd),
+          userId: userId,
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },
@@ -322,20 +355,34 @@ export class CiltMstrService {
             // Master sequences
             const master = cpl.ciltMstr;
             const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id);
-            const sequences = (sequencesByMaster.get(master.id) ?? []).map(seq => {
-              // Extract only seq fields, without ciltMstr relation
-              const { ciltMstr, ...seqFields } = seq as any;
-              const executions = (executionsBySequence.get(seq.id) ?? [])
-                .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
-              return { ...seqFields, executions };
-            });
+            const sequencesWithExecutions = (sequencesByMaster.get(master.id) ?? [])
+              .map(seq => {
+                const executions = (executionsBySequence.get(seq.id) ?? [])
+                  .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
+                
+                // Exclude sequences that have no executions
+                if (executions.length === 0) {
+                  return null;
+                }
+                
+                const { ciltMstr, ...seqFields } = seq as any;
+                return { ...seqFields, executions };
+              })
+              .filter(seq => seq !== null);
+
+            // Solo incluir masters que tengan secuencias con ejecuciones
+            if (sequencesWithExecutions.length === 0) {
+              return null;
+            }
+
             return { 
               ...master, 
-              sequences,
+              sequences: sequencesWithExecutions,
               levelId: levelInfo?.levelId,
               route: levelInfo?.route
             };
-          });
+          })
+          .filter(master => master !== null);
   
         return {
           id: up.position.id,
@@ -404,6 +451,12 @@ export class CiltMstrService {
     try {
       // Change date to midnight local
       const scheduleDate = new Date(date);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
   
       // 1) Get all CILTs for the site
       const ciltMasters = await this.ciltRepository.find({
@@ -500,28 +553,54 @@ export class CiltMstrService {
               sch => sch.ciltId === masterId && sch.secuenceId === seq.id
             );
 
+            const executionDate = new Date(scheduleDate);
+            if (scheduleDetails?.schedule) {
+                const timeParts = scheduleDetails.schedule.split(':');
+                if (timeParts.length === 3) {
+                    executionDate.setHours(Number(timeParts[0]));
+                    executionDate.setMinutes(Number(timeParts[1]));
+                    executionDate.setSeconds(Number(timeParts[2]));
+                }
+            }
+
             const existing = await this.ciltSequencesExecutionsRepository.findOne({
               where: {
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,
-                secuenceSchedule: scheduleDate,
-                status: 'A',
+                userId: user.id,
+                secuenceSchedule: executionDate,
                 deletedAt: IsNull(),
               }
             });
 
             if (existing) {
+              // Not modify executions that have already been completed
+              if (existing.secuenceStart && existing.secuenceStop) {
+                this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
+                  id: existing.id, 
+                  secuenceStart: existing.secuenceStart, 
+                  secuenceStop: existing.secuenceStop 
+                });
+                continue;
+              }
               await this.ciltSequencesExecutionsRepository.save(existing);
               this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
             } else {
+              const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+                where: { siteId: cpl.siteId },
+                order: { siteExecutionId: 'DESC' },
+              });
+              const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
               const dto: Partial<CiltSequencesExecutionsEntity> = {
                 siteId: cpl.siteId,
+                siteExecutionId: nextSiteExecutionId,
                 positionId: cpl.positionId,
                 ciltId: masterId,
                 ciltSecuenceId: seq.id,
                 userId: user.id,
                 userWhoExecutedId: user.id,
-                secuenceSchedule: scheduleDate,
+                secuenceSchedule: executionDate,
                 standardOk: seq.standardOk,
                 referencePoint: seq.referencePoint,
                 secuenceList: seq.secuenceList,
@@ -558,7 +637,7 @@ export class CiltMstrService {
           ciltId: In(ciltMasters.map(cm => cm.id)),
           status: 'A',
           deletedAt: IsNull(),
-          secuenceSchedule: scheduleDate,
+          secuenceSchedule: Between(dayStart, dayEnd),
         },
         relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
         order: { secuenceStart: 'ASC' },

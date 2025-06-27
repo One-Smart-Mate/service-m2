@@ -34,9 +34,12 @@ export const stringConstants = {
   emailIsMissing: 'The e-mail is missing',
   duplicateLevelMachineId: 'A record with that level machine id already exists',
   invalidHexFormat: 'Invalid hexadecimal format',
+  invalidFastPasswordFormat:
+    'Invalid fast password format, it must be 4 letters',
   resetPasswordEmailSubject: 'Reset Your Password - OSM',
   welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  
   none: 'None',
   duplicatePriority: 'A priority with that code already exists',
 
@@ -91,7 +94,8 @@ export const stringConstants = {
   A: 'A',
   P: 'P',
   V: 'V',
-  mechanic: 'mechanic',
+  CANCELLED: 'C',
+  mechanic: 'mechanic'  ,
 
   //status
   activeStatus: 'A',
@@ -112,7 +116,7 @@ export const stringConstants = {
   cardNotFound: 'Card not found',
   positionNotFound: 'Position not found',
   ciltMstrNotFound: 'Cilt master not found',
-  ciltSequencesEvidencesNotFound: 'Cilt sequences evidences not found',
+  ciltSequencesExecutionsEvidencesNotFound: 'Cilt sequences executions evidences not found',
   ciltSequencesExecutionsNotFound: 'Cilt sequences executions not found',
   ciltTypesNotFound: 'Cilt types not found',
   ciltSequencesNotFound: 'Cilt sequences not found',
@@ -125,6 +129,7 @@ export const stringConstants = {
   oplLevelsNotFound: 'OPL Levels not found',
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',
   ciltMstrPositionLevelsNotFound: 'CILT Master Position Levels not found',
+  amDiscardReasonNotFound: 'AM Discard Reason not found',
 
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',

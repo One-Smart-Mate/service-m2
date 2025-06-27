@@ -31,16 +31,22 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
 import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
-import { CiltSequencesEvidencesModule } from './modules/CiltSequencesEvidences/ciltSequencesEvidences.module';
+import { CiltSequencesExecutionsEvidencesModule } from './modules/CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
 import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/ciltMstrPositionLevels.module';
 import { TaskModule } from './modules/task/task.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { IaModule } from './modules/ia/ia.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reason.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
     typeOrmConfig,
     ScheduleModule.forRoot(),
     UsersModule,
@@ -65,7 +71,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     CiltSequencesModule,
     CiltSequencesFrequenciesModule,
     CiltSequencesExecutionsModule,
-    CiltSequencesEvidencesModule,
+    CiltSequencesExecutionsEvidencesModule,
     OplMstrModule,
     OplDetailsModule,
     RepositoryModule,
@@ -73,6 +79,9 @@ import { ScheduleModule } from '@nestjs/schedule';
     CiltSecuencesScheduleModule,
     CiltMstrPositionLevelsModule,
     TaskModule,
+    IaModule,
+    WhatsappModule,
+    AmDiscardReasonModule,
   ],
   controllers: [AppController],
   providers: [
