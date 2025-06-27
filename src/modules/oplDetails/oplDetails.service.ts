@@ -127,4 +127,16 @@ export class OplDetailsService {
       HandleException.exception(exception);
     }
   };
+
+  delete = async (id: number) => {
+    try {
+      const detail = await this.oplDetailsRepository.findOneBy({ id });
+      if (!detail) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
+      }
+      return await this.oplDetailsRepository.softDelete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 } 

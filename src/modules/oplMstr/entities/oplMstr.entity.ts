@@ -4,7 +4,8 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
-  OneToMany
+  OneToMany,
+  DeleteDateColumn
 } from "typeorm";
 import { SiteEntity } from '../../site/entities/site.entity';
 import { UserEntity } from '../../users/entities/user.entity';
@@ -40,6 +41,9 @@ export class OplMstr {
   @Column("enum", { name: "opl_type", nullable: true, enum: ["opl", "sop"] })
   oplType: "opl" | "sop" | null;
 
+  @Column("tinyint", { name: "order", default: 1, nullable: false })
+  order: number;
+
   @Column("datetime", {
     name: "created_at",
     nullable: true,
@@ -55,10 +59,7 @@ export class OplMstr {
   })
   updatedAt: Date | null;
 
-  @Column("datetime", {
-    name: "deleted_at",
-    nullable: true
-  })
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => SiteEntity)

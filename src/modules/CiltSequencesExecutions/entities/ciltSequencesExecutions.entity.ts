@@ -14,7 +14,7 @@ import { PositionEntity } from '../../position/entities/position.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { OplMstr } from '../../oplMstr/entities/oplMstr.entity';
-import { CiltSequencesEvidencesEntity } from '../../CiltSequencesEvidences/entities/ciltSequencesEvidences.entity';
+import { CiltSequencesExecutionsEvidencesEntity } from '../../CiltSequencesExecutionsEvidences/entities/ciltSequencesExecutionsEvidences.entity';
 
 @Entity('cilt_sequences_executions', {
   comment: 'Save the information of the sequences when executing a CILT procedure, a record is generated for each frequency when a CILT is generated; it specifies the date/time when it should be executed'
@@ -390,6 +390,6 @@ export class CiltSequencesExecutionsEntity {
   @JoinColumn({ name: 'remediation_opl_sop_id' })
   remediationOplSop: OplMstr;
 
-  @OneToMany(() => CiltSequencesEvidencesEntity, (evidence) => evidence.ciltExecutionsEvidences)
-  evidences: CiltSequencesEvidencesEntity[];
+  @OneToMany(() => CiltSequencesExecutionsEvidencesEntity, (evidence) => evidence.ciltSequencesExecutions)
+  evidences: CiltSequencesExecutionsEvidencesEntity[];
 }

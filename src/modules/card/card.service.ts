@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -32,9 +32,9 @@ import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
-import { stringify } from 'querystring';
 import { UserEntity } from '../users/entities/user.entity';
-import { NotFoundException } from '@nestjs/common';
+import { DiscardCardDto } from './models/dto/discard.card.dto';
+import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
 
 @Injectable()
 export class CardService {
@@ -54,6 +54,8 @@ export class CardService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(AmDiscardReasonEntity)
+    private readonly amDiscardReasonRepository: Repository<AmDiscardReasonEntity>,
   ) {}
 
   findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
@@ -551,7 +553,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -587,7 +590,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -653,7 +657,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
       
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -683,7 +688,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -732,7 +738,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -760,9 +767,18 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
-      const queryBuilder = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMechanic])
+        .select("IFNULL(card.mechanic_name, 'Sin asignar')", 'mechanic')
+        .addSelect('card.cardType_name', 'cardTypeName')
+        .addSelect(
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') THEN 1 END)",
+          'active',
+        )
+        .addSelect(
+          "COUNT(CASE WHEN card.status IN ('C', 'R') THEN 1 END)",
+          'closed',
+        )
         .where('card.site_id = :siteId', { siteId });
 
       if (startDate && endDate) {
@@ -776,10 +792,60 @@ export class CardService {
       }
 
       const result = await queryBuilder
-        .groupBy('cardTypeName, mechanic')
+        .groupBy('mechanic, cardTypeName')
         .getRawMany();
 
-      return result;
+      if (!result.length) {
+        return { categories: [], series: [] };
+      }
+
+      const categoriesSet = new Set<string>();
+      result.forEach((item) => {
+        categoriesSet.add(item.mechanic);
+      });
+
+      const categories = Array.from(categoriesSet);
+      const categoryIndexMap = new Map<string, number>();
+      categories.forEach((category, index) => {
+        categoryIndexMap.set(category, index);
+      });
+
+      const seriesMap = new Map<string, { name: string; data: number[] }>();
+
+      result.forEach((item) => {
+        const activeSeriesName = `${item.cardTypeName} - A`;
+        const closedSeriesName = `${item.cardTypeName} - C/R)`;
+
+        if (!seriesMap.has(activeSeriesName)) {
+          seriesMap.set(activeSeriesName, {
+            name: activeSeriesName,
+            data: Array(categories.length).fill(0),
+          });
+        }
+        if (!seriesMap.has(closedSeriesName)) {
+          seriesMap.set(closedSeriesName, {
+            name: closedSeriesName,
+            data: Array(categories.length).fill(0),
+          });
+        }
+
+        const categoryIndex = categoryIndexMap.get(item.mechanic);
+        if (categoryIndex === undefined) return;
+
+        const activeCount = Number(item.active);
+        if (activeCount > 0) {
+          seriesMap.get(activeSeriesName).data[categoryIndex] = activeCount;
+        }
+
+        const closedCount = Number(item.closed);
+        if (closedCount > 0) {
+          seriesMap.get(closedSeriesName).data[categoryIndex] = closedCount;
+        }
+      });
+      
+      const series = Array.from(seriesMap.values()).filter(s => s.data.some(d => d > 0));
+
+      return { categories, series };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -794,7 +860,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('(card.status = :statusC OR card.status = :statusR)', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -822,6 +889,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
         .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' })
         .groupBy('year')
         .addGroupBy('week')
         .orderBy('year, week')
@@ -1095,10 +1163,17 @@ export class CardService {
   };
 
   async getCardsByLevelId(siteId: number, levelId: number) {
-    const cards = await this.cardRepository.find({
-      where: { siteId, nodeId: levelId, deletedAt: null },
-      order: { siteCardId: 'DESC' },
-    });
+    const cards = await this.cardRepository
+      .createQueryBuilder('card')
+      .where('card.siteId = :siteId', { siteId })
+      .andWhere('card.nodeId = :levelId', { levelId })
+      .andWhere('card.deletedAt IS NULL')
+      .andWhere('card.status != :statusC AND card.status != :statusR', {
+        statusC: 'C',
+        statusR: 'R',
+      })
+      .orderBy('card.siteCardId', 'DESC')
+      .getMany();
     return cards;
   }
 
@@ -1140,6 +1215,76 @@ export class CardService {
         }
       }
       return cards;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  async discardCard(dto: DiscardCardDto) {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: dto.cardId },
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      const discardReason = await this.amDiscardReasonRepository.findOne({
+        where: { id: dto.amDiscardReasonId, siteId: card.siteId },
+      });
+
+      if (!discardReason) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.AM_DISCARD_REASON,
+        );
+      }
+
+      card.status = stringConstants.CANCELLED;
+      card.amDiscardReasonId = dto.amDiscardReasonId;
+      card.discardReason = dto.discardReason;
+      card.updatedAt = new Date();
+
+      return await this.cardRepository.save(card);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findSiteDiscardedCardsGroupedByUser = async (
+    siteId: number,
+    startDate?: string,
+    endDate?: string,
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select(QUERY_CONSTANTS.findSiteDiscardedCardsGroupedByUser)
+        .leftJoin(
+          'am_discard_reasons',
+          'adr',
+          'adr.id = card.am_discard_reason_id',
+        )
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status = :status', {
+          status: stringConstants.CANCELLED,
+        });
+
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
+      }
+
+      const result = await queryBuilder
+        .groupBy('responsibleName, discardReason, cardTypeName')
+        .getRawMany();
+
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }

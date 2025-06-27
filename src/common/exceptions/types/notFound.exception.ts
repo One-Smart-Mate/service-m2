@@ -12,7 +12,7 @@ export enum NotFoundCustomExceptionType {
   ROLES,
   CARD,
   POSITION,
-  CILT_SEQUENCES_EVIDENCES,
+  CILT_SEQUENCES_EXECUTIONS_EVIDENCES,
   CILT_SEQUENCES_EXECUTIONS,
   CILT_MSTR,
   CILT_TYPES,
@@ -25,6 +25,7 @@ export enum NotFoundCustomExceptionType {
   OPLLEVELS,
   CILT_SECUENCES_SCHEDULE,
   CILT_MSTR_POSITION_LEVELS,
+  AM_DISCARD_REASON,
 }
 
 export class NotFoundCustomException extends HttpException {
@@ -62,8 +63,8 @@ export class NotFoundCustomException extends HttpException {
       case NotFoundCustomExceptionType.POSITION:
         message = stringConstants.positionNotFound;
         break;
-      case NotFoundCustomExceptionType.CILT_SEQUENCES_EVIDENCES:
-        message = stringConstants.ciltSequencesEvidencesNotFound;
+      case NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS_EVIDENCES:
+        message = stringConstants.ciltSequencesExecutionsEvidencesNotFound;
         break;
       case NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS:
         message = stringConstants.ciltSequencesExecutionsNotFound;
@@ -100,6 +101,9 @@ export class NotFoundCustomException extends HttpException {
         break;
       case NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS:
         message = stringConstants.ciltMstrPositionLevelsNotFound;
+        break;
+      case NotFoundCustomExceptionType.AM_DISCARD_REASON:
+        message = stringConstants.amDiscardReasonNotFound;
         break;
       default:
         message = 'Resource not found';
