@@ -116,7 +116,7 @@ export const stringConstants = {
   cardNotFound: 'Card not found',
   positionNotFound: 'Position not found',
   ciltMstrNotFound: 'Cilt master not found',
-  ciltSequencesEvidencesNotFound: 'Cilt sequences evidences not found',
+  ciltSequencesExecutionsEvidencesNotFound: 'Cilt sequences executions evidences not found',
   ciltSequencesExecutionsNotFound: 'Cilt sequences executions not found',
   ciltTypesNotFound: 'Cilt types not found',
   ciltSequencesNotFound: 'Cilt sequences not found',
