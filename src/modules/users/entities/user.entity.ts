@@ -159,13 +159,6 @@ export class UserEntity {
   @Column({ name: 'last_login_app', type: 'timestamp', nullable: true })
   lastLoginApp?: Date;
 
-  @Column({ name: 'last_login_web', type: 'timestamp', nullable: true })
-  lastLoginWeb?: Date;
-
-  @Column({ name: 'last_login_app', type: 'timestamp', nullable: true })
-  lastLoginApp?: Date;
-
-  // Relaciones
   @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
   userRoles: UserRoleEntity[];
 
