@@ -889,7 +889,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
         .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' })
+        .andWhere('card.status != :statusC', { statusC: 'C' })
         .groupBy('year')
         .addGroupBy('week')
         .orderBy('year, week')
