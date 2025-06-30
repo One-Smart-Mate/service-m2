@@ -72,4 +72,11 @@ export class CiltMstrPositionLevelsController {
   async remove(@Param('id') id: number) {
     return await this.ciltMstrPositionLevelsService.remove(id);
   }
+
+  @Delete('/delete/:id')
+  @ApiOperation({ summary: 'Delete a CILT Position Level' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT Position Level ID' })
+  async delete(@Param('id') id: number) {
+    return await this.ciltMstrPositionLevelsService.softDelete(id);
+  }
 }

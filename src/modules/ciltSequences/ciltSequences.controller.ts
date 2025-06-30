@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltSequencesService } from './ciltSequences.service';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
@@ -57,4 +57,11 @@ export class CiltSequencesController {
   async updateOrder(@Body() updateOrderDto: UpdateSequenceOrderDTO) {
     return await this.ciltSequencesService.updateOrder(updateOrderDto);
   }
-} 
+
+  @Delete('/delete/:id')
+  @ApiOperation({ summary: 'Delete a CILT sequence' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence ID' })
+  async delete(@Param('id') id: number) {
+    return await this.ciltSequencesService.softDelete(id);
+  }
+  } 

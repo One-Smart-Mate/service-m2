@@ -5,6 +5,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { CiltSequencesEntity } from '../../ciltSequences/entities/ciltSequences.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
@@ -74,7 +75,7 @@ export class CiltMstrEntity {
   })
   updatedAt: Date | null;
 
-  @Column('timestamp', { name: 'deleted_at', nullable: true })
+  @DeleteDateColumn({ name: 'deleted_at', nullable: true })
   deletedAt: Date | null;
 
   @OneToMany(() => CiltSequencesEntity, (sequence) => sequence.ciltMstr)

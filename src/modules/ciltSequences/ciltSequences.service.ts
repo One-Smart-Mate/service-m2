@@ -214,4 +214,16 @@ export class CiltSequencesService {
       HandleException.exception(exception);
     }
   };
+
+  async softDelete(id: number){
+    try{
+      const sequence = await this.ciltSequencesRepository.findOneBy({ id });
+      if (!sequence) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+      }
+      return await this.ciltSequencesRepository.softDelete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 }

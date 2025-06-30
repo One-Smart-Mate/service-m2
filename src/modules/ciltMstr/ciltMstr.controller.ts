@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
@@ -85,5 +85,12 @@ export class CiltMstrController {
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
   async cloneCiltMaster(@Param('id') id: number) {
     return await this.ciltMstrService.cloneCiltMaster(id);
+  }
+
+  @Delete('/delete/:id')
+  @ApiOperation({ summary: 'Delete a CILT master' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to delete' })
+  async delete(@Param('id') id: number) {
+    return await this.ciltMstrService.softDelete(id);
   }
 }

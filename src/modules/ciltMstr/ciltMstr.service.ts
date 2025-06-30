@@ -751,4 +751,16 @@ export class CiltMstrService {
     });
     return existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
   }
+
+  async softDelete(id: number){
+    try{
+      const cilt = await this.ciltRepository.findOneBy({ id });
+      if (!cilt) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
+      }
+      return await this.ciltRepository.softDelete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 }
