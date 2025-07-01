@@ -772,12 +772,12 @@ export class CardService {
         .select("IFNULL(card.mechanic_name, 'Sin asignar')", 'mechanic')
         .addSelect('card.cardType_name', 'cardTypeName')
         .addSelect(
-          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') THEN 1 END)",
-          'active',
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date >= CURDATE() THEN 1 END)",
+          'onTime',
         )
         .addSelect(
-          "COUNT(CASE WHEN card.status IN ('C', 'R') THEN 1 END)",
-          'closed',
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date < CURDATE() THEN 1 END)",
+          'overdue',
         )
         .where('card.site_id = :siteId', { siteId });
 
@@ -813,18 +813,18 @@ export class CardService {
       const seriesMap = new Map<string, { name: string; data: number[] }>();
 
       result.forEach((item) => {
-        const activeSeriesName = `${item.cardTypeName} - A`;
-        const closedSeriesName = `${item.cardTypeName} - C/R)`;
+        const onTimeSeriesName = `${item.cardTypeName} - En tiempo`;
+        const overdueSeriesName = `${item.cardTypeName} - Vencidas`;
 
-        if (!seriesMap.has(activeSeriesName)) {
-          seriesMap.set(activeSeriesName, {
-            name: activeSeriesName,
+        if (!seriesMap.has(onTimeSeriesName)) {
+          seriesMap.set(onTimeSeriesName, {
+            name: onTimeSeriesName,
             data: Array(categories.length).fill(0),
           });
         }
-        if (!seriesMap.has(closedSeriesName)) {
-          seriesMap.set(closedSeriesName, {
-            name: closedSeriesName,
+        if (!seriesMap.has(overdueSeriesName)) {
+          seriesMap.set(overdueSeriesName, {
+            name: overdueSeriesName,
             data: Array(categories.length).fill(0),
           });
         }
@@ -832,14 +832,14 @@ export class CardService {
         const categoryIndex = categoryIndexMap.get(item.mechanic);
         if (categoryIndex === undefined) return;
 
-        const activeCount = Number(item.active);
-        if (activeCount > 0) {
-          seriesMap.get(activeSeriesName).data[categoryIndex] = activeCount;
+        const onTimeCount = Number(item.onTime);
+        if (onTimeCount > 0) {
+          seriesMap.get(onTimeSeriesName).data[categoryIndex] = onTimeCount;
         }
 
-        const closedCount = Number(item.closed);
-        if (closedCount > 0) {
-          seriesMap.get(closedSeriesName).data[categoryIndex] = closedCount;
+        const overdueCount = Number(item.overdue);
+        if (overdueCount > 0) {
+          seriesMap.get(overdueSeriesName).data[categoryIndex] = overdueCount;
         }
       });
       
@@ -889,7 +889,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
         .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' })
+        .andWhere('card.status != :statusC', { statusC: 'C' })
         .groupBy('year')
         .addGroupBy('week')
         .orderBy('year, week')

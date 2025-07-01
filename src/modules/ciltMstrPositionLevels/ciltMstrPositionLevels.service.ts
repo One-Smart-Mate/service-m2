@@ -208,4 +208,16 @@ export class CiltMstrPositionLevelsService {
       HandleException.exception(exception);
     }
   };
+
+  async softDelete(id: number){
+    try {
+      const positionLevel = await this.findById(id);
+      if (!positionLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
+      }
+      return await this.ciltMstrPositionLevelsRepository.softDelete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 }

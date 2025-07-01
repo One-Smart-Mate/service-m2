@@ -34,7 +34,7 @@ export class WhatsappService implements OnModuleInit {
       const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
 
       this.connectionStatus = 'connecting';
-      this.logger.logWhatsapp('Iniciando conexión con WhatsApp');
+      this.logger.logWhatsapp('Starting connection with WhatsApp');
 
       this.sock = makeWASocket({
         printQRInTerminal: true,
@@ -48,7 +48,7 @@ export class WhatsappService implements OnModuleInit {
           this.qrCode = qr;
           this.connectionStatus = 'qr_required';
           qrcode.generate(qr, { small: true });
-          this.logger.logWhatsapp('Se requiere escanear código QR');
+          this.logger.logWhatsapp('Scan QR code required');
         }
 
         if (connection === 'close') {
@@ -56,13 +56,13 @@ export class WhatsappService implements OnModuleInit {
           if (shouldReconnect) {
             this.connectionStatus = 'disconnected';
             this.qrCode = null;
-            this.logger.logWhatsapp('Conexión cerrada, intentando reconectar en 3 segundos');
+            this.logger.logWhatsapp('Connection closed, trying to reconnect in 3 seconds');
             setTimeout(() => this.initializeConnection(), 3000);
           }
         } else if (connection === 'open') {
           this.connectionStatus = 'connected';
           this.qrCode = null;
-          this.logger.logWhatsapp('Conexión establecida con WhatsApp');
+          this.logger.logWhatsapp('Connection established with WhatsApp');
           this.setupMessageHandler();
         }
       });
@@ -87,7 +87,7 @@ export class WhatsappService implements OnModuleInit {
         const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
 
         if (!messageText) {
-            this.logger.logWhatsapp('Mensaje sin texto, ignorando.');
+            this.logger.logWhatsapp('Message without text, ignoring.');
             return;
         }
 
@@ -101,7 +101,7 @@ export class WhatsappService implements OnModuleInit {
 
         } catch (error) {
             this.logger.logException('WhatsappService', 'iaProcessing', error);
-            await this.sock.sendMessage(sender, { text: 'Hubo un error al procesar tu consulta. Por favor, intenta de nuevo.' });
+            await this.sock.sendMessage(sender, { text: ' There was an error processing your request. Please try again.' });
         }
         
       } catch (error) {
