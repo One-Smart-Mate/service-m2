@@ -190,23 +190,46 @@ export class CiltMstrService {
       });
       this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
   
+      // Filter out null ciltMstr first
+      const validCiltPositionLevels = ciltPositionLevels.filter(cpl => cpl.ciltMstr !== null);
+      
       // Get level paths for all levels
       const levelPaths = await Promise.all(
-        ciltPositionLevels.map(async (cpl) => {
-          const route = await this.levelService.getLevelPathById(cpl.levelId);
-          return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
+        validCiltPositionLevels.map(async (cpl) => {
+          try {
+            const route = await this.levelService.getLevelPathById(cpl.levelId);
+            return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
+          } catch (error) {
+            this.logger.logProcess('ERROR GETTING LEVEL PATH', { 
+              levelId: cpl.levelId, 
+              error: error.message 
+            });
+            // Return a fallback route when level path fails
+            return { 
+              ciltMstrId: cpl.ciltMstrId, 
+              levelId: cpl.levelId, 
+              route: `Level-${cpl.levelId}` 
+            };
+          }
         })
       );
   
       // 4) Unique CILT masters
       const ciltMasters = Array.from(
-        new Map(ciltPositionLevels.map(cpl => [cpl.ciltMstr.id, cpl.ciltMstr])).values()
+        new Map(validCiltPositionLevels.map(cpl => [cpl.ciltMstr.id, cpl.ciltMstr])).values()
       );
       this.logger.logProcess('CILT MASTERS', ciltMasters);
+      
+      if (!ciltMasters.length) {
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
+      }
   
       // 5) Sequences of those CILTs (without ciltMstr relation)
       const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { ciltMstrId: In(ciltMasters.map(cm => cm.id)) }
+        where: { 
+          ciltMstrId: In(ciltMasters.map(cm => cm.id)),
+          deletedAt: IsNull()
+        }
       });
       this.logger.logProcess('CILT SEQUENCES', ciltSequences);
   
@@ -229,7 +252,7 @@ export class CiltMstrService {
       this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
   
       // 8) Upsert executions
-      for (const cpl of ciltPositionLevels) {
+      for (const cpl of validCiltPositionLevels) {
         const masterId = cpl.ciltMstr.id;
         for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
           const isScheduled = scheduledSequences.some(
@@ -305,7 +328,7 @@ export class CiltMstrService {
               machineStopped: Boolean(seq.machineStopped),
               duration: seq.standardTime,
               levelId: cpl.levelId,
-              route: await this.levelService.getLevelPathById(cpl.levelId),
+              route: levelPaths.find(lp => lp.levelId === cpl.levelId)?.route || `Level-${cpl.levelId}`,
               allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
               allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
               toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
@@ -349,7 +372,7 @@ export class CiltMstrService {
   
       // 11) Build response ordered by secuenceSchedule
       const positions = userPositions.map(up => {
-        const masters = ciltPositionLevels
+        const masters = validCiltPositionLevels
           .filter(cpl => cpl.positionId === up.position.id)
           .map(cpl => {
             // Master sequences
