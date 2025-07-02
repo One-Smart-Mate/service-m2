@@ -16,7 +16,7 @@ import { UsersPositionsEntity } from './users.positions.entity';
 @Check('chk_fast_password_hex', "fast_password REGEXP '^[0-9A-Fa-f]{1,6}$'")
 @Entity('users')
 export class UserEntity {
-  @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
+  @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
   id: number;
 
   @Column({ name: 'site_id', type: 'int', nullable: true })

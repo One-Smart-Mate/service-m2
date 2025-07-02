@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
+import { MoveLevelDto } from './models/dto/move.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
+import { CardEntity } from '../card/entities/card.entity';
 import { In, Not, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
@@ -25,6 +27,8 @@ export class LevelService {
   constructor(
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
+    @InjectRepository(CardEntity)
+    private readonly cardRepository: Repository<CardEntity>,
     private readonly usersService: UsersService,
     private readonly siteService: SiteService,
     private readonly firebaseService: FirebaseService,
@@ -383,6 +387,130 @@ export class LevelService {
       }
 
       return path.join('/');
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  private updateCardsForLevel = async (levelId: number, levelMap: Map<string, any>) => {
+    try {
+      const level = levelMap.get(String(levelId));
+      if (!level) return;
+
+      const { area, location } = this.getSuperiorLevelsById(String(levelId), levelMap);
+
+      const cardSuperiorId = level.superiorId === 0 ? levelId : level.superiorId;
+
+      await this.cardRepository.update(
+        { nodeId: levelId },
+        {
+          cardLocation: location,
+          areaId: area.id,
+          areaName: area.name,
+          nodeName: level.name,
+          level: level.level,
+          superiorId: cardSuperiorId,
+          updatedAt: new Date()
+        }
+      );
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  moveLevel = async (moveLevelDto: MoveLevelDto) => {
+    try {
+      const levelToMove = await this.findById(moveLevelDto.levelId);
+      if (!levelToMove || levelToMove.deletedAt !== null) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      if (moveLevelDto.newSuperiorId !== 0) {
+        const newSuperior = await this.findById(moveLevelDto.newSuperiorId);
+        if (!newSuperior) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+        }
+
+        if (levelToMove.siteId !== newSuperior.siteId) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATE_RECORD,
+          );
+        }
+
+        const allChildLevels = await this.findAllChildLevels(moveLevelDto.levelId);
+        if (allChildLevels.includes(moveLevelDto.newSuperiorId)) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATE_RECORD,
+          );
+        }
+      }
+
+      if (levelToMove.superiorId === moveLevelDto.newSuperiorId) {
+        return {
+          message: 'The level is already in the requested position',
+          level: levelToMove,
+        };
+      }
+
+      const childLevels = await this.levelRepository.find({
+        where: { superiorId: moveLevelDto.levelId }
+      });
+
+      const oldSuperiorId = levelToMove.superiorId;
+      levelToMove.superiorId = moveLevelDto.newSuperiorId;
+      
+      if (moveLevelDto.newSuperiorId === 0) {
+        levelToMove.level = 0;
+      } else {
+        levelToMove.level = await this.getActualLevelBySuperiorId(moveLevelDto.newSuperiorId);
+      }
+      
+      levelToMove.updatedAt = new Date();
+
+      const movedLevel = await this.levelRepository.save(levelToMove);
+
+      if (childLevels.length > 0) {
+        await this.levelRepository.update(
+          { superiorId: moveLevelDto.levelId },
+          { 
+            superiorId: oldSuperiorId,
+            updatedAt: new Date()
+          }
+        );
+
+        for (const childLevel of childLevels) {
+          if (oldSuperiorId === 0) {
+            childLevel.level = 0;
+          } else {
+            childLevel.level = await this.getActualLevelBySuperiorId(oldSuperiorId);
+          }
+          await this.levelRepository.save(childLevel);
+        }
+      }
+
+      const allAffectedLevels = await this.findAllChildLevels(moveLevelDto.levelId);
+      const levelMap = await this.findAllLevelsBySite(levelToMove.siteId);
+      
+      
+      for (const affectedLevelId of allAffectedLevels) {
+        await this.updateCardsForLevel(affectedLevelId, levelMap);
+      }
+
+      const tokens = await this.usersService.getSiteUsersTokens(levelToMove.siteId);
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+
+      return {
+        level: movedLevel,
+        childrenUpdated: childLevels.length,
+        cardsUpdated: allAffectedLevels.length,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -57,8 +57,16 @@ export class OplLevelsService {
         order: { order: 'ASC' }
       });
 
+      const oplLevelMap = new Map();
+      oplLevels.forEach(oplLevel => {
+        if (oplLevel.opl?.id) {
+          oplLevelMap.set(oplLevel.opl.id, oplLevel.id);
+        }
+      });
+
       return opls.map(opl => ({
         ...opl,
+        oplLevelId: oplLevelMap.get(opl.id),
         details: details.filter(detail => detail.oplId === opl.id)
       }));
     } catch (exception) {
