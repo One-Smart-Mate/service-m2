@@ -1243,6 +1243,10 @@ export class CardService {
       card.status = stringConstants.CANCELLED;
       card.amDiscardReasonId = dto.amDiscardReasonId;
       card.discardReason = dto.discardReason;
+      card.managerId = dto.managerId || null;
+      card.managerName = dto.managerName || null;
+      card.cardManagerCloseDate = dto.cardManagerCloseDate || null;
+      card.commentsManagerAtCardClose = dto.commentsManagerAtCardClose || null;
       card.updatedAt = new Date();
 
       return await this.cardRepository.save(card);
