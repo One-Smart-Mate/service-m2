@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { CardService } from './card.service';
 import { CardController } from './card.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -22,7 +22,7 @@ import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-re
     CardTypesModule,
     PreclassifierModule,
     UsersModule,
-    LevelModule,
+    forwardRef(() => LevelModule),
     FirebaseModule,
     TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],

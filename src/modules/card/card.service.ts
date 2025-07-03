@@ -1293,4 +1293,62 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
+  findCardsByFastPassword = async (siteId: number, fastPassword: string) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { 
+          fastPassword: fastPassword,
+          siteId: siteId,
+          status: 'A'
+        }
+      });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      const cards = await this.cardRepository.find({
+        where: [
+          { 
+            siteId: siteId,
+            mechanicId: user.id
+          },
+          {
+            siteId: siteId,
+            responsableId: user.id
+          }
+        ],
+        order: { siteCardId: 'DESC' }
+      });
+
+      if (cards && cards.length > 0) {
+        const allEvidencesMap = await this.findAllEvidences(siteId);
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          card['levelName'] = card.nodeName;
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          fastPassword: user.fastPassword
+        },
+        cards: cards || []
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

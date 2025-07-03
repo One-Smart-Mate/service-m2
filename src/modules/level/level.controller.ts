@@ -1,8 +1,9 @@
 import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { LevelService } from './level.service';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
+import { MoveLevelDto } from './models/dto/move.level.dto';
 
 @Controller('level')
 @ApiTags('level')
@@ -40,8 +41,17 @@ export class LevelController {
   }
 
   @Get('/path/:levelId')
-  @ApiParam({ name: 'levelId', required: true, example: 1, description: 'ID del nivel para obtener su ruta' })
+  @ApiParam({ name: 'levelId', required: true, example: 1, description: 'Level ID' })
   getLevelPath(@Param('levelId') levelId: number) {
     return this.levelService.getLevelPathById(+levelId);
+  }
+
+  @Put('/move')
+  @ApiBody({ 
+    type: MoveLevelDto,
+    description: 'Move a level to a new position in the hierarchy. The children are automatically reassigned.'
+  })
+  moveLevel(@Body() moveLevelDto: MoveLevelDto) {
+    return this.levelService.moveLevel(moveLevelDto);
   }
 }
