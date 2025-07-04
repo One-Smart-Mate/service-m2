@@ -123,7 +123,7 @@ export class CiltPositionLevelService {
             levelId: cpl.levelId, 
             error: error.message 
           });
-          // Devolver una ruta de respaldo cuando falla la obtención de la ruta del nivel
+          // Return a fallback route when the level path retrieval fails
           return { 
             ciltMstrId: cpl.ciltMstrId, 
             levelId: cpl.levelId, 

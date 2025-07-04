@@ -41,7 +41,7 @@ export class CiltValidationService {
   async validateSequenceSopReferences(sequence: CiltSequencesEntity): Promise<void> {
     const validationPromises: Promise<void>[] = [];
 
-    // Solo validar si el ID es mayor a 0
+    // Just validate if the ID is greater than 0
     if (sequence.referenceOplSopId && sequence.referenceOplSopId > 0) {
       validationPromises.push(this.validateReferenceOplSop(sequence.referenceOplSopId));
     }
