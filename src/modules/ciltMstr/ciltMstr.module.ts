@@ -1,24 +1,26 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltMstrController } from './ciltMstr.controller';
 import { CiltMstrService } from './ciltMstr.service';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
-import { UserEntity } from 'src/modules/users/entities/user.entity';
-import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
-import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
-import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
-import { SiteModule } from '../site/site.module';
-import { SiteEntity } from '../site/entities/site.entity';
+import { UserEntity } from '../users/entities/user.entity';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
+import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
+import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
-import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { CiltSecuencesScheduleModule } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 import { LevelModule } from '../level/level.module';
-import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
-import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
+// Nuevos servicios específicos
+import { CiltExecutionService } from './services/cilt-execution.service';
+import { CiltPositionLevelService } from './services/cilt-position-level.service';
+import { CiltValidationService } from './services/cilt-validation.service';
+import { CiltQueryBuilderService } from './services/cilt-query-builder.service';
+import { CiltQueryService } from './services/cilt-query.service';
 
-@Module({   
+@Module({
   imports: [
     TypeOrmModule.forFeature([
       CiltMstrEntity,
@@ -26,17 +28,29 @@ import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entiti
       UsersPositionsEntity,
       CiltSequencesEntity,
       CiltSequencesExecutionsEntity,
-      CiltSecuencesScheduleEntity,
-      SiteEntity,
       CiltMstrPositionLevelsEntity,
-      OplMstr
+      OplMstr,
     ]),
-    SiteModule,
-    forwardRef(() => CiltSecuencesScheduleModule),
-    LevelModule
+    CiltSecuencesScheduleModule,
+    LevelModule,
   ],
   controllers: [CiltMstrController],
-  providers: [CiltMstrService, CiltSecuencesScheduleService, CustomLoggerService],
-  exports: [CiltMstrService],
+  providers: [
+    CiltMstrService,
+    CiltExecutionService,
+    CiltPositionLevelService,
+    CiltValidationService,
+    CiltQueryBuilderService,
+    CiltQueryService,
+    CustomLoggerService,
+  ],
+  exports: [
+    CiltMstrService,
+    CiltExecutionService,
+    CiltPositionLevelService,
+    CiltValidationService,
+    CiltQueryBuilderService,
+    CiltQueryService,
+  ],
 })
 export class CiltMstrModule {}

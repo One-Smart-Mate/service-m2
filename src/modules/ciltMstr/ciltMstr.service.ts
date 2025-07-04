@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, IsNull, Equal, Raw, Between } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -10,44 +10,37 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { UserEntity } from 'src/modules/users/entities/user.entity';
-import { UsersPositionsEntity } from 'src/modules/users/entities/users.positions.entity';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
-import { CreateCiltSequencesExecutionDTO } from '../CiltSequencesExecutions/models/dto/create.ciltSequencesExecution.dto';
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
-import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
-import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
-import { LevelService } from '../level/level.service';
+// Importar los nuevos servicios específicos
+import { CiltExecutionService } from './services/cilt-execution.service';
+import { CiltPositionLevelService } from './services/cilt-position-level.service';
+import { CiltValidationService } from './services/cilt-validation.service';
+import { CiltQueryBuilderService, CiltUserResponse, CiltSiteResponse } from './services/cilt-query-builder.service';
+import { CiltQueryService } from './services/cilt-query.service';
 
 @Injectable()
 export class CiltMstrService {
   constructor(
     @InjectRepository(CiltMstrEntity)
     private readonly ciltRepository: Repository<CiltMstrEntity>,
-    @InjectRepository(UserEntity)
-    private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(UsersPositionsEntity)
-    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
-    @InjectRepository(CiltSequencesExecutionsEntity)
-    private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
-    @InjectRepository(CiltMstrPositionLevelsEntity)
-    private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
-    @InjectRepository(OplMstr)
-    private readonly oplMstrRepository: Repository<OplMstr>,
     private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
-    private readonly levelService: LevelService,
     private readonly logger: CustomLoggerService,
+    // Nuevos servicios específicos
+    private readonly ciltExecutionService: CiltExecutionService,
+    private readonly ciltPositionLevelService: CiltPositionLevelService,
+    private readonly ciltValidationService: CiltValidationService,
+    private readonly ciltQueryBuilderService: CiltQueryBuilderService,
+    private readonly ciltQueryService: CiltQueryService,
   ) {}
 
   findAll = async () => {
     try {
-      return await this.ciltRepository.find({
-        order: { order: 'ASC' }
-      });
+      return await this.ciltQueryService.getAllCilts();
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -55,10 +48,7 @@ export class CiltMstrService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltRepository.find({ 
-        where: { siteId },
-        order: { order: 'ASC' }
-      });
+      return await this.ciltQueryService.getCiltsBySiteId(siteId);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -66,7 +56,7 @@ export class CiltMstrService {
 
   findById = async (id: number) => {
     try {
-      const cilt = await this.ciltRepository.findOneBy({ id });
+      const cilt = await this.ciltQueryService.getCiltById(id);
       if (!cilt) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
       }
@@ -78,15 +68,8 @@ export class CiltMstrService {
 
   create = async (createCiltDto: CreateCiltMstrDTO) => {
     try {
-      // Found existing CILTs for the same site
-      const existingCilts = await this.ciltRepository.find({
-        where: { siteId: createCiltDto.siteId },
-        order: { order: 'ASC' },
-        take: 1
-      });
-
-      // Assign the next order number
-      const nextOrder = existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
+      // Obtener el próximo número de orden
+      const nextOrder = await this.ciltQueryService.getNextOrderForSite(createCiltDto.siteId);
       createCiltDto.order = nextOrder;
 
       const cilt = this.ciltRepository.create(createCiltDto);
@@ -149,10 +132,12 @@ export class CiltMstrService {
     }
   };
 
-  async findCiltsByUserId(userId: number, date: string) {
+  async findCiltsByUserId(userId: number, date: string): Promise<CiltUserResponse> {
     try {
-      // Change date to midnight local
-      const scheduleDate = new Date(date);
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date });
+      
+      // Validate date format
+      const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
       const dayStart = new Date(date);
       dayStart.setHours(0, 0, 0, 0);
@@ -160,266 +145,82 @@ export class CiltMstrService {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
   
-      // 1) Search user
-      const user = await this.userRepository.findOneBy({ id: userId });
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-      this.logger.logProcess('USER', { userId, date });
+      // 1) Validate and get user
+      const user = await this.ciltValidationService.validateUser(userId);
   
-      // 2) User positions
-      const userPositions = await this.usersPositionsRepository.find({
-        where: { user: { id: userId } },
-        relations: ['position'],
-      });
-      this.logger.logProcess('USER POSITIONS', userPositions);
+      // 2) Get user positions
+      const userPositions = await this.ciltPositionLevelService.getUserPositions(userId);
       if (!userPositions.length) {
         return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
       }
   
-      // 3) Active levels for those positions
+      // 3) Get active levels for those positions
       const positionIds = userPositions.map(up => up.position.id);
-      this.logger.logProcess('POSITION IDS', positionIds);
-      const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find({
-        where: {
-          positionId: In(positionIds),
-          status: 'A',
-          deletedAt: IsNull(),
-        },
-        relations: ['ciltMstr', 'level'],
-      });
-      this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
-  
-      // Filter out null ciltMstr first
-      const validCiltPositionLevels = ciltPositionLevels.filter(cpl => cpl.ciltMstr !== null);
+      const ciltPositionLevels = await this.ciltPositionLevelService.getActiveLevelsForPositions(positionIds);
       
-      // Get level paths for all levels
-      const levelPaths = await Promise.all(
-        validCiltPositionLevels.map(async (cpl) => {
-          try {
-            const route = await this.levelService.getLevelPathById(cpl.levelId);
-            return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
-          } catch (error) {
-            this.logger.logProcess('ERROR GETTING LEVEL PATH', { 
-              levelId: cpl.levelId, 
-              error: error.message 
-            });
-            // Return a fallback route when level path fails
-            return { 
-              ciltMstrId: cpl.ciltMstrId, 
-              levelId: cpl.levelId, 
-              route: `Level-${cpl.levelId}` 
-            };
-          }
-        })
-      );
+      // Filter valid levels (without null ciltMstr)
+      const validCiltPositionLevels = this.ciltPositionLevelService.filterValidPositionLevels(ciltPositionLevels);
+      
+      if (!validCiltPositionLevels.length) {
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
+      }
+      
+      // Get level paths
+      const levelPaths = await this.ciltPositionLevelService.getLevelPaths(validCiltPositionLevels);
   
-      // 4) Unique CILT masters
-      const ciltMasters = Array.from(
-        new Map(validCiltPositionLevels.map(cpl => [cpl.ciltMstr.id, cpl.ciltMstr])).values()
-      );
-      this.logger.logProcess('CILT MASTERS', ciltMasters);
+      // 4) Extract unique CILT masters
+      const ciltMasters = this.ciltQueryBuilderService.extractUniqueCiltMasters(validCiltPositionLevels);
       
       if (!ciltMasters.length) {
         return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
       }
   
-      // 5) Sequences of those CILTs (without ciltMstr relation)
-      const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { 
-          ciltMstrId: In(ciltMasters.map(cm => cm.id)),
-          deletedAt: IsNull()
-        }
-      });
-      this.logger.logProcess('CILT SEQUENCES', ciltSequences);
-  
-      // 6) Validate SOP references in parallel
-      await Promise.all(
-        ciltSequences.map(async seq => {
-          if (seq.referenceOplSopId) {
-            const ref = await this.oplMstrRepository.findOneBy({ id: seq.referenceOplSopId });
-            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-          }
-          if (seq.remediationOplSopId) {
-            const rem = await this.oplMstrRepository.findOneBy({ id: seq.remediationOplSopId });
-            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-          }
-        })
+      // 5) Get active sequences for those CILTs
+      const ciltSequences = await this.ciltQueryService.getActiveSequencesForCilts(
+        ciltMasters.map(cm => cm.id)
       );
   
-      // 7) Scheduled schedules for the date
-      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
-      this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
+      // 6) Validate SOP references
+      await this.ciltValidationService.validateSopReferences(ciltSequences);
   
-      // 8) Upsert executions
-      for (const cpl of validCiltPositionLevels) {
-        const masterId = cpl.ciltMstr.id;
-        for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
-          const isScheduled = scheduledSequences.some(
-            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-          );
-          if (!isScheduled) continue;
+      // 7) Get scheduled sequences for the date
+      const scheduledSequenceEntities = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
+      const scheduledSequences = CiltExecutionService.adaptScheduleEntitiesToDetails(scheduledSequenceEntities);
   
-          // Get schedule details for this sequence
-          const scheduleDetails = scheduledSequences.find(
-            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-          );
+      // 8) Create/update executions
+      await this.ciltExecutionService.upsertExecutionsForUser(
+        validCiltPositionLevels,
+        ciltSequences,
+        scheduledSequences,
+        userId,
+        scheduleDate,
+        levelPaths
+      );
+  
+      // 9) Get
+      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+        ciltMasters.map(cm => cm.id),
+        dayStart,
+        dayEnd,
+        userId
+      );
+  
+      // 10) Build and return response
+      const response = this.ciltQueryBuilderService.buildUserCiltResponse(
+        user,
+        userPositions,
+        validCiltPositionLevels,
+        ciltSequences,
+        allExecutions,
+        levelPaths
+      );
 
-          const executionDate = new Date(scheduleDate);
-          if (scheduleDetails?.schedule) {
-              const timeParts = scheduleDetails.schedule.split(':');
-              if (timeParts.length === 3) {
-                  executionDate.setHours(Number(timeParts[0]));
-                  executionDate.setMinutes(Number(timeParts[1]));
-                  executionDate.setSeconds(Number(timeParts[2]));
-              }
-          }
-
-          const existing = await this.ciltSequencesExecutionsRepository.findOne({
-            where: {
-              ciltId: masterId,
-              ciltSecuenceId: seq.id,
-              userId: user.id,
-              secuenceSchedule: executionDate,
-              deletedAt: IsNull(),
-            }
-          });
-  
-          if (existing) {
-            // No modificar ejecuciones que ya fueron completadas
-            if (existing.secuenceStart && existing.secuenceStop) {
-              this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
-                id: existing.id, 
-                secuenceStart: existing.secuenceStart, 
-                secuenceStop: existing.secuenceStop 
-              });
-              continue;
-            }
-            await this.ciltSequencesExecutionsRepository.save(existing);
-            this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
-          } else {
-            const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
-              where: { siteId: cpl.siteId },
-              order: { siteExecutionId: 'DESC' },
-            });
-            const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
-
-            const dto: Partial<CiltSequencesExecutionsEntity> = {
-              siteId: cpl.siteId,
-              siteExecutionId: nextSiteExecutionId,
-              positionId: cpl.positionId,
-              ciltId: masterId,
-              ciltSecuenceId: seq.id,
-              userId: user.id,
-              userWhoExecutedId: user.id,
-              secuenceSchedule: executionDate,
-              standardOk: seq.standardOk,
-              referencePoint: seq.referencePoint,
-              secuenceList: seq.secuenceList,
-              secuenceColor: seq.secuenceColor,
-              ciltTypeId: seq.ciltTypeId,
-              ciltTypeName: seq.ciltTypeName,
-              referenceOplSopId: seq.referenceOplSopId,
-              remediationOplSopId: seq.remediationOplSopId ? Number(seq.remediationOplSopId) : null,
-              toolsRequiered: seq.toolsRequired,
-              selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
-              status: 'A',
-              stoppageReason: Boolean(seq.stoppageReason),
-              machineStopped: Boolean(seq.machineStopped),
-              duration: seq.standardTime,
-              levelId: cpl.levelId,
-              route: levelPaths.find(lp => lp.levelId === cpl.levelId)?.route || `Level-${cpl.levelId}`,
-              allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
-              allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
-              toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
-              toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
-              allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
-              specialWarning: seq.specialWarning,
-            };
-            const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
-            this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
-          }
-        }
-      }
-  
-      // 9) Read all executions for the date
-      const allExecutions = await this.ciltSequencesExecutionsRepository.find({
-        where: {
-          ciltId: In(ciltMasters.map(cm => cm.id)),
-          status: 'A',
-          deletedAt: IsNull(),
-          secuenceSchedule: Between(dayStart, dayEnd),
-          userId: userId,
-        },
-        relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
-        order: { secuenceStart: 'ASC' },
+      this.logger.logProcess('COMPLETED FIND CILTS BY USER ID', { 
+        userId, 
+        positionsCount: response.positions.length 
       });
-      this.logger.logProcess('CILT EXECUTIONS', allExecutions);
-  
-      // 10) Group sequences and executions
-      const sequencesByMaster = new Map<number, CiltSequencesEntity[]>();
-      ciltSequences.forEach(seq => {
-        const list = sequencesByMaster.get(seq.ciltMstrId) ?? [];
-        list.push(seq);
-        sequencesByMaster.set(seq.ciltMstrId, list);
-      });
-      const executionsBySequence = new Map<number, CiltSequencesExecutionsEntity[]>();
-      allExecutions.forEach(exec => {
-        const list = executionsBySequence.get(exec.ciltSecuenceId) ?? [];
-        list.push(exec);
-        executionsBySequence.set(exec.ciltSecuenceId, list);
-      });
-  
-      // 11) Build response ordered by secuenceSchedule
-      const positions = userPositions.map(up => {
-        const masters = validCiltPositionLevels
-          .filter(cpl => cpl.positionId === up.position.id)
-          .map(cpl => {
-            // Master sequences
-            const master = cpl.ciltMstr;
-            const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id);
-            const sequencesWithExecutions = (sequencesByMaster.get(master.id) ?? [])
-              .map(seq => {
-                const executions = (executionsBySequence.get(seq.id) ?? [])
-                  .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
-                
-                // Exclude sequences that have no executions
-                if (executions.length === 0) {
-                  return null;
-                }
-                
-                const { ciltMstr, ...seqFields } = seq as any;
-                return { ...seqFields, executions };
-              })
-              .filter(seq => seq !== null);
-
-            // Solo incluir masters que tengan secuencias con ejecuciones
-            if (sequencesWithExecutions.length === 0) {
-              return null;
-            }
-
-            return { 
-              ...master, 
-              sequences: sequencesWithExecutions,
-              levelId: levelInfo?.levelId,
-              route: levelInfo?.route
-            };
-          })
-          .filter(master => master !== null);
-  
-        return {
-          id: up.position.id,
-          name: up.position.name,
-          siteName: up.position.siteName,
-          areaName: up.position.areaName,
-          ciltMasters: masters,
-        };
-      });
-  
-      return {
-        userInfo: { id: user.id, name: user.name, email: user.email },
-        positions,
-      };
+      
+      return response;
     } catch (error) {
       HandleException.exception(error);
     }
@@ -432,24 +233,21 @@ export class CiltMstrService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
       }
 
-      const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { ciltMstrId },
-      });
+      const ciltSequences = await this.ciltQueryService.getSequencesForCilt(ciltMstrId);
 
       // Get all sequence IDs
       const sequenceIds = ciltSequences.map(sequence => sequence.id);
 
       // Get executions for all sequences
-      const ciltExecutions = await this.ciltSequencesExecutionsRepository.find({
-        where: { 
-          ciltSecuenceId: In(sequenceIds),
-          deletedAt: IsNull()
-        },
-      });
+      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+        [ciltMstrId],
+        new Date(0), // From beginning of time
+        new Date() // To now
+      );
 
       // Map executions to their respective sequences
       const sequencesWithExecutions = ciltSequences.map(sequence => {
-        const sequenceExecutions = ciltExecutions.filter(
+        const sequenceExecutions = allExecutions.filter(
           exec => exec.ciltSecuenceId === sequence.id
         );
 
@@ -470,10 +268,12 @@ export class CiltMstrService {
     }
   };
 
-  async findCiltsBySiteId(siteId: number, date: string) {
+  async findCiltsBySiteId(siteId: number, date: string): Promise<CiltSiteResponse> {
     try {
-      // Change date to midnight local
-      const scheduleDate = new Date(date);
+      this.logger.logProcess('STARTING FIND CILTS BY SITE ID', { siteId, date });
+      
+      // Validate date format
+      const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
       const dayStart = new Date(date);
       dayStart.setHours(0, 0, 0, 0);
@@ -481,220 +281,69 @@ export class CiltMstrService {
       const dayEnd = new Date(date);
       dayEnd.setHours(23, 59, 59, 999);
   
-      // 1) Get all CILTs for the site
-      const ciltMasters = await this.ciltRepository.find({
-        where: { 
-          siteId,
-          status: 'A',
-          deletedAt: IsNull()
-        }
-      });
-      this.logger.logProcess('CILT MASTERS', ciltMasters);
+      // 1) Get all active CILTs for the site
+      const ciltMasters = await this.ciltQueryService.getActiveCiltsForSite(siteId);
       if (!ciltMasters.length) {
-        return { siteId, users: [] };
+        return { siteId, date, executions: [], total: 0 };
       }
 
       // 2) Get all sequences for these CILTs
-      const ciltSequences = await this.ciltSequencesRepository.find({
-        where: { 
-          ciltMstrId: In(ciltMasters.map(cm => cm.id)),
-          deletedAt: IsNull()
-        }
-      });
-      this.logger.logProcess('CILT SEQUENCES', ciltSequences);
-
-      // 3) Validate SOP references in parallel
-      await Promise.all(
-        ciltSequences.map(async seq => {
-          if (seq.referenceOplSopId) {
-            const ref = await this.oplMstrRepository.findOneBy({ id: seq.referenceOplSopId });
-            if (!ref) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-          }
-          if (seq.remediationOplSopId) {
-            const rem = await this.oplMstrRepository.findOneBy({ id: seq.remediationOplSopId });
-            if (!rem) throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-          }
-        })
+      const ciltSequences = await this.ciltQueryService.getActiveSequencesForCilts(
+        ciltMasters.map(cm => cm.id)
       );
+
+      // 3) Validate SOP references
+      await this.ciltValidationService.validateSopReferences(ciltSequences);
 
       // 4) Get active position levels for these CILTs
-      const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find({
-        where: {
-          ciltMstrId: In(ciltMasters.map(cm => cm.id)),
-          status: 'A',
-          deletedAt: IsNull(),
-        },
-        relations: ['position', 'level'],
-      });
-      this.logger.logProcess('CILT POSITION LEVELS', ciltPositionLevels);
-
-      // Get level paths for all levels
-      const levelPaths = await Promise.all(
-        ciltPositionLevels.map(async (cpl) => {
-          const route = await this.levelService.getLevelPathById(cpl.levelId);
-          return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
-        })
+      const ciltPositionLevels = await this.ciltPositionLevelService.getActiveLevelsForCilts(
+        ciltMasters.map(cm => cm.id)
       );
 
+      // Get level paths
+      const levelPaths = await this.ciltPositionLevelService.getLevelPaths(ciltPositionLevels);
+
       // 5) Get all users with these positions
-      const positionIds = [...new Set(ciltPositionLevels.map(cpl => cpl.positionId))];
-      const userPositions = await this.usersPositionsRepository.find({
-        where: { 
-          positionId: In(positionIds),
-          deletedAt: IsNull()
-        },
-        relations: ['user', 'position'],
-      });
-      this.logger.logProcess('USER POSITIONS', userPositions);
+      const positionIds = this.ciltPositionLevelService.extractUniquePositionIds(ciltPositionLevels);
+      const userPositions = await this.ciltPositionLevelService.getUsersWithPositions(positionIds);
 
       // 6) Get scheduled sequences for the date
-      const scheduledSequences = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
-      this.logger.logProcess('SCHEDULED SEQUENCES', scheduledSequences);
+      const scheduledSequenceEntities = await this.ciltSecuencesScheduleService.findSchedulesForDate(date);
+      const scheduledSequences = CiltExecutionService.adaptScheduleEntitiesToDetails(scheduledSequenceEntities);
 
-      // 7) Group users by their positions
-      const usersByPosition = new Map<number, UserEntity[]>();
-      userPositions.forEach(up => {
-        const users = usersByPosition.get(up.positionId) || [];
-        users.push(up.user);
-        usersByPosition.set(up.positionId, users);
-      });
+      // 7) Group users by position
+      const usersByPosition = this.ciltPositionLevelService.groupUsersByPosition(userPositions);
 
-      // 8) Upsert executions for each user and position
-      for (const cpl of ciltPositionLevels) {
-        const users = usersByPosition.get(cpl.positionId) || [];
-        const masterId = cpl.ciltMstrId;
-        
-        for (const user of users) {
-          for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
-            const isScheduled = scheduledSequences.some(
-              sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-            );
-            if (!isScheduled) continue;
-
-            // Get schedule details for this sequence
-            const scheduleDetails = scheduledSequences.find(
-              sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-            );
-
-            const executionDate = new Date(scheduleDate);
-            if (scheduleDetails?.schedule) {
-                const timeParts = scheduleDetails.schedule.split(':');
-                if (timeParts.length === 3) {
-                    executionDate.setHours(Number(timeParts[0]));
-                    executionDate.setMinutes(Number(timeParts[1]));
-                    executionDate.setSeconds(Number(timeParts[2]));
-                }
-            }
-
-            const existing = await this.ciltSequencesExecutionsRepository.findOne({
-              where: {
-                ciltId: masterId,
-                ciltSecuenceId: seq.id,
-                userId: user.id,
-                secuenceSchedule: executionDate,
-                deletedAt: IsNull(),
-              }
-            });
-
-            if (existing) {
-              // Not modify executions that have already been completed
-              if (existing.secuenceStart && existing.secuenceStop) {
-                this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
-                  id: existing.id, 
-                  secuenceStart: existing.secuenceStart, 
-                  secuenceStop: existing.secuenceStop 
-                });
-                continue;
-              }
-              await this.ciltSequencesExecutionsRepository.save(existing);
-              this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
-            } else {
-              const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
-                where: { siteId: cpl.siteId },
-                order: { siteExecutionId: 'DESC' },
-              });
-              const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
-
-              const dto: Partial<CiltSequencesExecutionsEntity> = {
-                siteId: cpl.siteId,
-                siteExecutionId: nextSiteExecutionId,
-                positionId: cpl.positionId,
-                ciltId: masterId,
-                ciltSecuenceId: seq.id,
-                userId: user.id,
-                userWhoExecutedId: user.id,
-                secuenceSchedule: executionDate,
-                standardOk: seq.standardOk,
-                referencePoint: seq.referencePoint,
-                secuenceList: seq.secuenceList,
-                secuenceColor: seq.secuenceColor,
-                ciltTypeId: seq.ciltTypeId,
-                ciltTypeName: seq.ciltTypeName,
-                referenceOplSopId: seq.referenceOplSopId,
-                remediationOplSopId: seq.remediationOplSopId ? Number(seq.remediationOplSopId) : null,
-                toolsRequiered: seq.toolsRequired,
-                selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
-                status: 'A',
-                stoppageReason: Boolean(seq.stoppageReason),
-                machineStopped: Boolean(seq.machineStopped),
-                duration: seq.standardTime,
-                levelId: cpl.levelId,
-                route: await this.levelService.getLevelPathById(cpl.levelId),
-                allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
-                allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
-                toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
-                toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
-                allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
-                specialWarning: seq.specialWarning,
-              };
-              const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
-              this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
-            }
-          }
-        }
-      }
+      // 8) Create/update executions for each user and position
+      await this.ciltExecutionService.upsertExecutionsForSite(
+        ciltPositionLevels,
+        ciltSequences,
+        scheduledSequences,
+        usersByPosition,
+        scheduleDate
+      );
 
       // 9) Read all executions for the date
-      const allExecutions = await this.ciltSequencesExecutionsRepository.find({
-        where: {
-          ciltId: In(ciltMasters.map(cm => cm.id)),
-          status: 'A',
-          deletedAt: IsNull(),
-          secuenceSchedule: Between(dayStart, dayEnd),
-        },
-        relations: ['evidences', 'referenceOplSop', 'remediationOplSop'],
-        order: { secuenceStart: 'ASC' },
-      });
-      this.logger.logProcess('CILT EXECUTIONS', allExecutions);
+      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+        ciltMasters.map(cm => cm.id),
+        dayStart,
+        dayEnd
+      );
 
-      // 10) Group sequences and executions
-      const sequencesByMaster = new Map<number, CiltSequencesEntity[]>();
-      ciltSequences.forEach(seq => {
-        const list = sequencesByMaster.get(seq.ciltMstrId) ?? [];
-        list.push(seq);
-        sequencesByMaster.set(seq.ciltMstrId, list);
-      });
-
-      const executionsBySequence = new Map<number, CiltSequencesExecutionsEntity[]>();
-      allExecutions.forEach(exec => {
-        const list = executionsBySequence.get(exec.ciltSecuenceId) ?? [];
-        list.push(exec);
-        executionsBySequence.set(exec.ciltSecuenceId, list);
-      });
-      
-      return {
+      // 10) Build
+      const response = this.ciltQueryBuilderService.buildSiteCiltResponse(
         siteId,
         date,
-        executions: allExecutions.map(exec => {
-          const levelInfo = levelPaths.find(lp => lp.ciltMstrId === exec.ciltId);
-          return {
-            ...exec,
-            levelId: levelInfo?.levelId,
-            route: levelInfo?.route
-          };
-        }),
-        total: allExecutions.length
-      }
+        allExecutions,
+        levelPaths
+      );
+
+      this.logger.logProcess('COMPLETED FIND CILTS BY SITE ID', { 
+        siteId, 
+        totalExecutions: response.total 
+      });
+      
+      return response;
     } catch (error) {
       HandleException.exception(error);
     }
@@ -767,12 +416,7 @@ export class CiltMstrService {
   }
 
   private async getNextOrder(siteId: number): Promise<number> {
-    const existingCilts = await this.ciltRepository.find({
-      where: { siteId },
-      order: { order: 'DESC' },
-      take: 1
-    });
-    return existingCilts.length > 0 ? existingCilts[0].order + 1 : 1;
+    return await this.ciltQueryService.getNextOrderForSite(siteId);
   }
 
   async softDelete(id: number){
