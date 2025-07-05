@@ -52,21 +52,23 @@ export class CiltExecutionService {
     scheduleDate: Date,
     levelPaths: Array<{ ciltMstrId: number; levelId: number; route: string }>
   ): Promise<void> {
-    this.logger.logProcess('STARTING UPSERT EXECUTIONS FOR USER', { userId, levelsCount: validCiltPositionLevels.length });
+    this.logger.logProcess('STARTING UPSERT EXECUTIONS FOR USER', { 
+      userId, 
+      levelsCount: validCiltPositionLevels.length,
+      scheduledSequencesCount: scheduledSequences.length
+    });
 
     for (const cpl of validCiltPositionLevels) {
       const masterId = cpl.ciltMstrId;
       
-      for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
-        const isScheduled = scheduledSequences.some(
-          sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-        );
+      // Iterate over each scheduled sequence individually
+      for (const scheduleDetails of scheduledSequences) {
+        // Skip if this schedule is not for the current CILT master
+        if (scheduleDetails.ciltId !== masterId) continue;
         
-        if (!isScheduled) continue;
-
-        const scheduleDetails = scheduledSequences.find(
-          sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-        );
+        // Find the corresponding sequence entity
+        const seq = ciltSequences.find(s => s.ciltMstrId === masterId && s.id === scheduleDetails.secuenceId);
+        if (!seq) continue;
 
         const executionDate = this.buildExecutionDate(scheduleDate, scheduleDetails);
 
@@ -85,23 +87,24 @@ export class CiltExecutionService {
     usersByPosition: Map<number, any[]>,
     scheduleDate: Date
   ): Promise<void> {
-    this.logger.logProcess('STARTING UPSERT EXECUTIONS FOR SITE', { levelsCount: ciltPositionLevels.length });
+    this.logger.logProcess('STARTING UPSERT EXECUTIONS FOR SITE', { 
+      levelsCount: ciltPositionLevels.length,
+      scheduledSequencesCount: scheduledSequences.length
+    });
 
     for (const cpl of ciltPositionLevels) {
       const users = usersByPosition.get(cpl.positionId) || [];
       const masterId = cpl.ciltMstrId;
       
       for (const user of users) {
-        for (const seq of ciltSequences.filter(s => s.ciltMstrId === masterId)) {
-          const isScheduled = scheduledSequences.some(
-            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-          );
+        // Iterate over each scheduled sequence individually
+        for (const scheduleDetails of scheduledSequences) {
+          // Skip if this schedule is not for the current CILT master
+          if (scheduleDetails.ciltId !== masterId) continue;
           
-          if (!isScheduled) continue;
-
-          const scheduleDetails = scheduledSequences.find(
-            sch => sch.ciltId === masterId && sch.secuenceId === seq.id
-          );
+          // Find the corresponding sequence entity
+          const seq = ciltSequences.find(s => s.ciltMstrId === masterId && s.id === scheduleDetails.secuenceId);
+          if (!seq) continue;
 
           const executionDate = this.buildExecutionDate(scheduleDate, scheduleDetails);
 

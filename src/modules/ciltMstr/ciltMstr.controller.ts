@@ -34,6 +34,17 @@ export class CiltMstrController {
       findByUserDto.date
     );
   }
+  
+  @Get('user-read-only/:userId/:date')
+  @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
+  async findCiltsByUserIdReadOnly(@Param('userId') userId: number, @Param('date') date: string) {
+    return await this.ciltMstrService.findCiltsByUserIdReadOnly(
+      userId,
+      date
+    );
+  }
 
   @Post('site')
   @ApiOperation({ summary: 'Get all CILTs and generate executions for all users in a site for a specific date' })
