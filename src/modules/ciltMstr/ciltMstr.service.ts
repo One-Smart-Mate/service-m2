@@ -225,6 +225,83 @@ export class CiltMstrService {
       HandleException.exception(error);
     }
   }
+
+  async findCiltsByUserIdReadOnly(userId: number, date: string): Promise<CiltUserResponse> {
+    try {
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date });
+      
+      // Validate date format
+      const scheduleDate = this.ciltValidationService.validateDateFormat(date);
+
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+  
+      // 1) Validate and get user
+      const user = await this.ciltValidationService.validateUser(userId);
+  
+      // 2) Get user positions
+      const userPositions = await this.ciltPositionLevelService.getUserPositions(userId);
+      if (!userPositions.length) {
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
+      }
+  
+      // 3) Get active levels for those positions
+      const positionIds = userPositions.map(up => up.position.id);
+      const ciltPositionLevels = await this.ciltPositionLevelService.getActiveLevelsForPositions(positionIds);
+      
+      // Filter valid levels (without null ciltMstr)
+      const validCiltPositionLevels = this.ciltPositionLevelService.filterValidPositionLevels(ciltPositionLevels);
+      
+      if (!validCiltPositionLevels.length) {
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
+      }
+      
+      // Get level paths
+      const levelPaths = await this.ciltPositionLevelService.getLevelPaths(validCiltPositionLevels);
+  
+      // 4) Extract unique CILT masters
+      const ciltMasters = this.ciltQueryBuilderService.extractUniqueCiltMasters(validCiltPositionLevels);
+      
+      if (!ciltMasters.length) {
+        return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
+      }
+  
+      // 5) Get active sequences for those CILTs
+      const ciltSequences = await this.ciltQueryService.getActiveSequencesForCilts(
+        ciltMasters.map(cm => cm.id)
+      );
+  
+      // 7) Get executions (READ ONLY - no creation/update)
+      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+        ciltMasters.map(cm => cm.id),
+        dayStart,
+        dayEnd,
+        userId
+      );
+  
+      // 8) Build and return response
+      const response = this.ciltQueryBuilderService.buildUserCiltResponse(
+        user,
+        userPositions,
+        validCiltPositionLevels,
+        ciltSequences,
+        allExecutions,
+        levelPaths
+      );
+
+      this.logger.logProcess('COMPLETED FIND CILTS BY USER ID (READ ONLY)', { 
+        userId, 
+        positionsCount: response.positions.length 
+      });
+      
+      return response;
+    } catch (error) {
+      HandleException.exception(error);
+    }
+  }
   
   findCiltDetailsById = async (ciltMstrId: number) => {
     try {

@@ -100,6 +100,7 @@ export const stringConstants = {
   //status
   activeStatus: 'A',
   inactiveStatus: 'I',
+  completedStatus: 'R', // For CILT sequences executions
 
   //Harcoded
   tagVersion: '1.0.0',
