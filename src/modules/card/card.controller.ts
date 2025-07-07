@@ -272,4 +272,14 @@ export class CardController {
       endDate,
     );
   }
+
+  @Get('/fast-password/:siteId/:fastPassword')
+  @ApiParam({ name: 'siteId', description: 'Site ID where to search for the user' })
+  @ApiParam({ name: 'fastPassword', description: 'Fast password of the user' })
+  findCardsByFastPassword(
+    @Param('siteId') siteId: number,
+    @Param('fastPassword') fastPassword: string,
+  ) {
+    return this.cardService.findCardsByFastPassword(siteId, fastPassword);
+  }
 }

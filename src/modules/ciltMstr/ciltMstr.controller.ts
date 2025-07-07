@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
@@ -32,6 +32,17 @@ export class CiltMstrController {
     return await this.ciltMstrService.findCiltsByUserId(
       findByUserDto.userId,
       findByUserDto.date
+    );
+  }
+  
+  @Get('user-read-only/:userId/:date')
+  @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
+  async findCiltsByUserIdReadOnly(@Param('userId') userId: number, @Param('date') date: string) {
+    return await this.ciltMstrService.findCiltsByUserIdReadOnly(
+      userId,
+      date
     );
   }
 
@@ -85,5 +96,12 @@ export class CiltMstrController {
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
   async cloneCiltMaster(@Param('id') id: number) {
     return await this.ciltMstrService.cloneCiltMaster(id);
+  }
+
+  @Delete('/delete/:id')
+  @ApiOperation({ summary: 'Delete a CILT master' })
+  @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to delete' })
+  async delete(@Param('id') id: number) {
+    return await this.ciltMstrService.softDelete(id);
   }
 }

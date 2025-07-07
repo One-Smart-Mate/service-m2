@@ -46,7 +46,7 @@ export const QUERY_CONSTANTS = {
       YEAR(card.created_at) AS year,
       WEEK(card.created_at, 1) AS week,
       COUNT(*) AS issued,
-      SUM(IF(card.user_definitive_solution_id IS NOT NULL, 1, 0)) AS eradicated
+      SUM(IF(card.status = 'R', 1, 0)) AS eradicated
     `,
   findSiteDiscardedCardsGroupedByUser: `
     responsable_name as responsibleName,

@@ -4,6 +4,7 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  DeleteDateColumn,
 } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { PositionEntity } from '../../position/entities/position.entity';
@@ -46,7 +47,7 @@ export class CiltMstrPositionLevelsEntity {
   })
   updatedAt: Date | null;
 
-  @Column({ type: 'timestamp', name: 'deleted_at', nullable: true })
+  @DeleteDateColumn({ type: 'timestamp', name: 'deleted_at', nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => CiltMstrEntity)
