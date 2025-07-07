@@ -31,7 +31,7 @@ import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
-import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
+import { addDaysToDate, addDaysToDateString, convertToISOFormat } from 'src/utils/general.functions';
 import { UserEntity } from '../users/entities/user.entity';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
@@ -215,7 +215,7 @@ export class CardService {
         levelMap,
       );
 
-      const createdAt = new Date(createCardDTO.cardCreationDate);
+      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
 
       const card = await this.cardRepository.create({
         ...createCardDTO,
@@ -247,7 +247,8 @@ export class CardService {
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
         createdAt: createdAt,
-        cardDueDate: priority.id && addDaysToDateString(createCardDTO.cardCreationDate, priority.priorityDays),
+        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
+        cardDueDate: priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,

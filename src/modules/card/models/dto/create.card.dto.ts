@@ -52,7 +52,7 @@ export class CreateCardDTO {
   cardUUID: string;
 
   @ApiProperty({ type: 'string', format: 'date-time', example: '2023-06-20T00:00:00.000Z' })
-  @IsISO8601()
+  @IsString()
   cardCreationDate: string;
 
   @ApiProperty({ required: false })

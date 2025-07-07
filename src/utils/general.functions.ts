@@ -46,3 +46,38 @@ export const generateRandomHex = (length: number): string => {
   return result;
 };
 
+export const convertToISOFormat = (dateString: string): string => {
+  // Verified if the date has an incorrect format (p.m./a.m.)
+  const hasIncorrectFormat = dateString.includes('p.m.') || dateString.includes('a.m.');
+  
+  // If it does not have the incorrect format, return it as is
+  if (!hasIncorrectFormat) {
+    return dateString;
+  }
+
+  // Pattern to extract the parts of the incorrectly formatted date
+  const regex = /^(\d{4}-\d{2}-\d{2})T(\d{1,2}):(\d{2}):(\d{2})\.(\d{3})\s+(a\.m\.|p\.m\.)Z$/;
+  const match = dateString.match(regex);
+
+  if (!match) {
+    // If it does not match the expected pattern, return it as is
+    return dateString;
+  }
+
+  const [, datePart, hours, minutes, seconds, milliseconds, period] = match;
+  let hour24 = parseInt(hours, 10);
+
+  // Convert from 12 hours to 24 hours
+  if (period === 'p.m.' && hour24 !== 12) {
+    hour24 += 12;
+  } else if (period === 'a.m.' && hour24 === 12) {
+    hour24 = 0;
+  }
+
+  // Format the hour with leading zeros if necessary
+  const formattedHour = hour24.toString().padStart(2, '0');
+
+  // Construct the correct ISO date
+  return `${datePart}T${formattedHour}:${minutes}:${seconds}.${milliseconds}Z`;
+};
+
