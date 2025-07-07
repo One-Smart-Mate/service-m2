@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 import { CiltFrequenciesEntity } from '../../ciltFrequencies/entities/ciltFrequencies.entity';
@@ -91,7 +91,7 @@ export class CiltSequencesEntity {
   @Column("timestamp", { name: "updated_at", nullable: true, default: () => "CURRENT_TIMESTAMP", onUpdate: "CURRENT_TIMESTAMP" })
   updatedAt: Date | null;
 
-  @Column("timestamp", { name: "deleted_at", nullable: true, precision: 6 })
+  @DeleteDateColumn({ name: "deleted_at", nullable: true })
   deletedAt: Date | null;
 
   @ManyToOne(() => CiltMstrEntity, (ciltMstr) => ciltMstr.sequences)

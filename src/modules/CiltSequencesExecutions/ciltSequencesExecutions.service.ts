@@ -220,7 +220,7 @@ export class CiltSequencesExecutionsService {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_STARTED);
       }
 
-      if (execution.status === stringConstants.inactiveStatus) {
+      if (execution.status === stringConstants.completedStatus) {
         throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
       }
     
@@ -270,7 +270,7 @@ export class CiltSequencesExecutionsService {
       const durationInSeconds = Math.floor((stopDate.getTime() - startDate.getTime()) / 1000);
 
       Object.assign(execution, {
-        status: stringConstants.inactiveStatus,
+        status: stringConstants.completedStatus,
         secuenceStop: stopDate,
         realDuration: durationInSeconds,
         initialParameter: stopDTO.initialParameter?.toString(),

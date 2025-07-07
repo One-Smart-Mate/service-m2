@@ -31,7 +31,7 @@ import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
-import { addDaysToDate, addDaysToDateString } from 'src/utils/general.functions';
+import { addDaysToDate, addDaysToDateString, convertToISOFormat } from 'src/utils/general.functions';
 import { UserEntity } from '../users/entities/user.entity';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
@@ -215,7 +215,7 @@ export class CardService {
         levelMap,
       );
 
-      const createdAt = new Date(createCardDTO.cardCreationDate);
+      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
 
       const card = await this.cardRepository.create({
         ...createCardDTO,
@@ -247,7 +247,8 @@ export class CardService {
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
         createdAt: createdAt,
-        cardDueDate: priority.id && addDaysToDateString(createCardDTO.cardCreationDate, priority.priorityDays),
+        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
+        cardDueDate: priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
@@ -772,12 +773,12 @@ export class CardService {
         .select("IFNULL(card.mechanic_name, 'Sin asignar')", 'mechanic')
         .addSelect('card.cardType_name', 'cardTypeName')
         .addSelect(
-          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') THEN 1 END)",
-          'active',
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date >= CURDATE() THEN 1 END)",
+          'onTime',
         )
         .addSelect(
-          "COUNT(CASE WHEN card.status IN ('C', 'R') THEN 1 END)",
-          'closed',
+          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date < CURDATE() THEN 1 END)",
+          'overdue',
         )
         .where('card.site_id = :siteId', { siteId });
 
@@ -813,18 +814,18 @@ export class CardService {
       const seriesMap = new Map<string, { name: string; data: number[] }>();
 
       result.forEach((item) => {
-        const activeSeriesName = `${item.cardTypeName} - A`;
-        const closedSeriesName = `${item.cardTypeName} - C/R)`;
+        const onTimeSeriesName = `${item.cardTypeName} - En tiempo`;
+        const overdueSeriesName = `${item.cardTypeName} - Vencidas`;
 
-        if (!seriesMap.has(activeSeriesName)) {
-          seriesMap.set(activeSeriesName, {
-            name: activeSeriesName,
+        if (!seriesMap.has(onTimeSeriesName)) {
+          seriesMap.set(onTimeSeriesName, {
+            name: onTimeSeriesName,
             data: Array(categories.length).fill(0),
           });
         }
-        if (!seriesMap.has(closedSeriesName)) {
-          seriesMap.set(closedSeriesName, {
-            name: closedSeriesName,
+        if (!seriesMap.has(overdueSeriesName)) {
+          seriesMap.set(overdueSeriesName, {
+            name: overdueSeriesName,
             data: Array(categories.length).fill(0),
           });
         }
@@ -832,14 +833,14 @@ export class CardService {
         const categoryIndex = categoryIndexMap.get(item.mechanic);
         if (categoryIndex === undefined) return;
 
-        const activeCount = Number(item.active);
-        if (activeCount > 0) {
-          seriesMap.get(activeSeriesName).data[categoryIndex] = activeCount;
+        const onTimeCount = Number(item.onTime);
+        if (onTimeCount > 0) {
+          seriesMap.get(onTimeSeriesName).data[categoryIndex] = onTimeCount;
         }
 
-        const closedCount = Number(item.closed);
-        if (closedCount > 0) {
-          seriesMap.get(closedSeriesName).data[categoryIndex] = closedCount;
+        const overdueCount = Number(item.overdue);
+        if (overdueCount > 0) {
+          seriesMap.get(overdueSeriesName).data[categoryIndex] = overdueCount;
         }
       });
       
@@ -889,7 +890,7 @@ export class CardService {
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
         .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' })
+        .andWhere('card.status != :statusC', { statusC: 'C' })
         .groupBy('year')
         .addGroupBy('week')
         .orderBy('year, week')
@@ -1243,6 +1244,10 @@ export class CardService {
       card.status = stringConstants.CANCELLED;
       card.amDiscardReasonId = dto.amDiscardReasonId;
       card.discardReason = dto.discardReason;
+      card.managerId = dto.managerId || null;
+      card.managerName = dto.managerName || null;
+      card.cardManagerCloseDate = dto.cardManagerCloseDate || null;
+      card.commentsManagerAtCardClose = dto.commentsManagerAtCardClose || null;
       card.updatedAt = new Date();
 
       return await this.cardRepository.save(card);
@@ -1285,6 +1290,64 @@ export class CardService {
         .getRawMany();
 
       return result;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findCardsByFastPassword = async (siteId: number, fastPassword: string) => {
+    try {
+      const user = await this.userRepository.findOne({
+        where: { 
+          fastPassword: fastPassword,
+          siteId: siteId,
+          status: 'A'
+        }
+      });
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      const cards = await this.cardRepository.find({
+        where: [
+          { 
+            siteId: siteId,
+            mechanicId: user.id
+          },
+          {
+            siteId: siteId,
+            responsableId: user.id
+          }
+        ],
+        order: { siteCardId: 'DESC' }
+      });
+
+      if (cards && cards.length > 0) {
+        const allEvidencesMap = await this.findAllEvidences(siteId);
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          card['levelName'] = card.nodeName;
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+
+      return {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          fastPassword: user.fastPassword
+        },
+        cards: cards || []
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
