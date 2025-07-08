@@ -1,6 +1,7 @@
 import { Exclude } from 'class-transformer';
 import { 
   Column, 
+  DeleteDateColumn, 
   Entity, 
   JoinColumn, 
   ManyToOne, 
@@ -55,7 +56,6 @@ export class OplLevelsEntity {
   })
   updatedAt: Date | null;
 
-  @Exclude()
-  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 }

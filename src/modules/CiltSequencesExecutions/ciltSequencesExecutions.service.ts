@@ -17,7 +17,7 @@ import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesEx
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
-import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
+import { CiltSequencesExecutionsEvidencesType, CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 
 @Injectable()
@@ -51,7 +51,8 @@ export class CiltSequencesExecutionsService {
         where: { 
           siteId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['evidences']
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -316,6 +317,7 @@ export class CiltSequencesExecutionsService {
         ciltId: execution.ciltId,
         ciltSequencesExecutionsId: createEvidenceDTO.executionId,
         evidenceUrl: createEvidenceDTO.evidenceUrl,
+        type: createEvidenceDTO.type as CiltSequencesExecutionsEvidencesType,
         createdAt: createEvidenceDTO.createdAt,
       };
 
