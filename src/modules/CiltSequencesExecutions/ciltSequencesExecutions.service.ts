@@ -51,7 +51,8 @@ export class CiltSequencesExecutionsService {
         where: { 
           siteId,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['evidences']
       });
     } catch (exception) {
       HandleException.exception(exception);
