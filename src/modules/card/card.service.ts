@@ -710,7 +710,7 @@ export class CardService {
         return { categories: [], series: [] };
       }
 
-      // Obtener evidencias para todas las tarjetas
+      // Get all evidences for all cards
       const allEvidencesMap = await this.findAllEvidences(siteId);
       const cardEvidencesMap = new Map();
       allEvidencesMap.forEach((evidence) => {
@@ -720,7 +720,7 @@ export class CardService {
         cardEvidencesMap.get(evidence.cardId).push(evidence);
       });
 
-      // Agrupar tarjetas por responsable y tipo con estado
+      // Group cards by responsible and type with status
       const groupedData = new Map<string, Map<string, { onTime: any[], overdue: any[] }>>();
       
       cards.forEach((card) => {
@@ -735,7 +735,7 @@ export class CardService {
           groupedData.get(responsibleKey).set(cardTypeKey, { onTime: [], overdue: [] });
         }
         
-        // Añadir datos necesarios para el drawer
+        // Add necessary data for the drawer
         const cardWithDetails = {
           id: card.id,
           siteCardId: card.siteCardId,
@@ -763,7 +763,7 @@ export class CardService {
           preclassifierDescription: card.preclassifierDescription
         };
         
-        // Determinar si está en tiempo o vencida
+        // Determine if it is on time or overdue
         const isOnTime = new Date(card.cardDueDate) >= new Date();
         
         if (isOnTime) {
@@ -773,13 +773,13 @@ export class CardService {
         }
       });
 
-      // Construir categories (responsables únicos)
+      // Build categories (unique responsible)
       const categories = Array.from(groupedData.keys()).sort();
 
-      // Construir series (tipos de tarjetas con estado)
+      // Build series (card types with status)
       const seriesMap = new Map<string, { name: string; data: any[] }>();
       
-      // Obtener todos los tipos de tarjetas únicos
+      // Get all unique card types
       const cardTypes = new Set<string>();
       groupedData.forEach((cardTypeMap) => {
         cardTypeMap.forEach((_, cardType) => {
@@ -787,9 +787,9 @@ export class CardService {
         });
       });
 
-      // Crear series para cada tipo de tarjeta con estado
+      // Create series for each card type with status
       cardTypes.forEach((cardType) => {
-        // Serie "En tiempo"
+        // Series "On time"
         const onTimeSeriesData = categories.map((category) => {
           const cardsForCategory = groupedData.get(category)?.get(cardType)?.onTime || [];
           return {
@@ -798,7 +798,7 @@ export class CardService {
           };
         });
 
-        // Serie "Vencidas"
+        // Series "Overdue"
         const overdueSeriesData = categories.map((category) => {
           const cardsForCategory = groupedData.get(category)?.get(cardType)?.overdue || [];
           return {
@@ -807,7 +807,7 @@ export class CardService {
           };
         });
 
-        // Solo añadir series que tengan al menos una tarjeta
+        // Only add series that have at least one card
         if (onTimeSeriesData.some(data => data.count > 0)) {
           seriesMap.set(`${cardType} - En tiempo`, {
             name: `${cardType} - En tiempo`,
