@@ -925,8 +925,8 @@ export class CardService {
       const groupedData = new Map<string, Map<string, { onTime: any[], overdue: any[] }>>();
       
       cards.forEach((card) => {
-        const mechanicKey = card.mechanicName || 'Sin asignar'; // Categories = mechanics
-        const cardTypeKey = card.cardTypeName; // Para las series
+        const mechanicKey = card.mechanicName || 'Without mechanic'; // Categories = mechanics
+        const cardTypeKey = card.cardTypeName; // for series
         
         if (!groupedData.has(mechanicKey)) {
           groupedData.set(mechanicKey, new Map());
