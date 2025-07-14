@@ -31,6 +31,14 @@ export class CiltSequencesExecutionsEvidencesEntity {
   @Column("varchar", { name: "evidence_url", nullable: true, length: 500 })
   evidenceUrl: string | null;
 
+  @Column("enum", {
+    name: "type",
+    enum: ['INITIAL', 'FINAL'],
+    nullable: true,
+    comment: 'Type of evidence, can be INITIAL or FINAL'
+  })
+  type: 'INITIAL' | 'FINAL' | null;
+
   @Column("timestamp", { 
     name: "created_at", 
     nullable: true,

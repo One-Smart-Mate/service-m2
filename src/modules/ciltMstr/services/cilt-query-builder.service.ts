@@ -174,6 +174,15 @@ export class CiltQueryBuilderService {
       executionsBySequence.set(exec.ciltSecuenceId, list);
     });
 
+    // Sort executions within each sequence by schedule date
+    executionsBySequence.forEach((executions, sequenceId) => {
+      executions.sort((a, b) => {
+        const dateA = a.secuenceSchedule ? new Date(a.secuenceSchedule).getTime() : 0;
+        const dateB = b.secuenceSchedule ? new Date(b.secuenceSchedule).getTime() : 0;
+        return dateA - dateB;
+      });
+    });
+
     this.logger.logProcess('GROUPED SEQUENCES AND EXECUTIONS', {
       mastersWithSequences: sequencesByMaster.size,
       sequencesWithExecutions: executionsBySequence.size
