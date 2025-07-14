@@ -333,5 +333,227 @@ export class CiltSequencesExecutionsService {
       HandleException.exception(exception);
     }
   }
+
+  /**
+   * Compare programmed vs executed by day
+   */
+  async getExecutionChart(filters: {
+    startDate: string;
+    endDate: string;
+    siteId?: number;
+    positionId?: number;
+    levelId?: number;
+  }) {
+    try {
+      const query = this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .select([
+          'DATE(execution.secuenceSchedule) as date',
+          'COUNT(*) as programmed',
+          'SUM(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 ELSE 0 END) as executed'
+        ])
+        .where('execution.deletedAt IS NULL')
+        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        });
+
+      if (filters.siteId) {
+        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
+      }
+
+      if (filters.positionId) {
+        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
+      }
+
+      if (filters.levelId) {
+        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
+      }
+
+      const result = await query
+        .groupBy('DATE(execution.secuenceSchedule)')
+        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
+        .getRawMany();
+
+      return result.map(item => ({
+        date: item.date,
+        programmed: parseInt(item.programmed),
+        executed: parseInt(item.executed)
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  /**
+   * Compliance by person
+   */
+  async getComplianceByPersonChart(filters: {
+    startDate: string;
+    endDate: string;
+    siteId?: number;
+    positionId?: number;
+    levelId?: number;
+  }) {
+    try {
+      const query = this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .leftJoin('execution.user', 'user')
+        .leftJoin('execution.userWhoExecuted', 'userWhoExecuted')
+        .select([
+          'user.id as userId',
+          'user.name as userName',
+          'COUNT(*) as assigned',
+          'SUM(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 ELSE 0 END) as executed'
+        ])
+        .where('execution.deletedAt IS NULL')
+        .andWhere('execution.userId IS NOT NULL')
+        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        });
+
+      if (filters.siteId) {
+        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
+      }
+
+      if (filters.positionId) {
+        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
+      }
+
+      if (filters.levelId) {
+        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
+      }
+
+      const result = await query
+        .groupBy('user.id, user.name')
+        .orderBy('user.name', 'ASC')
+        .getRawMany();
+
+      return result.map(item => ({
+        userId: item.userId,
+        userName: item.userName,
+        assigned: parseInt(item.assigned),
+        executed: parseInt(item.executed),
+        compliancePercentage: item.assigned > 0 ? (parseInt(item.executed) / parseInt(item.assigned)) * 100 : 0
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  /**
+   * Time by day
+   */
+  async getTimeChart(filters: {
+    startDate: string;
+    endDate: string;
+    siteId?: number;
+    positionId?: number;
+    levelId?: number;
+  }) {
+    try {
+      const query = this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .select([
+          'DATE(execution.secuenceSchedule) as date',
+          'SUM(COALESCE(execution.duration, 0)) as standardTime',
+          'SUM(COALESCE(execution.realDuration, 0)) as realTime',
+          'COUNT(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 END) as executedCount'
+        ])
+        .where('execution.deletedAt IS NULL')
+        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        });
+
+      if (filters.siteId) {
+        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
+      }
+
+      if (filters.positionId) {
+        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
+      }
+
+      if (filters.levelId) {
+        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
+      }
+
+      const result = await query
+        .groupBy('DATE(execution.secuenceSchedule)')
+        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
+        .getRawMany();
+
+      return result.map(item => ({
+        date: item.date,
+        standardTime: parseInt(item.standardTime) || 0, // in seconds
+        realTime: parseInt(item.realTime) || 0, // in seconds
+        executedCount: parseInt(item.executedCount),
+        standardTimeMinutes: Math.round((parseInt(item.standardTime) || 0) / 60), // convert to minutes
+        realTimeMinutes: Math.round((parseInt(item.realTime) || 0) / 60), // convert to minutes
+        efficiencyPercentage: item.standardTime > 0 ? (parseInt(item.realTime) / parseInt(item.standardTime)) * 100 : 0
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  /**
+   * Anomalies detected (TAGs) during the execution
+   */
+  async getAnomaliesChart(filters: {
+    startDate: string;
+    endDate: string;
+    siteId?: number;
+    positionId?: number;
+    levelId?: number;
+  }) {
+    try {
+      const query = this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .select([
+          'DATE(execution.secuenceSchedule) as date',
+          'COUNT(CASE WHEN (execution.nok = 1 OR execution.amTagId IS NOT NULL) THEN 1 END) as anomalies',
+          'COUNT(CASE WHEN execution.nok = 1 THEN 1 END) as nokAnomalies',
+          'COUNT(CASE WHEN execution.amTagId IS NOT NULL AND execution.amTagId > 0 THEN 1 END) as amTagAnomalies',
+          'COUNT(CASE WHEN execution.stoppageReason = 1 THEN 1 END) as stoppageAnomalies'
+        ])
+        .where('execution.deletedAt IS NULL')
+        .andWhere('execution.secuenceStart IS NOT NULL') // only count executed
+        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        });
+
+      if (filters.siteId) {
+        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
+      }
+
+      if (filters.positionId) {
+        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
+      }
+
+      if (filters.levelId) {
+        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
+      }
+
+      const result = await query
+        .groupBy('DATE(execution.secuenceSchedule)')
+        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
+        .getRawMany();
+
+      return result.map(item => ({
+        date: item.date,
+        totalAnomalies: parseInt(item.anomalies),
+        nokAnomalies: parseInt(item.nokAnomalies),
+        amTagAnomalies: parseInt(item.amTagAnomalies),
+        stoppageAnomalies: parseInt(item.stoppageAnomalies)
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+
   
 } 
