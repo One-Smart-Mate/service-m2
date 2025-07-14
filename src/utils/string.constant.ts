@@ -95,6 +95,7 @@ export const stringConstants = {
   P: 'P',
   V: 'V',
   CANCELLED: 'C',
+  DISCARDED: 'D',
   mechanic: 'mechanic'  ,
 
   //status

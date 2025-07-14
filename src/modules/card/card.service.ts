@@ -625,10 +625,10 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
-      const queryBuilder = this.cardRepository
-        .createQueryBuilder('card')
-        .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
-        .where('card.site_id = :siteId', { siteId });
+              const queryBuilder = this.cardRepository
+          .createQueryBuilder('card')
+          .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
+          .where('card.site_id = :siteId', { siteId });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -686,9 +686,9 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
+      // Obtener todas las tarjetas con los filtros aplicados
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .select([QUERY_CONSTANTS.findSiteCardsGroupedByMachine])
         .where('card.site_id = :siteId', { siteId })
         .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
@@ -702,11 +702,130 @@ export class CardService {
         );
       }
 
-      const result = await queryBuilder
-        .groupBy('cardTypeName, nodeName, location')
-        .getRawMany();
+      const cards = await queryBuilder
+        .orderBy('card.siteCardId', 'DESC')
+        .getMany();
 
-      return result;
+      if (!cards.length) {
+        return { categories: [], series: [] };
+      }
+
+      // Get all evidences for all cards
+      const allEvidencesMap = await this.findAllEvidences(siteId);
+      const cardEvidencesMap = new Map();
+      allEvidencesMap.forEach((evidence) => {
+        if (!cardEvidencesMap.has(evidence.cardId)) {
+          cardEvidencesMap.set(evidence.cardId, []);
+        }
+        cardEvidencesMap.get(evidence.cardId).push(evidence);
+      });
+
+      // Group cards by responsible and type with status
+      const groupedData = new Map<string, Map<string, { onTime: any[], overdue: any[] }>>();
+      
+      cards.forEach((card) => {
+        const responsibleKey = card.responsableName || 'Sin asignar'; // Categories = responsables
+        const cardTypeKey = card.cardTypeName; // Para las series
+        
+        if (!groupedData.has(responsibleKey)) {
+          groupedData.set(responsibleKey, new Map());
+        }
+        
+        if (!groupedData.get(responsibleKey).has(cardTypeKey)) {
+          groupedData.get(responsibleKey).set(cardTypeKey, { onTime: [], overdue: [] });
+        }
+        
+        // Add necessary data for the drawer
+        const cardWithDetails = {
+          id: card.id,
+          siteCardId: card.siteCardId,
+          cardUUID: card.cardUUID,
+          cardCreationDate: card.cardCreationDate,
+          cardDueDate: card.cardDueDate,
+          cardLocation: card.cardLocation,
+          areaName: card.areaName,
+          creatorName: card.creatorName,
+          cardTypeMethodologyName: card.cardTypeMethodologyName,
+          mechanicName: card.mechanicName,
+          status: card.status,
+          nodeName: card.nodeName,
+          levelName: card.nodeName,
+          evidences: cardEvidencesMap.get(card.id) || [],
+          priorityCode: card.priorityCode,
+          priorityDescription: card.priorityDescription,
+          createdAt: card.createdAt,
+          updatedAt: card.updatedAt,
+          commentsAtCardCreation: card.commentsAtCardCreation,
+          commentsAtCardProvisionalSolution: card.commentsAtCardProvisionalSolution,
+          commentsAtCardDefinitiveSolution: card.commentsAtCardDefinitiveSolution,
+          responsableName: card.responsableName,
+          preclassifierCode: card.preclassifierCode,
+          preclassifierDescription: card.preclassifierDescription
+        };
+        
+        // Determine if it is on time or overdue
+        const isOnTime = new Date(card.cardDueDate) >= new Date();
+        
+        if (isOnTime) {
+          groupedData.get(responsibleKey).get(cardTypeKey).onTime.push(cardWithDetails);
+        } else {
+          groupedData.get(responsibleKey).get(cardTypeKey).overdue.push(cardWithDetails);
+        }
+      });
+
+      // Build categories (unique responsible)
+      const categories = Array.from(groupedData.keys()).sort();
+
+      // Build series (card types with status)
+      const seriesMap = new Map<string, { name: string; data: any[] }>();
+      
+      // Get all unique card types
+      const cardTypes = new Set<string>();
+      groupedData.forEach((cardTypeMap) => {
+        cardTypeMap.forEach((_, cardType) => {
+          cardTypes.add(cardType);
+        });
+      });
+
+      // Create series for each card type with status
+      cardTypes.forEach((cardType) => {
+        // Series "On time"
+        const onTimeSeriesData = categories.map((category) => {
+          const cardsForCategory = groupedData.get(category)?.get(cardType)?.onTime || [];
+          return {
+            count: cardsForCategory.length,
+            cards: cardsForCategory
+          };
+        });
+
+        // Series "Overdue"
+        const overdueSeriesData = categories.map((category) => {
+          const cardsForCategory = groupedData.get(category)?.get(cardType)?.overdue || [];
+          return {
+            count: cardsForCategory.length,
+            cards: cardsForCategory
+          };
+        });
+
+        // Only add series that have at least one card
+        if (onTimeSeriesData.some(data => data.count > 0)) {
+          seriesMap.set(`${cardType} - En tiempo`, {
+            name: `${cardType} - En tiempo`,
+            data: onTimeSeriesData
+          });
+        }
+
+        if (overdueSeriesData.some(data => data.count > 0)) {
+          seriesMap.set(`${cardType} - Vencidas`, {
+            name: `${cardType} - Vencidas`,
+            data: overdueSeriesData
+          });
+        }
+      });
+
+      const series = Array.from(seriesMap.values());
+
+      return { categories, series };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -768,19 +887,11 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
+      // Get all cards with the applied filters
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .select("IFNULL(card.mechanic_name, 'Sin asignar')", 'mechanic')
-        .addSelect('card.cardType_name', 'cardTypeName')
-        .addSelect(
-          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date >= CURDATE() THEN 1 END)",
-          'onTime',
-        )
-        .addSelect(
-          "COUNT(CASE WHEN card.status NOT IN ('C', 'R') AND card.card_due_date < CURDATE() THEN 1 END)",
-          'overdue',
-        )
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -792,59 +903,128 @@ export class CardService {
         );
       }
 
-      const result = await queryBuilder
-        .groupBy('mechanic, cardTypeName')
-        .getRawMany();
+      const cards = await queryBuilder
+        .orderBy('card.siteCardId', 'DESC')
+        .getMany();
 
-      if (!result.length) {
+      if (!cards.length) {
         return { categories: [], series: [] };
       }
 
-      const categoriesSet = new Set<string>();
-      result.forEach((item) => {
-        categoriesSet.add(item.mechanic);
+      // Get all evidences for all cards
+      const allEvidencesMap = await this.findAllEvidences(siteId);
+      const cardEvidencesMap = new Map();
+      allEvidencesMap.forEach((evidence) => {
+        if (!cardEvidencesMap.has(evidence.cardId)) {
+          cardEvidencesMap.set(evidence.cardId, []);
+        }
+        cardEvidencesMap.get(evidence.cardId).push(evidence);
       });
 
-      const categories = Array.from(categoriesSet);
-      const categoryIndexMap = new Map<string, number>();
-      categories.forEach((category, index) => {
-        categoryIndexMap.set(category, index);
-      });
-
-      const seriesMap = new Map<string, { name: string; data: number[] }>();
-
-      result.forEach((item) => {
-        const onTimeSeriesName = `${item.cardTypeName} - En tiempo`;
-        const overdueSeriesName = `${item.cardTypeName} - Vencidas`;
-
-        if (!seriesMap.has(onTimeSeriesName)) {
-          seriesMap.set(onTimeSeriesName, {
-            name: onTimeSeriesName,
-            data: Array(categories.length).fill(0),
-          });
-        }
-        if (!seriesMap.has(overdueSeriesName)) {
-          seriesMap.set(overdueSeriesName, {
-            name: overdueSeriesName,
-            data: Array(categories.length).fill(0),
-          });
-        }
-
-        const categoryIndex = categoryIndexMap.get(item.mechanic);
-        if (categoryIndex === undefined) return;
-
-        const onTimeCount = Number(item.onTime);
-        if (onTimeCount > 0) {
-          seriesMap.get(onTimeSeriesName).data[categoryIndex] = onTimeCount;
-        }
-
-        const overdueCount = Number(item.overdue);
-        if (overdueCount > 0) {
-          seriesMap.get(overdueSeriesName).data[categoryIndex] = overdueCount;
-        }
-      });
+      // Group cards by mechanic and type with status
+      const groupedData = new Map<string, Map<string, { onTime: any[], overdue: any[] }>>();
       
-      const series = Array.from(seriesMap.values()).filter(s => s.data.some(d => d > 0));
+      cards.forEach((card) => {
+        const mechanicKey = card.mechanicName || 'Without mechanic'; // Categories = mechanics
+        const cardTypeKey = card.cardTypeName; // for series
+        
+        if (!groupedData.has(mechanicKey)) {
+          groupedData.set(mechanicKey, new Map());
+        }
+        
+        if (!groupedData.get(mechanicKey).has(cardTypeKey)) {
+          groupedData.get(mechanicKey).set(cardTypeKey, { onTime: [], overdue: [] });
+        }
+        
+        // Add necessary data for the drawer
+        const cardWithDetails = {
+          id: card.id,
+          siteCardId: card.siteCardId,
+          cardUUID: card.cardUUID,
+          cardCreationDate: card.cardCreationDate,
+          cardDueDate: card.cardDueDate,
+          cardLocation: card.cardLocation,
+          areaName: card.areaName,
+          creatorName: card.creatorName,
+          cardTypeMethodologyName: card.cardTypeMethodologyName,
+          mechanicName: card.mechanicName,
+          status: card.status,
+          nodeName: card.nodeName,
+          levelName: card.nodeName,
+          evidences: cardEvidencesMap.get(card.id) || [],
+          priorityCode: card.priorityCode,
+          priorityDescription: card.priorityDescription,
+          createdAt: card.createdAt,
+          updatedAt: card.updatedAt,
+          commentsAtCardCreation: card.commentsAtCardCreation,
+          commentsAtCardProvisionalSolution: card.commentsAtCardProvisionalSolution,
+          commentsAtCardDefinitiveSolution: card.commentsAtCardDefinitiveSolution,
+          responsableName: card.responsableName,
+          preclassifierCode: card.preclassifierCode,
+          preclassifierDescription: card.preclassifierDescription
+        };
+        
+        // Determine if it is on time or overdue
+        const isOnTime = new Date(card.cardDueDate) >= new Date();
+        
+        if (isOnTime) {
+          groupedData.get(mechanicKey).get(cardTypeKey).onTime.push(cardWithDetails);
+        } else {
+          groupedData.get(mechanicKey).get(cardTypeKey).overdue.push(cardWithDetails);
+        }
+      });
+
+      // Build categories (unique mechanics)
+      const categories = Array.from(groupedData.keys()).sort();
+
+      // Build series (card types with status)
+      const seriesMap = new Map<string, { name: string; data: any[] }>();
+      
+      // Get all unique card types
+      const cardTypes = new Set<string>();
+      groupedData.forEach((cardTypeMap) => {
+        cardTypeMap.forEach((_, cardType) => {
+          cardTypes.add(cardType);
+        });
+      });
+
+      // Create series for each card type with status
+      cardTypes.forEach((cardType) => {
+        // Series "On time"
+        const onTimeSeriesData = categories.map((category) => {
+          const cardsForCategory = groupedData.get(category)?.get(cardType)?.onTime || [];
+          return {
+            count: cardsForCategory.length,
+            cards: cardsForCategory
+          };
+        });
+
+        // Series "Overdue"
+        const overdueSeriesData = categories.map((category) => {
+          const cardsForCategory = groupedData.get(category)?.get(cardType)?.overdue || [];
+          return {
+            count: cardsForCategory.length,
+            cards: cardsForCategory
+          };
+        });
+
+        // Only add series that have at least one card
+        if (onTimeSeriesData.some(data => data.count > 0)) {
+          seriesMap.set(`${cardType} - En tiempo`, {
+            name: `${cardType} - En tiempo`,
+            data: onTimeSeriesData
+          });
+        }
+
+        if (overdueSeriesData.some(data => data.count > 0)) {
+          seriesMap.set(`${cardType} - Vencidas`, {
+            name: `${cardType} - Vencidas`,
+            data: overdueSeriesData
+          });
+        }
+      });
+
+      const series = Array.from(seriesMap.values());
 
       return { categories, series };
     } catch (exception) {
@@ -1241,7 +1421,7 @@ export class CardService {
         );
       }
 
-      card.status = stringConstants.CANCELLED;
+      card.status = stringConstants.DISCARDED;
       card.amDiscardReasonId = dto.amDiscardReasonId;
       card.discardReason = dto.discardReason;
       card.managerId = dto.managerId || null;

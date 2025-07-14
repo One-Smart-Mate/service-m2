@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, IsNotEmpty } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsNotEmpty, IsEnum } from 'class-validator';
+import { CiltSequencesExecutionsEvidencesType } from './createCiltSequencesEvidence.dto';
 
 export class UpdateCiltSequencesEvidenceDTO {
   @ApiProperty({ description: 'Evidence ID' })
@@ -35,4 +36,13 @@ export class UpdateCiltSequencesEvidenceDTO {
   @IsOptional()
   @IsString()
   evidenceUrl?: string;
+
+  @ApiProperty({ 
+    description: 'Type of evidence', 
+    required: false,
+    example: 'FINAL'
+  })
+  @IsOptional()
+  @IsEnum(CiltSequencesExecutionsEvidencesType)
+  type?: CiltSequencesExecutionsEvidencesType;
 } 
