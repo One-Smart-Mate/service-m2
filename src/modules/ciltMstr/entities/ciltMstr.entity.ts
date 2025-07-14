@@ -21,7 +21,7 @@ export class CiltMstrEntity {
   @Column('varchar', { name: 'cilt_name', length: 45, nullable: true })
   ciltName: string | null;
 
-  @Column('varchar', { name: 'cilt_description', length: 255, nullable: true })
+  @Column('varchar', { name: 'cilt_description', length: 500, nullable: true })
   ciltDescription: string | null;
 
   @Column('int', { name: 'creator_id', nullable: true, unsigned: true })

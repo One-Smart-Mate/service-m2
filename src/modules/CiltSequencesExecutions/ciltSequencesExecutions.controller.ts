@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -7,6 +7,13 @@ import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequences
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
 import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
+import { ChartFiltersDTO } from './models/dto/chart.filters.dto';
+import { 
+  ExecutionChartResponseDTO, 
+  ComplianceByPersonChartResponseDTO, 
+  TimeChartResponseDTO, 
+  AnomaliesChartResponseDTO
+} from './models/dto/chart.response.dto';
 
 @ApiTags('Cilt Sequences Executions')
 @Controller('cilt-sequences-executions')
@@ -123,9 +130,59 @@ export class CiltSequencesExecutionsController {
   }
 
   @Delete('evidence/:id')
-  @ApiOperation({ summary: 'Delete a CILT sequence execution evidence by ID' })
-  @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution evidence ID' })
+  @ApiOperation({ summary: 'Delete evidence' })
+  @ApiParam({ name: 'id', type: 'number', description: 'Evidence ID' })
   deleteEvidence(@Param('id') id: number) {
     return this.ciltSequencesExecutionsService.deleteEvidence(id);
   }
+
+  @Get('charts/execution')
+  @ApiOperation({ summary: 'Get data for execution chart (programmed vs executed)' })
+  @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
+  @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
+  @ApiResponse({ type: [ExecutionChartResponseDTO] })
+  getExecutionChart(@Query() filters: ChartFiltersDTO) {
+    return this.ciltSequencesExecutionsService.getExecutionChart(filters);
+  }
+
+  @Get('charts/compliance')
+  @ApiOperation({ summary: 'Get data for compliance chart by person' })
+  @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
+  @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
+  @ApiResponse({ type: [ComplianceByPersonChartResponseDTO] })
+  getComplianceChart(@Query() filters: ChartFiltersDTO) {
+    return this.ciltSequencesExecutionsService.getComplianceByPersonChart(filters);
+  }
+
+  @Get('charts/time')
+  @ApiOperation({ summary: 'Get data for time chart (standard vs real)' })
+  @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
+  @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
+  @ApiResponse({ type: [TimeChartResponseDTO] })
+  getTimeChart(@Query() filters: ChartFiltersDTO) {
+    return this.ciltSequencesExecutionsService.getTimeChart(filters);
+  }
+
+  @Get('charts/anomalies')
+  @ApiOperation({ summary: 'Get data for anomalies chart (TAGs)' })
+  @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
+  @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
+  @ApiResponse({ type: [AnomaliesChartResponseDTO] })
+  getAnomaliesChart(@Query() filters: ChartFiltersDTO) {
+    return this.ciltSequencesExecutionsService.getAnomaliesChart(filters);
+  }
+
+
 } 
