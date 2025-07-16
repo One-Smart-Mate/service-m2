@@ -132,7 +132,7 @@ export const stringConstants = {
   ciltSecuencesScheduleNotFound: 'CILT Secuences Schedule not found',
   ciltMstrPositionLevelsNotFound: 'CILT Master Position Levels not found',
   amDiscardReasonNotFound: 'AM Discard Reason not found',
-
+  oplTypeNotFound: 'OPL Type not found',
   //sql errors
   INSERT_DATA_ERROR: 'INSERT_DATA_ERROR',
   TABLE_NOT_FOUND: 'TABLE_NOT_FOUND',
