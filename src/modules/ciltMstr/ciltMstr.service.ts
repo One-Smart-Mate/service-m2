@@ -401,7 +401,8 @@ export class CiltMstrService {
         ciltSequences,
         scheduledSequences,
         usersByPosition,
-        scheduleDate
+        scheduleDate,
+        levelPaths
       );
 
       // 9) Read all executions for the date
