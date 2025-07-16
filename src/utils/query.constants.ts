@@ -54,4 +54,10 @@ export const QUERY_CONSTANTS = {
     card.cardType_name as cardTypeName,
     COUNT(*) AS totalCards
   `,
+  findSiteDiscardedCardsGroupedByCreator: `
+    creator_name as creatorName,
+    adr.discard_reason as discardReason,
+    card.cardType_name as cardTypeName,
+    COUNT(*) AS totalCards
+  `,
 };
