@@ -364,7 +364,7 @@ export class CiltSequencesExecutionsEntity {
 
   @ManyToOne(() => CiltMstrEntity)
   @JoinColumn({ name: 'cilt_id' })
-  cilt: CiltMstrEntity;
+  ciltMstr: CiltMstrEntity;
 
   @ManyToOne(() => CiltSequencesEntity)
   @JoinColumn({ name: 'cilt_secuence_id' })

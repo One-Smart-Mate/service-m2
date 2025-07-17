@@ -40,6 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { IaModule } from './modules/ia/ia.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reason.module';
+import { OplTypesModule } from './modules/oplTypes/oplTypes.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reas
     IaModule,
     WhatsappModule,
     AmDiscardReasonModule,
+    OplTypesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -52,7 +52,7 @@ export class CiltSequencesExecutionsService {
           siteId,
           deletedAt: IsNull() 
         },
-        relations: ['evidences']
+        relations: ['evidences','ciltMstr']
       });
     } catch (exception) {
       HandleException.exception(exception);

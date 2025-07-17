@@ -85,7 +85,8 @@ export class CiltExecutionService {
     ciltSequences: CiltSequencesEntity[],
     scheduledSequences: ScheduleDetails[],
     usersByPosition: Map<number, any[]>,
-    scheduleDate: Date
+    scheduleDate: Date,
+    levelPaths?: Array<{ ciltMstrId: number; levelId: number; route: string | null }>
   ): Promise<void> {
     this.logger.logProcess('STARTING UPSERT EXECUTIONS FOR SITE', { 
       levelsCount: ciltPositionLevels.length,
@@ -108,7 +109,7 @@ export class CiltExecutionService {
 
           const executionDate = this.buildExecutionDate(scheduleDate, scheduleDetails);
 
-          await this.upsertSingleExecution(cpl, seq, user.id, executionDate, scheduleDetails);
+          await this.upsertSingleExecution(cpl, seq, user.id, executionDate, scheduleDetails, levelPaths);
         }
       }
     }
@@ -198,7 +199,7 @@ export class CiltExecutionService {
     } else {
       // Get the next execution ID in real time
       const nextSiteExecutionId = await this.getNextSiteExecutionId(cpl.siteId);
-      const route = levelPaths?.find(lp => lp.levelId === cpl.levelId)?.route || `Level-${cpl.levelId}`;
+      const route = levelPaths?.find(lp => lp.levelId === cpl.levelId)?.route;
 
       const dto: Partial<CiltSequencesExecutionsEntity> = {
         siteId: cpl.siteId,
