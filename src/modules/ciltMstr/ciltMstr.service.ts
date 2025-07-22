@@ -20,6 +20,7 @@ import { CiltPositionLevelService } from './services/cilt-position-level.service
 import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService, CiltUserResponse, CiltSiteResponse } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
+import { getUTCRangeFromLocalDate } from 'src/utils/timezone.utils';
 
 @Injectable()
 export class CiltMstrService {
@@ -133,18 +134,22 @@ export class CiltMstrService {
     }
   };
 
-  async findCiltsByUserId(userId: number, date: string): Promise<CiltUserResponse> {
+  async findCiltsByUserId(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
     try {
-      this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date });
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date, timezone });
       
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
+      // Usar utilidad de timezone para calcular el rango correcto
+      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
 
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
+        originalDate: date, 
+        timezone, 
+        dayStart: dayStart.toISOString(), 
+        dayEnd: dayEnd.toISOString() 
+      });
   
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
@@ -218,7 +223,9 @@ export class CiltMstrService {
 
       this.logger.logProcess('COMPLETED FIND CILTS BY USER ID', { 
         userId, 
-        positionsCount: response.positions.length 
+        positionsCount: response.positions.length,
+        timezone,
+        executionsFound: allExecutions.length 
       });
       
       return response;
@@ -227,18 +234,22 @@ export class CiltMstrService {
     }
   }
 
-  async findCiltsByUserIdReadOnly(userId: number, date: string): Promise<CiltUserResponse> {
+  async findCiltsByUserIdReadOnly(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
     try {
-      this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date });
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date, timezone });
       
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
+      // Usar utilidad de timezone para calcular el rango correcto
+      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
 
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
+        originalDate: date, 
+        timezone, 
+        dayStart: dayStart.toISOString(), 
+        dayEnd: dayEnd.toISOString() 
+      });
   
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
@@ -298,7 +309,9 @@ export class CiltMstrService {
 
       this.logger.logProcess('COMPLETED FIND CILTS BY USER ID (READ ONLY)', { 
         userId, 
-        positionsCount: response.positions.length 
+        positionsCount: response.positions.length,
+        timezone,
+        executionsFound: allExecutions.length 
       });
       
       return response;

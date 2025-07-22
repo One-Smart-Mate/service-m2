@@ -3,9 +3,10 @@ import { OplDetailsService } from './oplDetails.service';
 import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailsDTO } from './models/dto/updateOplDetails.dto';
 import { UpdateOplDetailOrderDTO } from './models/dto/update-order.dto';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Opl Details')
+@ApiBearerAuth()
 @Controller('opl-details')
 export class OplDetailsController {
   constructor(private readonly oplDetailsService: OplDetailsService) {}

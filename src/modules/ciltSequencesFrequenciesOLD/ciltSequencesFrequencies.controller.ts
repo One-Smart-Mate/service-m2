@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltSequencesFrequenciesService } from './ciltSequencesFrequencies.service';
 import { CreateCiltSequencesFrequenciesDTO } from './models/dto/createCiltSequencesFrequencies.dto';
 import { UpdateCiltSequencesFrequenciesDTO } from './models/dto/updateCiltSequencesFrequencies.dto';
 
 @ApiTags('Cilt Sequences Frequencies OLD')
+@ApiBearerAuth()
 @Controller('cilt-sequences-frequencies-OLD')
 export class CiltSequencesFrequenciesController {
   constructor(private readonly ciltSequencesFrequenciesService: CiltSequencesFrequenciesService) {}

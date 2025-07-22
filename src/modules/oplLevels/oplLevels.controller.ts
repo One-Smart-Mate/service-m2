@@ -1,9 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { OplLevelsService } from './oplLevels.service';
 import { CreateOplLevelsDTO } from './models/create-opl-levels.dto';
 
 @ApiTags('opl-levels')
+@ApiBearerAuth()
 @Controller('opl-levels')
 export class OplLevelsController {
   constructor(private readonly oplLevelsService: OplLevelsService) {}
