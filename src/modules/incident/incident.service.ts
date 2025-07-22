@@ -36,7 +36,6 @@ export class IncidentService {
 
   create = async (createIncidentDto: CreateIncidentDto, userId: number, userName: string) => {
     try {
-      // Crear el objeto de incidente con la información del usuario autenticado
       const incidentData = {
         ...createIncidentDto,
         userId,

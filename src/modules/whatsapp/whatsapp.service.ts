@@ -102,7 +102,6 @@ export class WhatsappService implements OnModuleInit {
         results.push({ number, success: true });
         this.logger.logWhatsapp(`Message sent successfully to ${number}`);
         
-        // Pequeña pausa entre mensajes para evitar spam
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
