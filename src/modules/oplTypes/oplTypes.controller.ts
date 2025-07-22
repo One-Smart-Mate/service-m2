@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { OplTypesService } from './oplTypes.service';
 import { CreateOplTypeDto } from './models/dto/createOplType.dto';
 import { UpdateOplTypeDto } from './models/dto/updateOplType.dto';
 
 @ApiTags('Opl Types')
+@ApiBearerAuth()
 @Controller('opl-types')
 export class OplTypesController {
   constructor(private readonly oplTypesService: OplTypesService) {}

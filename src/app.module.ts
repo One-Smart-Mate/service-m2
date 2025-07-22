@@ -26,7 +26,7 @@ import { CiltSequencesModule } from './modules/ciltSequences/ciltSequences.modul
 import { OplDetailsModule } from './modules/oplDetails/oplDetails.module';
 import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
 import { RepositoryModule } from './modules/repositoryOLD/repository.module';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
 import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
@@ -41,6 +41,9 @@ import { IaModule } from './modules/ia/ia.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { AmDiscardReasonModule } from './modules/amDiscardReason/am-discard-reason.module';
 import { OplTypesModule } from './modules/oplTypes/oplTypes.module';
+import { AuthGuard } from './modules/auth/guard/auth.guard';
+import { JwtModule } from '@nestjs/jwt';
+import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 
 @Module({
   imports: [
@@ -84,6 +87,11 @@ import { OplTypesModule } from './modules/oplTypes/oplTypes.module';
     WhatsappModule,
     AmDiscardReasonModule,
     OplTypesModule,
+    JwtModule.register({
+      global: true,
+      secret: process.env.JWT_SECRET,
+      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN },
+    }),
   ],
   controllers: [AppController],
   providers: [
@@ -92,6 +100,14 @@ import { OplTypesModule } from './modules/oplTypes/oplTypes.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
     },
   ],
 })

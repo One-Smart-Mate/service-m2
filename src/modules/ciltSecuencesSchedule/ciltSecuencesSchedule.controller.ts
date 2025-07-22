@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltSecuencesScheduleService } from './ciltSecuencesSchedule.service';
 import { CreateCiltSecuencesScheduleDto } from './models/dto/create.ciltSecuencesSchedule.dto';
 import { UpdateCiltSecuencesScheduleDto } from './models/dto/update.ciltSecuencesSchedule.dto';
 import { UpdateScheduleOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('CILT Secuences Schedule')
+@ApiBearerAuth()
 @Controller('cilt-secuences-schedule')
 export class CiltSecuencesScheduleController {
   constructor(private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService) {}
