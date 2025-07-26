@@ -28,6 +28,7 @@ import { OplMstrModule } from './modules/oplMstr/oplMstr.module';
 import { RepositoryModule } from './modules/repositoryOLD/repository.module';
 import { APP_INTERCEPTOR, APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { LoggingInterceptor } from './interceptors/logging.interceptor';
+import { IncidentInterceptor } from './interceptors/incident.interceptor';
 import { CustomLoggerService } from './common/logger/logger.service';
 import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies.module';
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
@@ -44,6 +45,7 @@ import { OplTypesModule } from './modules/oplTypes/oplTypes.module';
 import { AuthGuard } from './modules/auth/guard/auth.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
+import { IncidentModule } from './modules/incident/incident.module';
 
 @Module({
   imports: [
@@ -87,6 +89,7 @@ import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
     WhatsappModule,
     AmDiscardReasonModule,
     OplTypesModule,
+    IncidentModule,
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,
@@ -100,6 +103,10 @@ import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: IncidentInterceptor,
     },
     {
       provide: APP_GUARD,
