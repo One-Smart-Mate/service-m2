@@ -1,11 +1,12 @@
 import { Controller, Post, Body, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MailService } from './mail.service';
 import { UsersService } from '../users/users.service';
 import { SendCardAssignmentDto } from './templates/entities/SendCardAssignmentDto ';
 import { stringConstants } from 'src/utils/string.constant';
 
 @ApiTags('Mail')
+@ApiBearerAuth()
 @Controller('mail')
 export class MailController {
   constructor(

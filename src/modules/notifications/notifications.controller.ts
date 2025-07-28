@@ -1,11 +1,12 @@
 import { Body, Controller, Logger, Param, Post } from "@nestjs/common";
-import { ApiParam, ApiTags } from "@nestjs/swagger";
+import { ApiParam, ApiTags, ApiBearerAuth } from "@nestjs/swagger";
 import { NotificationsService } from "./notifications.service";
 import { UpdateAppRequestDTO } from "./models/update.app.request.dto";
 import { SendCustomNotificationDTO } from "./models/send.custom.notification.dto";
 
 
 @ApiTags('notifications')
+@ApiBearerAuth()
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly service: NotificationsService) {} 

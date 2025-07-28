@@ -6,6 +6,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { FileUploadService } from './file-upload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -15,6 +16,7 @@ import {
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
 
+@ApiBearerAuth()
 @Controller('file-upload')
 export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}

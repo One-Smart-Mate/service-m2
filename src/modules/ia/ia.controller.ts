@@ -1,7 +1,8 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { IaService } from './ia.service';
-import { ApiTags, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBody, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiBearerAuth()
 @ApiTags('AI')
 @Controller('ia')
 export class IaController {

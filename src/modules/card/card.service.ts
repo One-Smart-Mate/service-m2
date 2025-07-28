@@ -1444,7 +1444,7 @@ export class CardService {
     try {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .select(QUERY_CONSTANTS.findSiteDiscardedCardsGroupedByUser)
+        .select(QUERY_CONSTANTS.findSiteDiscardedCardsGroupedByCreator)
         .leftJoin(
           'am_discard_reasons',
           'adr',
@@ -1466,7 +1466,7 @@ export class CardService {
       }
 
       const result = await queryBuilder
-        .groupBy('responsibleName, discardReason, cardTypeName')
+        .groupBy('creatorName, discardReason, cardTypeName')
         .getRawMany();
 
       return result;

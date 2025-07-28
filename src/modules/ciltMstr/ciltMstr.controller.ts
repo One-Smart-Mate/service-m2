@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Param, Body, Delete } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Param, Body, Delete, Request } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltMstrService } from './ciltMstr.service';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -8,6 +8,7 @@ import { FindBySiteDTO } from './models/dto/find-by-site.dto';
 import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Cilt Master')
+@ApiBearerAuth()
 @Controller('cilt-mstr')
 export class CiltMstrController {
   constructor(private readonly ciltMstrService: CiltMstrService) {}
@@ -28,10 +29,12 @@ export class CiltMstrController {
   @Post('user')
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
   @ApiBody({ type: FindByUserDTO })
-  async findByUserId(@Body() findByUserDto: FindByUserDTO) {
+  async findByUserId(@Body() findByUserDto: FindByUserDTO, @Request() req: any) {
+    const userTimezone = req.user?.timezone;    
     return await this.ciltMstrService.findCiltsByUserId(
       findByUserDto.userId,
-      findByUserDto.date
+      findByUserDto.date,
+      userTimezone
     );
   }
   
@@ -39,10 +42,16 @@ export class CiltMstrController {
   @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
   @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
   @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
-  async findCiltsByUserIdReadOnly(@Param('userId') userId: number, @Param('date') date: string) {
+  async findCiltsByUserIdReadOnly(
+    @Param('userId') userId: number, 
+    @Param('date') date: string,
+    @Request() req: any
+  ) {
+    const userTimezone = req.user?.timezone;
     return await this.ciltMstrService.findCiltsByUserIdReadOnly(
       userId,
-      date
+      date,
+      userTimezone
     );
   }
 

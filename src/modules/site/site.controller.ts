@@ -9,13 +9,14 @@ import {
   Put,
 } from '@nestjs/common';
 import { SiteService } from './site.service';
-import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateSiteDTO } from './models/dto/create-site.dto';
 import { UpadeSiteDTO } from './models/dto/update.site.dto';
 import { plainToClass } from 'class-transformer';
 import { FindOneSiteDTO } from './models/dto/findOne.site.dto';
 
 @ApiTags('sites')
+@ApiBearerAuth()
 @Controller('sites')
 export class SiteController {
   constructor(private readonly siteService: SiteService) {}

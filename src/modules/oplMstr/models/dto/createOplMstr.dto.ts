@@ -37,10 +37,10 @@ export class CreateOplMstrDTO {
   @IsString()
   reviewerName?: string;
 
-  @ApiProperty({ description: 'Type of OPL', enum: ['opl', 'sop'], required: false })
+  @ApiProperty({ description: 'ID of the OPL type', required: false })
   @IsOptional()
-  @IsEnum(['opl', 'sop'])
-  oplType?: 'opl' | 'sop';
+  @IsNumber()
+  oplTypeId?: number;
 
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()

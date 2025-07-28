@@ -13,24 +13,28 @@ import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
+import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
   @ApiBody({ type: LoginDTO })
   login(@Body() loginDto: LoginDTO) {
     return this.authService.login(loginDto);
   }
 
+  @Public()
   @Post('login-fast')
   @ApiBody({ type: FastLoginDTO })
   loginWithFastPassword(@Body() fastLoginDto: FastLoginDTO) {
     return this.authService.loginWithFastPassword(fastLoginDto);
   }
 
+  @Public()
   @ApiBearerAuth()
   @Post('reset-password')
   @UseGuards(AuthGuard)

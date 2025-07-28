@@ -1,6 +1,6 @@
-import { 
-  Column, 
-  Entity, 
+import {
+  Column,
+  Entity,
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
@@ -11,6 +11,7 @@ import { SiteEntity } from '../../site/entities/site.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 import { OplDetailsEntity } from '../../oplDetails/entities/oplDetails.entity';
 import { CiltSequencesExecutionsEntity } from '../../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { OplTypes } from "src/modules/oplTypes/entities/oplTypes.entity";
 
 @Entity("opl_mstr")
 export class OplMstr {
@@ -38,11 +39,23 @@ export class OplMstr {
   @Column("varchar", { name: "reviewer_name", nullable: true, length: 100 })
   reviewerName: string | null;
 
-  @Column("enum", { name: "opl_type", nullable: true, enum: ["opl", "sop"] })
-  oplType: "opl" | "sop" | null;
+  @Column("int", { name: "opl_type_id", nullable: true })
+  oplTypeId: number | null;
 
-  @Column("tinyint", { name: "order", default: 1, nullable: false })
+  @Column("varchar", { name: "opl_type", nullable: true, length: 50 })
+  oplType: string | null;
+
+  @Column("tinyint", { name: "order", default: 1, nullable: true })
   order: number;
+
+  @Column("int", { name: "cilt_usage_count", default: 0, nullable: true })
+  ciltUsageCount: number | null;
+
+  @Column("int", { name: "direct_usage_count", default: 0, nullable: true })
+  directUsageCount: number | null;
+
+  @Column("datetime", { name: "last_used_at", nullable: true })
+  lastUsedAt: Date | null;
 
   @Column("datetime", {
     name: "created_at",
@@ -82,4 +95,8 @@ export class OplMstr {
 
   @OneToMany(() => CiltSequencesExecutionsEntity, (execution) => execution.remediationOplSop)
   remediationExecutions: CiltSequencesExecutionsEntity[];
+
+  @ManyToOne(() => OplTypes, (oplType) => oplType.opls)
+  @JoinColumn({ name: 'opl_type_id' })
+  oplTypeRelation: OplTypes;
 }
