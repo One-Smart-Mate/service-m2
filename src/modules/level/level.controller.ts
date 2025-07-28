@@ -1,12 +1,13 @@
 import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { LevelService } from './level.service';
-import { ApiParam, ApiTags, ApiBody } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
 
 @Controller('level')
 @ApiTags('level')
+@ApiBearerAuth()
 export class LevelController {
   constructor(private readonly levelService: LevelService) {}
 

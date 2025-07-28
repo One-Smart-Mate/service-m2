@@ -1,11 +1,12 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { OplMstrService } from './oplMstr.service';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
 import { UpdateOplMstrDTO } from './models/dto/updateOplMstr.dto';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 
 @ApiTags('Opl Master')
+@ApiBearerAuth()
 @Controller('opl-mstr')
 export class OplMstrController {
   constructor(private readonly oplMstrService: OplMstrService) {}

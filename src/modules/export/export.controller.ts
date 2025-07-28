@@ -2,9 +2,11 @@ import { Controller, Get, Param, Res } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
 import { Response } from 'express';
 import { CardService } from '../card/card.service';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { SiteService } from '../site/site.service';
 
+@ApiBearerAuth()
+@ApiTags('export')
 @Controller('export')
 export class ExportController {
   constructor(

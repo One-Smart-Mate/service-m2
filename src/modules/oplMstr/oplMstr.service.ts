@@ -14,6 +14,7 @@ import { LevelEntity } from '../level/entities/level.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { In } from 'typeorm';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
+import { OplTypes } from '../oplTypes/entities/oplTypes.entity';
 
 @Injectable()
 export class OplMstrService {
@@ -24,6 +25,8 @@ export class OplMstrService {
     private readonly oplLevelsRepository: Repository<OplLevelsEntity>,
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
+    @InjectRepository(OplTypes)
+    private readonly oplTypesRepository: Repository<OplTypes>,
   ) {}
 
   findAll = async () => {
@@ -126,6 +129,16 @@ export class OplMstrService {
   create = async (createOplDto: CreateOplMstrDTO) => {
     try {
       const opl = this.oplRepository.create(createOplDto);
+      if (createOplDto.oplTypeId) {
+        const oplType = await this.oplTypesRepository.findOneBy({
+          id: createOplDto.oplTypeId,
+        });
+        if (!oplType) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_TYPE);
+        }
+        opl.oplType = oplType.documentType;
+        opl.oplTypeId = oplType.id;
+      }
       return await this.oplRepository.save(opl);
     } catch (exception) {
       HandleException.exception(exception);
@@ -142,6 +155,16 @@ export class OplMstrService {
       }
 
       Object.assign(opl, updateOplDto);
+      if (updateOplDto.oplTypeId) {
+        const oplType = await this.oplTypesRepository.findOneBy({
+          id: updateOplDto.oplTypeId,
+        });
+        if (!oplType) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_TYPE);
+        }
+        opl.oplType = oplType.documentType;
+        opl.oplTypeId = oplType.id;
+      }
       return await this.oplRepository.save(opl);
     } catch (exception) {
       HandleException.exception(exception);

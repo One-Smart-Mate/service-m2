@@ -9,11 +9,12 @@ import {
   Put,
 } from '@nestjs/common';
 import { PriorityService } from './priority.service';
-import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreatePriorityDTO } from './models/dto/create.priority.dto';
 import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
 
 @ApiTags('priority')
+@ApiBearerAuth()
 @Controller('priority')
 export class PriorityController {
   constructor(private readonly priorityService: PriorityService) {}

@@ -57,6 +57,11 @@ export class OplLevelsService {
         order: { order: 'ASC' }
       });
 
+      // Update direct usage counters for OPLs accessed from menu
+      if (oplIds.length > 0) {
+        await this.updateOplDirectUsageCounters(oplIds);
+      }
+
       const oplLevelMap = new Map();
       oplLevels.forEach(oplLevel => {
         if (oplLevel.opl?.id) {
@@ -85,6 +90,29 @@ export class OplLevelsService {
       
       oplLevels.deletedAt = new Date();
       await this.oplLevelsRepository.save(oplLevels);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  /**
+   * Updates the direct usage counters for OPLs accessed from menu
+   * @param oplIds Array of OPL IDs to update
+   */
+  private async updateOplDirectUsageCounters(oplIds: number[]): Promise<void> {
+    try {
+      const currentTime = new Date();
+
+      // Update direct usage counter for all accessed OPLs
+      await this.oplMstrRepository
+        .createQueryBuilder()
+        .update(OplMstr)
+        .set({
+          directUsageCount: () => 'COALESCE(direct_usage_count, 0) + 1',
+          lastUsedAt: currentTime
+        })
+        .whereInIds(oplIds)
+        .execute();
     } catch (exception) {
       HandleException.exception(exception);
     }

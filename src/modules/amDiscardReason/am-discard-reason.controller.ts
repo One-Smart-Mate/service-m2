@@ -19,9 +19,11 @@ import {
   ApiQuery,
   ApiResponse,
   ApiTags,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 @ApiTags('AM Discard Reasons')
+@ApiBearerAuth()
 @Controller('am-discard-reasons')
 export class AmDiscardReasonController {
   constructor(

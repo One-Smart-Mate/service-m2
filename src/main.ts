@@ -26,7 +26,10 @@ async function main() {
   );
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector),new TransformInterceptor());
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
+    deepScanRoutes: true,
+  });
   SwaggerModule.setup('api', app, document);
 
   await app.listen(process.env.PORT || 3000);
