@@ -131,7 +131,10 @@ export class CiltSequencesService {
 
   findById = async (id: number) => {
     try {
-      const sequence = await this.ciltSequencesRepository.findOneBy({ id });
+      const sequence = await this.ciltSequencesRepository.findOne({
+        where: { id },
+        relations: ['executions']
+      });
       if (!sequence) {
         throw new NotFoundCustomException(
           NotFoundCustomExceptionType.CILT_SEQUENCES,
