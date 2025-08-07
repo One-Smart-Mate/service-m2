@@ -10,7 +10,7 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
 export interface LevelPathInfo {
   ciltMstrId: number;
   levelId: number;
-  route: string;
+  route: string | null;
 }
 
 @Injectable()
@@ -123,11 +123,10 @@ export class CiltPositionLevelService {
             levelId: cpl.levelId, 
             error: error.message 
           });
-          // Return a fallback route when the level path retrieval fails
           return { 
             ciltMstrId: cpl.ciltMstrId, 
             levelId: cpl.levelId, 
-            route: `Level-${cpl.levelId}` 
+            route: null 
           };
         }
       })

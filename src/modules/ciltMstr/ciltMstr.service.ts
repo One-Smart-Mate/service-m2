@@ -14,12 +14,13 @@ import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.ent
 import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
-// Importar los nuevos servicios específicos
+import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { CiltExecutionService } from './services/cilt-execution.service';
 import { CiltPositionLevelService } from './services/cilt-position-level.service';
 import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService, CiltUserResponse, CiltSiteResponse } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
+import { getUTCRangeFromLocalDate } from 'src/utils/timezone.utils';
 
 @Injectable()
 export class CiltMstrService {
@@ -28,9 +29,10 @@ export class CiltMstrService {
     private readonly ciltRepository: Repository<CiltMstrEntity>,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    @InjectRepository(OplMstr)
+    private readonly oplMstrRepository: Repository<OplMstr>,
     private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
-    private readonly logger: CustomLoggerService,
-    // Nuevos servicios específicos
+    private readonly logger: CustomLoggerService, 
     private readonly ciltExecutionService: CiltExecutionService,
     private readonly ciltPositionLevelService: CiltPositionLevelService,
     private readonly ciltValidationService: CiltValidationService,
@@ -132,18 +134,22 @@ export class CiltMstrService {
     }
   };
 
-  async findCiltsByUserId(userId: number, date: string): Promise<CiltUserResponse> {
+  async findCiltsByUserId(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
     try {
-      this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date });
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date, timezone });
       
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
+      // Usar utilidad de timezone para calcular el rango correcto
+      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
 
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
+        originalDate: date, 
+        timezone, 
+        dayStart: dayStart.toISOString(), 
+        dayEnd: dayEnd.toISOString() 
+      });
   
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
@@ -217,7 +223,9 @@ export class CiltMstrService {
 
       this.logger.logProcess('COMPLETED FIND CILTS BY USER ID', { 
         userId, 
-        positionsCount: response.positions.length 
+        positionsCount: response.positions.length,
+        timezone,
+        executionsFound: allExecutions.length 
       });
       
       return response;
@@ -226,18 +234,22 @@ export class CiltMstrService {
     }
   }
 
-  async findCiltsByUserIdReadOnly(userId: number, date: string): Promise<CiltUserResponse> {
+  async findCiltsByUserIdReadOnly(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
     try {
-      this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date });
+      this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date, timezone });
       
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
+      // Usar utilidad de timezone para calcular el rango correcto
+      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
 
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
+        originalDate: date, 
+        timezone, 
+        dayStart: dayStart.toISOString(), 
+        dayEnd: dayEnd.toISOString() 
+      });
   
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
@@ -281,6 +293,9 @@ export class CiltMstrService {
         dayEnd,
         userId
       );
+
+      // Update OPL usage counters from CILT executions
+      await this.updateOplUsageCountersFromCilt(allExecutions);
   
       // 8) Build and return response
       const response = this.ciltQueryBuilderService.buildUserCiltResponse(
@@ -294,7 +309,9 @@ export class CiltMstrService {
 
       this.logger.logProcess('COMPLETED FIND CILTS BY USER ID (READ ONLY)', { 
         userId, 
-        positionsCount: response.positions.length 
+        positionsCount: response.positions.length,
+        timezone,
+        executionsFound: allExecutions.length 
       });
       
       return response;
@@ -397,7 +414,8 @@ export class CiltMstrService {
         ciltSequences,
         scheduledSequences,
         usersByPosition,
-        scheduleDate
+        scheduleDate,
+        levelPaths
       );
 
       // 9) Read all executions for the date
@@ -503,6 +521,51 @@ export class CiltMstrService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
       }
       return await this.ciltRepository.softDelete(id);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
+  /**
+   * Updates the CILT usage counters for OPLs referenced in CILT executions
+   * @param executions Array of CILT executions that may reference OPLs
+   */
+  private async updateOplUsageCountersFromCilt(executions: CiltSequencesExecutionsEntity[]): Promise<void> {
+    try {
+      // Extract unique OPL IDs from both reference and remediation OPLs
+      const oplIds = new Set<number>();
+      
+      executions.forEach(execution => {
+        if (execution.referenceOplSopId) {
+          oplIds.add(execution.referenceOplSopId);
+        }
+        if (execution.remediationOplSopId) {
+          oplIds.add(execution.remediationOplSopId);
+        }
+      });
+
+      if (oplIds.size === 0) {
+        return;
+      }
+
+      const currentTime = new Date();
+      const oplIdsArray = Array.from(oplIds);
+
+      // Update CILT usage counter for all referenced OPLs
+      await this.oplMstrRepository
+        .createQueryBuilder()
+        .update(OplMstr)
+        .set({
+          ciltUsageCount: () => 'COALESCE(cilt_usage_count, 0) + 1',
+          lastUsedAt: currentTime
+        })
+        .whereInIds(oplIdsArray)
+        .execute();
+
+      this.logger.logProcess('UPDATED OPL CILT USAGE COUNTERS', { 
+        oplIds: oplIdsArray,
+        count: oplIdsArray.length 
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

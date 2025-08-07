@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
 import { PreclassifierService } from './preclassifier.service';
-import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreatePreclassifierDTO } from './models/dto/create-preclassifier.dto';
 import { UpdatePreclassifierDTO } from './models/dto/update-preclassifier.dto';
 
 @ApiTags('preclassifier')
+@ApiBearerAuth()
 @Controller('preclassifier')
 export class PreclassifierController {
   constructor(private readonly preclassifierService: PreclassifierService) {}

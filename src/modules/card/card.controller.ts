@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { CardService } from './card.service';
-import { ApiParam, ApiTags, ApiBody } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -10,6 +10,7 @@ import { DiscardCardDto } from './models/dto/discard.card.dto';
 
 @Controller('card')
 @ApiTags('card')
+@ApiBearerAuth()
 export class CardController {
   constructor(private readonly cardService: CardService) {}
 

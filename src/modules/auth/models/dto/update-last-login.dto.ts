@@ -1,21 +1,33 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDateString, IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Matches, IsISO8601 } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateLastLoginDTO {
   @ApiProperty({
-    description: 'ID del usuario',
+    description: 'User ID',
     example: 123,
   })
   @IsNumber()
   userId: number;
 
   @ApiProperty({
-    description: 'Fecha del login',
+    description: 'Date of the login',
     example: '2025-01-29T10:30:00.000Z',
   })
-  @IsDateString()
-  date: string;
+  @IsISO8601()
+  date: Date;
+
+  @ApiProperty({
+    description: 'Timezone of the user (IANA format)',
+    example: 'America/Mexico_City',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^([A-Z][a-zA-Z]*\/[A-Za-z_\/\-]+|UTC|GMT[+-]?\d{1,2}(:\d{2})?)$/, {
+    message: 'timezone must be a valid IANA timezone format (e.g., America/Mexico_City, UTC, GMT+5)',
+  })
+  timezone: string;
 
   @ApiProperty({
     description: 'Plataforma origen del login',

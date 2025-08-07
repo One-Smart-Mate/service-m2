@@ -8,7 +8,7 @@ import {
   Delete,
 } from '@nestjs/common';
 import { PositionService } from './position.service';
-import { ApiParam, ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
 import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
@@ -17,6 +17,7 @@ import { UsersService } from '../users/users.service';
 
 @Controller('position')
 @ApiTags('position')
+@ApiBearerAuth()
 export class PositionController {
   constructor(
     private readonly positionService: PositionService,
