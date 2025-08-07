@@ -1,20 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsIn, IsNumber, IsOptional, IsString, Matches } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, Matches, IsISO8601 } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateLastLoginDTO {
   @ApiProperty({
-    description: 'ID del usuario',
+    description: 'User ID',
     example: 123,
   })
   @IsNumber()
   userId: number;
 
   @ApiProperty({
-    description: 'Fecha del login',
+    description: 'Date of the login',
     example: '2025-01-29T10:30:00.000Z',
   })
-  @IsDate()
+  @IsISO8601()
   date: Date;
 
   @ApiProperty({

@@ -43,6 +43,8 @@ export class AuthController {
     return this.authService.resetPassword(resetPasswordDto, req.user?.email);
   }
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard)
   @Post('update-last-login')
   @ApiBody({ type: UpdateLastLoginDTO })
   updateLastLogin(@Body() updateLastLoginDto: UpdateLastLoginDTO) {
