@@ -36,6 +36,10 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
+      if (user.status === stringConstants.inactiveStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
       const isPasswordValid = await bcryptjs.compare(
         data.password,
         user.password,
@@ -57,7 +61,13 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload = { id: user.id, name: user.name, email: user.email };
+      const payload = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        platform: data.platform,
+        timezone: data.timezone,
+      };
 
       const access_token = await this.jwtService.signAsync(payload);
 
@@ -104,7 +114,13 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload = { id: user.id, name: user.name, email: user.email };
+      const payload = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        platform: data.platform,
+        timezone: data.timezone,
+      };
 
       const access_token = await this.jwtService.signAsync(payload);
 

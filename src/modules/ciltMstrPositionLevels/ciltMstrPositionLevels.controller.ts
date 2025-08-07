@@ -1,10 +1,11 @@
 import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltMstrPositionLevelsService } from './ciltMstrPositionLevels.service';
 import { CreateCiltMstrPositionLevelsDto } from './model/create.ciltMstrPositionLevels.dto';
 import { UpdateCiltMstrPositionLevelsDto } from './model/update.ciltMstrPositionLevels.dto';
 
 @ApiTags('CILT Master Position Levels')
+@ApiBearerAuth()
 @Controller('cilt-mstr-position-levels')
 export class CiltMstrPositionLevelsController {
   constructor(

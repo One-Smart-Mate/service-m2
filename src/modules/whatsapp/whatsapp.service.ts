@@ -1,20 +1,29 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { makeWASocket, DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
 import * as qrcode from 'qrcode-terminal';
 import { Boom } from '@hapi/boom';
 import { CustomLoggerService } from '../../common/logger/logger.service';
-import { IaService } from '../ia/ia.service';
+// import { IaService } from '../ia/ia.service';
 
 @Injectable()
 export class WhatsappService implements OnModuleInit {
   private sock: any;
   private qrCode: string | null = null;
   private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'qr_required' = 'disconnected';
+  private readonly notificationNumbers: string[];
 
   constructor(
     private readonly logger: CustomLoggerService,
-    private readonly iaService: IaService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const userPhoneOne = this.configService.get<string>('USER_ONE');
+    const userPhoneTwo = this.configService.get<string>('USER_TWO');
+    
+    this.notificationNumbers = [userPhoneOne, userPhoneTwo].filter(Boolean);
+    
+    this.logger.logWhatsapp(`Notification numbers configured: ${this.notificationNumbers.length} numbers`);
+  }
 
   async onModuleInit() {
     this.logger.logWhatsapp('Starting WhatsApp service');
@@ -63,7 +72,7 @@ export class WhatsappService implements OnModuleInit {
           this.connectionStatus = 'connected';
           this.qrCode = null;
           this.logger.logWhatsapp('Connection established with WhatsApp');
-          this.setupMessageHandler();
+          // this.setupMessageHandler();
         }
       });
 
@@ -74,6 +83,42 @@ export class WhatsappService implements OnModuleInit {
     }
   }
 
+  async sendToMultipleNumbers(message: string, numbers?: string[]) {
+    if (this.connectionStatus !== 'connected') {
+      this.logger.logWhatsapp('WhatsApp not connected, cannot send messages');
+      return { success: false, error: 'WhatsApp not connected' };
+    }
+
+    const numbersToSend = numbers || this.notificationNumbers;
+    const results = [];
+
+    this.logger.logWhatsapp(`Sending incident notification to ${numbersToSend.length} numbers`);
+
+    for (const number of numbersToSend) {
+      try {
+        const formattedNumber = `${number}@s.whatsapp.net`;
+        await this.sock.sendMessage(formattedNumber, { text: message });
+        
+        results.push({ number, success: true });
+        this.logger.logWhatsapp(`Message sent successfully to ${number}`);
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        results.push({ number, success: false, error: error.message });
+        this.logger.logException('WhatsappService', 'sendToMultipleNumbers', error);
+      }
+    }
+
+    return { success: true, results };
+  }
+
+
+  async sendIncidentNotification(incidentDescription: string) {
+    return await this.sendToMultipleNumbers(incidentDescription);
+  }
+
+  /* 
   private setupMessageHandler() {
     this.sock.ev.on('messages.upsert', async (m: any) => {
       try {
@@ -109,4 +154,5 @@ export class WhatsappService implements OnModuleInit {
       }
     });
   }
+  */
 }

@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, DeleteDateColumn, OneToMany } from 'typeorm';
 import { CiltMstrEntity } from '../../ciltMstr/entities/ciltMstr.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 import { CiltFrequenciesEntity } from '../../ciltFrequencies/entities/ciltFrequencies.entity';
+import { CiltSequencesExecutionsEntity } from '../../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
 @Entity('cilt_sequences')
 export class CiltSequencesEntity {
@@ -105,4 +106,7 @@ export class CiltSequencesEntity {
   @ManyToOne(() => CiltFrequenciesEntity)
   @JoinColumn({ name: 'frecuency_id' })
   frequency: CiltFrequenciesEntity;
+
+  @OneToMany(() => CiltSequencesExecutionsEntity, (execution) => execution.ciltSequence)
+  executions: CiltSequencesExecutionsEntity[];
 }
