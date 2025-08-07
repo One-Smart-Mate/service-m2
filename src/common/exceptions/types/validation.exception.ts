@@ -93,6 +93,9 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT:
         message = stringConstants.invalidFastPasswordFormat;
         break;
+      case ValidationExceptionType.USER_INACTIVE:
+        message = stringConstants.inactiveStatus;
+        break;
       default:
         message = 'Validation error';
     }
@@ -103,6 +106,7 @@ export class ValidationException extends HttpException {
 
 export enum ValidationExceptionType {
   WRONG_AUTH,
+  USER_INACTIVE,
   DUPLICATE_RECORD,
   DUPLICATED_USER,
   DUPLICATED_USER_AT_IMPORTATION,

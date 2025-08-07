@@ -36,6 +36,10 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
+      if (user.status === stringConstants.inactiveStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
       const isPasswordValid = await bcryptjs.compare(
         data.password,
         user.password,
