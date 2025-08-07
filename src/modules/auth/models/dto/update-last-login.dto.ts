@@ -4,14 +4,14 @@ import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateLastLoginDTO {
   @ApiProperty({
-    description: 'ID del usuario',
+    description: 'User ID',
     example: 123,
   })
   @IsNumber()
   userId: number;
 
   @ApiProperty({
-    description: 'Fecha del login',
+    description: 'Date of the login',
     example: '2025-01-29T10:30:00.000Z',
   })
   @IsISO8601()
