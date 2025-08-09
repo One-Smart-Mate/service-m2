@@ -13,6 +13,7 @@ import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
+import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('Authentication')
@@ -49,5 +50,12 @@ export class AuthController {
   @ApiBody({ type: UpdateLastLoginDTO })
   updateLastLogin(@Body() updateLastLoginDto: UpdateLastLoginDTO) {
     return this.authService.updateLastLogin(updateLastLoginDto);
+  }
+
+  @Public()
+  @Post('refresh-token')
+  @ApiBody({ type: RefreshTokenDTO })
+  refreshToken(@Body() refreshTokenDto: RefreshTokenDTO) {
+    return this.authService.refreshToken(refreshTokenDto);
   }
 }
