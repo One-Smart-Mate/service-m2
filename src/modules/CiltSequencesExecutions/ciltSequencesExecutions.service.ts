@@ -19,6 +19,7 @@ import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.ent
 import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
 import { CiltSequencesExecutionsEvidencesType, CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
+import { CardEntity } from '../card/entities/card.entity';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -33,6 +34,8 @@ export class CiltSequencesExecutionsService {
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     private readonly ciltSequencesExecutionsEvidencesService: CiltSequencesExecutionsEvidencesService,
+    @InjectRepository(CardEntity)
+    private readonly cardRepository: Repository<CardEntity>,
   ) {}
 
   findAll = async () => {
@@ -542,13 +545,74 @@ export class CiltSequencesExecutionsService {
         .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
         .getRawMany();
 
-      return result.map(item => ({
-        date: item.date,
-        totalAnomalies: parseInt(item.anomalies),
-        nokAnomalies: parseInt(item.nokAnomalies),
-        amTagAnomalies: parseInt(item.amTagAnomalies),
-        stoppageAnomalies: parseInt(item.stoppageAnomalies)
-      }));
+      // Obtener amTagIds de las mismas executions que ya se filtraron
+      const amTagQuery = this.ciltSequencesExecutionsRepository
+        .createQueryBuilder('execution')
+        .select(['execution.amTagId', 'DATE(execution.secuenceSchedule) as date'])
+        .where('execution.deletedAt IS NULL')
+        .andWhere('execution.secuenceStart IS NOT NULL')
+        .andWhere('execution.amTagId IS NOT NULL')
+        .andWhere('execution.amTagId > 0')
+        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
+          startDate: filters.startDate,
+          endDate: filters.endDate
+        });
+
+      if (filters.siteId) {
+        amTagQuery.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
+      }
+
+      if (filters.positionId) {
+        amTagQuery.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
+      }
+
+      if (filters.levelId) {
+        amTagQuery.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
+      }
+
+      const amTagResults = await amTagQuery.getRawMany();
+      console.log('amTagResults:', amTagResults);
+      const uniqueAmTagIds = [...new Set(amTagResults.map(item => item.execution_am_tag_id))];
+      console.log('uniqueAmTagIds:', uniqueAmTagIds);
+
+      // Obtener las cards
+      let cards = [];
+      if (uniqueAmTagIds.length > 0) {
+        cards = await this.cardRepository
+          .createQueryBuilder('card')
+          .where('card.id IN (:...ids)', { ids: uniqueAmTagIds })
+          .andWhere('card.deletedAt IS NULL')
+          .getMany();
+        console.log('cards found:', cards.length);
+      }
+
+      // Agrupar amTagIds por fecha
+      const amTagsByDate = {};
+      amTagResults.forEach(item => {
+        const date = item.date;
+        if (!amTagsByDate[date]) {
+          amTagsByDate[date] = [];
+        }
+        amTagsByDate[date].push(item.execution_am_tag_id);
+      });
+
+      // Crear mapa de cards
+      const cardsMap = new Map(cards.map(card => [card.id, card]));
+
+      return result.map(item => {
+        const dateCards = (amTagsByDate[item.date] || [])
+          .map(amTagId => cardsMap.get(amTagId))
+          .filter(card => card);
+
+        return {
+          date: item.date,
+          totalAnomalies: parseInt(item.anomalies),
+          nokAnomalies: parseInt(item.nokAnomalies),
+          amTagAnomalies: parseInt(item.amTagAnomalies),
+          stoppageAnomalies: parseInt(item.stoppageAnomalies),
+          relatedCards: dateCards
+        };
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

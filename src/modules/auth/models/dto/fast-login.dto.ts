@@ -1,14 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import { IsIn, IsOptional, IsString, MinLength, Matches, IsNotEmpty, MaxLength } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class FastLoginDTO {
   @ApiProperty({
-    description: 'The fast password of the user',
+    description: 'The password of the user',
     example: 'AaDb',
   })
-  @IsString()
-  @MinLength(4)
+  @IsString({ message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
+  @MinLength(4, { message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
+  @MaxLength(4, { message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
   fastPassword: string;
 
   @ApiProperty({
