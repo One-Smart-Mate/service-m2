@@ -64,6 +64,7 @@ export const stringConstants = {
   closeSessionDescription: 'Your session has been closed.',
   closeSessionType: 'CLOSE_SESSION',
   cardTypeUpdate: 'Tipo de tarjeta actualizado con éxito.',
+  passwordMustBeLongerThanOrEqualTo4Characters: 'Password must be longer than or equal to 4 characters',
   //Types of evidences
   AUCR: 'AUCR',
   AUCL: 'AUCL',
