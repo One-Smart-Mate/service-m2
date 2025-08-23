@@ -29,12 +29,12 @@ class FileUploadBodyDTO {
   @ApiProperty({
     type: 'string',
     format: 'binary',
-    description: 'Archivo Excel (.xlsx) con los datos de usuarios a importar'
+    description: 'Archivo Excel (.xlsx) with data to import'
   })
   file: Express.Multer.File;
 
   @ApiProperty({
-    description: 'ID del sitio donde se importarán los usuarios',
+    description: 'Site ID where the users will be imported',
     example: '1'
   })
   siteId: string;
@@ -47,35 +47,16 @@ export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}
   @Post('import-users')
   @ApiOperation({
-    summary: 'Importar usuarios desde archivo Excel',
-    description: `
-    Importa usuarios masivamente desde un archivo Excel (.xlsx).
-    
-    **Estructura requerida del Excel:**
-    - **Name** (requerido): Nombre completo del usuario
-    - **Email** (requerido): Correo electrónico único
-    - **Role** (requerido): Rol del usuario (debe existir en el sistema)
-    - **PhoneNumber** (opcional): Teléfono para notificaciones WhatsApp
-    - **Translation** (opcional): Idioma (ES/EN, por defecto ES)
-    
-    **Roles disponibles:** TH_sis_admin, mechanic, local_admin, local_sis_admin, operator, external_provider
-    
-    **Validaciones:**
-    - Archivo debe ser .xlsx y menor a 5MB
-    - Emails deben ser únicos
-    - Roles deben existir en el sistema
-    - Se generan contraseñas automáticamente
-    - Se envían emails de bienvenida y WhatsApp (si aplica)
-    `
+    summary: 'Import users from Excel file',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
-    description: 'Archivo Excel con datos de usuarios y ID del sitio',
+    description: 'Excel file with user data and site ID',
     type: FileUploadBodyDTO,
   })
   @ApiResponse({
     status: 200,
-    description: 'Usuarios importados exitosamente',
+    description: 'Users imported successfully',
     schema: {
       type: 'object',
       properties: {
@@ -113,7 +94,7 @@ export class FileUploadController {
   })
   @ApiResponse({
     status: 400,
-    description: 'Archivo inválido o datos incorrectos',
+    description: 'Invalid file or incorrect data',
     schema: {
       type: 'object',
       properties: {
@@ -125,11 +106,11 @@ export class FileUploadController {
   })
   @ApiResponse({
     status: 401,
-    description: 'No autorizado - Token requerido'
+    description: 'Unauthorized - Token required'
   })
   @ApiResponse({
     status: 404,
-    description: 'Sitio no encontrado'
+    description: 'Site not found'
   })
   @UseInterceptors(
     FileInterceptor('file', {
