@@ -30,6 +30,7 @@ import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 @Injectable()
 export class UsersService {
@@ -45,6 +46,7 @@ export class UsersService {
     @InjectRepository(UsersPositionsEntity)
     private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
     private readonly logger: CustomLoggerService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -65,6 +67,24 @@ export class UsersService {
       if (!existingUser) {
         return fastPassword;
       }
+    }
+  }
+
+  private async sendFastPasswordWhatsAppMessage(phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> {
+    try {
+      if (phoneNumber && fastPassword) {
+        // Ensure language is valid, default to ES if null, undefined, or invalid
+        const validLanguage = (language === stringConstants.LANG_EN) ? stringConstants.LANG_EN : stringConstants.LANG_ES;
+        
+        await this.whatsappService.sendAuthenticationMessages([{
+          phoneNumber,
+          code: fastPassword,
+          language: validLanguage
+        }]);
+        this.logger.log(`WhatsApp authentication message sent to ${phoneNumber} with fastPassword: ${fastPassword} in language: ${validLanguage}`);
+      }
+    } catch (error) {
+      this.logger.error(`Failed to send WhatsApp authentication message to ${phoneNumber}: ${error.message}`);
     }
   }
 
@@ -392,6 +412,7 @@ export class UsersService {
         const createUser = await this.userRepository.create({
           name: createUserDTO.name,
           email: createUserDTO.email,
+          phoneNumber: createUserDTO.phoneNumber,
           password: await bcryptjs.hash(
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
@@ -402,16 +423,26 @@ export class UsersService {
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
           uploadCardEvidenceWithDataNet:
             createUserDTO.uploadCardEvidenceWithDataNet,
+          translation: createUserDTO.translation || stringConstants.LANG_ES,
           createdAt: new Date(),
         });
 
         await this.userRepository.save(createUser);
         await this.roleService.assignUserRoles(createUser, roles);
         userSite.user = createUser;
+
+        if (createUser.phoneNumber && fastPassword) {
+          await this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
+        }
       } else {
+        const oldFastPassword = user.fastPassword;
         user.fastPassword = fastPassword;
         await this.userRepository.save(user);
         userSite.user = user;
+
+        if (user.phoneNumber && fastPassword && oldFastPassword !== fastPassword) {
+          await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
+        }
       }
       const appUrl = process.env.URL_WEB;
 
@@ -501,9 +532,14 @@ export class UsersService {
         updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
   
+      const oldFastPassword = user.fastPassword;
       this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
       await this.userRepository.update({ id: user.id }, updatePayload);
       this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
+
+      if (user.phoneNumber && updatePayload.fastPassword && oldFastPassword !== updatePayload.fastPassword) {
+        await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updatePayload.fastPassword, user.translation);
+      }
   
       if (updateUserDTO.status === stringConstants.inactiveStatus) {
         const tokens = await this.getUserToken(user.id);
@@ -585,9 +621,14 @@ export class UsersService {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
 
+        const oldFastPassword = user.fastPassword;
         user.fastPassword = updateUserPartialDTO.fastPassword;
+
+        if (user.phoneNumber && updateUserPartialDTO.fastPassword && oldFastPassword !== updateUserPartialDTO.fastPassword) {
+          await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updateUserPartialDTO.fastPassword, user.translation);
+        }
       }
-      
+  
       user.updatedAt = new Date();
       
       return await this.userRepository.save(user);
@@ -847,5 +888,16 @@ export class UsersService {
       where: { fastPassword },
       relations: { userHasSites: { site: true } },
     });
+  };
+
+  findOneByPhoneNumber = (phoneNumber: string) => {
+    return this.userRepository.findOne({
+      where: { phoneNumber },
+      relations: { userHasSites: { site: true } },
+    });
+  };
+
+  sendFastPasswordWhatsApp = async (phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> => {
+    await this.sendFastPasswordWhatsAppMessage(phoneNumber, fastPassword, language);
   };
 }

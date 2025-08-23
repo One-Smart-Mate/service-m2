@@ -19,6 +19,11 @@ export class UpdateUserPartialDTO {
   @IsString()
   name?: string;
 
+  @ApiProperty({ description: 'Phone number of the user', required: false })
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
   @ApiProperty({ description: 'Email address of the user', required: false })
   @IsOptional()
   @IsEmail()

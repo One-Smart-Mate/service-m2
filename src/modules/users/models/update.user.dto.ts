@@ -25,6 +25,10 @@ export class UpdateUserDTO {
   @IsString()
   name: string;
 
+  @ApiProperty({ description: 'Phone number of the user' })
+  @IsString()
+  phoneNumber?: string;
+
   @ApiProperty({ description: 'Email address of the user' })
   @IsEmail()
   email: string;

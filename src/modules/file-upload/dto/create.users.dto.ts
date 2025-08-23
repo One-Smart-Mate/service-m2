@@ -6,4 +6,6 @@ export class CreateUsersDTO {
   createdAt: Date;
   appVersion: string;
   siteCode: string;
+  phoneNumber?: string;
+  translation?: string;
 }
