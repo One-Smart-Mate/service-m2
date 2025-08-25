@@ -496,6 +496,8 @@ export class UsersService {
         appVersion: process.env.APP_ENV,
         uploadCardDataWithDataNet: updateUserDTO.uploadCardDataWithDataNet,
         uploadCardEvidenceWithDataNet: updateUserDTO.uploadCardEvidenceWithDataNet,
+        phoneNumber: updateUserDTO.phoneNumber,
+        translation: updateUserDTO.translation || stringConstants.LANG_ES,
         updatedAt: new Date(),
       };
   
@@ -537,8 +539,8 @@ export class UsersService {
       await this.userRepository.update({ id: user.id }, updatePayload);
       this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
 
-      if (user.phoneNumber && updatePayload.fastPassword && oldFastPassword !== updatePayload.fastPassword) {
-        await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updatePayload.fastPassword, user.translation);
+      if (updatePayload.phoneNumber && updatePayload.fastPassword && oldFastPassword !== updatePayload.fastPassword) {
+        await this.sendFastPasswordWhatsAppMessage(updatePayload.phoneNumber, updatePayload.fastPassword, updatePayload.translation);
       }
   
       if (updateUserDTO.status === stringConstants.inactiveStatus) {
