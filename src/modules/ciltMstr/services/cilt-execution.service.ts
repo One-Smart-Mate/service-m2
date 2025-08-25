@@ -126,7 +126,6 @@ export class CiltExecutionService {
   ): Promise<CiltSequencesExecutionsEntity[]> {
     const whereCondition: any = {
       ciltId: In(ciltMasterIds),
-      status: 'A',
       deletedAt: IsNull(),
       secuenceSchedule: Between(dayStart, dayEnd),
     };

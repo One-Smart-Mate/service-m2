@@ -19,6 +19,7 @@ import { stringConstants } from 'src/utils/string.constant';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
+import { PhoneNumberDTO } from './models/dto/phone-number.dto';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
@@ -234,6 +235,30 @@ export class AuthService {
         const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         return new UserResponse(user, access_token, roles, companyName, app_history);
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  sendFastPasswordByPhone = async (data: PhoneNumberDTO) => {
+    try {
+      const user = await this.usersSevice.findOneByPhoneNumber(data.phoneNumber);
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      if (user.status === stringConstants.inactiveStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
+      await this.usersSevice.sendFastPasswordWhatsApp(user.phoneNumber, user.fastPassword, user.translation);
+
+      return {
+        message: 'Fast password sent successfully',
+        phoneNumber: user.phoneNumber
+      };
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);

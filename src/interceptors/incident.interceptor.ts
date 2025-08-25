@@ -141,7 +141,7 @@ ${errorDetails.userAgent}
       });
 
       try {
-        await this.whatsappService.sendIncidentNotification(description);
+        // k
         
         this.logger.logProcess('WHATSAPP NOTIFICATION SENT', {
           controller,

@@ -23,6 +23,10 @@ export class CreateUserDTO {
   @IsEmail()
   email: string;
 
+  @ApiProperty({ description: 'Phone number of the user' })
+  @IsString()
+  phoneNumber?: string;
+
   @ApiProperty({ description: 'ID of the site associated with the user' })
   @IsInt()
   @IsPositive()
