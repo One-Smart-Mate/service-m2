@@ -15,6 +15,8 @@ import { stringConstants } from 'src/utils/string.constant';
 import { SendCodeEmailDto } from './models/send.code.email.dto';
 import { UserWithPositionsResponseDTO } from './models/user.with.positions.response.dto';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
+import { Public } from '../../common/decorators/public.decorator';
+
 @Controller('users')
 @ApiTags('users')
 @ApiBearerAuth()
@@ -45,15 +47,18 @@ export class UsersController {
     return this.usersService.create(createUserDTO);
   }
 
+  @Public()
   @Post('/send-code')
   @ApiBody({ type: SendCodeEmailDto })
   sendCodeToEmail(@Body() sendCodeEmailDto: SendCodeEmailDto) {
     return this.usersService.sendCodeToEmail(sendCodeEmailDto.email, sendCodeEmailDto.translation);
   }
+  @Public()
   @Post('/verify-code')
   veryfyCode(@Body() sendCodeDTO: SendCodeDTO) {
     return this.usersService.verifyResetCode(sendCodeDTO);
   }
+  @Public()
   @Post('/reset-password')
   async resetPassword(@Body() resetPasswordDTO: ResetPasswordDTO) {
     await this.usersService.resetPassword(resetPasswordDTO);
@@ -106,6 +111,7 @@ export class UsersController {
     );
     return users;
   }
+  @Public()
   @Post('/logout')
   logout(@Body() logoutDTO: LogoutDTO) {
     return this.usersService.logout(logoutDTO.userId, logoutDTO.osName);
