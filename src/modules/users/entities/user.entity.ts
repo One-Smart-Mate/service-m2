@@ -28,6 +28,9 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 100, nullable: false })
   name: string;
 
+  @Column({ name: 'phone_number', type: 'varchar', length: 20, nullable: true })
+  phoneNumber?: string;
+
   @Column({ type: 'varchar', length: 60, nullable: false })
   email: string;
 
@@ -158,6 +161,15 @@ export class UserEntity {
 
   @Column({ name: 'last_login_app', type: 'timestamp', nullable: true })
   lastLoginApp?: Date;
+
+  @Column({ 
+    type: 'varchar', 
+    length: 2, 
+    nullable: true, 
+    default: 'ES',
+    comment: 'User preferred language (ES/EN)' 
+  })
+  translation?: string | null;
 
   @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
   userRoles: UserRoleEntity[];

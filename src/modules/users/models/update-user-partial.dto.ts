@@ -7,6 +7,7 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
+import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateUserPartialDTO {
   @ApiProperty({ description: 'Id', required: true })
@@ -18,6 +19,21 @@ export class UpdateUserPartialDTO {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiProperty({ description: 'Phone number of the user', required: false })
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @ApiProperty({ 
+    description: 'Language of the welcome email', 
+    example: 'ES',
+    enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
+    default: stringConstants.LANG_ES,
+    required: false
+  })
+  @IsString()
+  translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
 
   @ApiProperty({ description: 'Email address of the user', required: false })
   @IsOptional()

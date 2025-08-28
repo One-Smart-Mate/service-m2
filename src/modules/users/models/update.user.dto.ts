@@ -25,6 +25,20 @@ export class UpdateUserDTO {
   @IsString()
   name: string;
 
+  @ApiProperty({ description: 'Phone number of the user' })
+  @IsString()
+  phoneNumber?: string;
+
+  @ApiProperty({ 
+    description: 'Language of the welcome email', 
+    example: 'ES',
+    enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
+    default: stringConstants.LANG_ES,
+    required: false
+  })
+  @IsString()
+  translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
+
   @ApiProperty({ description: 'Email address of the user' })
   @IsEmail()
   email: string;

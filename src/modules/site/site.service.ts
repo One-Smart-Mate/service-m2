@@ -193,6 +193,8 @@ export class SiteService {
         id: user.id,
         name: user.name,
         email: user.email,
+        phoneNumber: user.phoneNumber,
+        translation: user.translation,
         status: user.status,
         uploadCardDataWithDataNet: user.uploadCardDataWithDataNet,
         uploadCardEvidenceWithDataNet: user.uploadCardEvidenceWithDataNet,
