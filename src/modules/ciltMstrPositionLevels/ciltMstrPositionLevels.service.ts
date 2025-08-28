@@ -233,6 +233,9 @@ export class CiltMstrPositionLevelsService {
         .leftJoinAndSelect('sequences.executions', 'executions', 'executions.createdAt >= :date', {
           date: twentyFourHoursAgo
         })
+        .leftJoinAndSelect('executions.evidences', 'evidences')
+        .leftJoinAndSelect('executions.referenceOplSop', 'referenceOplSop')
+        .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
         .where('cpl.levelId = :levelId AND cpl.deletedAt IS NULL', { levelId })
         .getMany();
     } catch (exception) {
