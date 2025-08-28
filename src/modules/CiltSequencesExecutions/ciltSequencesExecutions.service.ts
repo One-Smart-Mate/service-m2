@@ -17,9 +17,11 @@ import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesEx
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltSequencesExecutionsEvidencesType, CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 import { CardEntity } from '../card/entities/card.entity';
+import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -33,6 +35,8 @@ export class CiltSequencesExecutionsService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    @InjectRepository(CiltMstrPositionLevelsEntity)
+    private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
     private readonly ciltSequencesExecutionsEvidencesService: CiltSequencesExecutionsEvidencesService,
     @InjectRepository(CardEntity)
     private readonly cardRepository: Repository<CardEntity>,
@@ -618,6 +622,96 @@ export class CiltSequencesExecutionsService {
     }
   }
 
+  generate = async (generateDto: GenerateCiltSequencesExecutionDTO) => {
+    try {
+      const sequence = await this.ciltSequencesRepository.findOne({
+        where: { 
+          id: generateDto.sequenceId,
+          deletedAt: IsNull()
+        },
+        relations: ['ciltMstr', 'site']
+      });
+
+      if (!sequence) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+      }
+
+      const user = await this.usersService.findById(generateDto.userId);
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const ciltMstrPositionLevel = await this.ciltMstrPositionLevelsRepository.findOne({
+        where: {
+          ciltMstrId: sequence.ciltMstrId,
+          deletedAt: IsNull()
+        }
+      });
+
+      if (!ciltMstrPositionLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
+      }
+
+      const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+        where: {
+          siteId: sequence.siteId,
+          deletedAt: IsNull()
+        },
+        order: {
+          siteExecutionId: 'DESC'
+        }
+      });
+
+      const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
+      const newExecution = this.ciltSequencesExecutionsRepository.create({
+        siteId: sequence.siteId,
+        siteExecutionId: nextSiteExecutionId,
+        positionId: ciltMstrPositionLevel.positionId,
+        ciltId: sequence.ciltMstrId,
+        ciltSecuenceId: sequence.id,
+        levelId: ciltMstrPositionLevel.levelId,
+        route: null,
+        userId: generateDto.userId,
+        userWhoExecutedId: null,
+        specialWarning: sequence.specialWarning,
+        machineStatus: null,
+        secuenceSchedule: new Date(),
+        allowExecuteBefore: true,
+        allowExecuteBeforeMinutes: 30,
+        toleranceBeforeMinutes: 5,
+        toleranceAfterMinutes: 15,
+        allowExecuteAfterDue: true,
+        secuenceStart: null,
+        secuenceStop: null,
+        duration: sequence.standardTime,
+        realDuration: null,
+        standardOk: sequence.standardOk,
+        initialParameter: null,
+        evidenceAtCreation: false,
+        finalParameter: null,
+        evidenceAtFinal: false,
+        nok: false,
+        stoppageReason: sequence.stoppageReason === 1,
+        machineStopped: sequence.machineStopped === 1,
+        amTagId: null,
+        referencePoint: sequence.referencePoint,
+        secuenceList: sequence.secuenceList,
+        secuenceColor: sequence.secuenceColor,
+        ciltTypeId: sequence.ciltTypeId,
+        ciltTypeName: sequence.ciltTypeName,
+        referenceOplSopId: sequence.referenceOplSopId,
+        remediationOplSopId: sequence.remediationOplSopId,
+        toolsRequiered: sequence.toolsRequired,
+        selectableWithoutProgramming: sequence.selectableWithoutProgramming === 1,
+        status: 'A'
+      });
+
+      return await this.ciltSequencesExecutionsRepository.save(newExecution);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 
   
 } 

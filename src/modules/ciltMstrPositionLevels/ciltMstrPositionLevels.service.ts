@@ -220,4 +220,23 @@ export class CiltMstrPositionLevelsService {
       HandleException.exception(exception);
     }
   }
+
+  findByLevelIdWithRecentExecutions = async (levelId: number) => {
+    try {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      return await this.ciltMstrPositionLevelsRepository
+        .createQueryBuilder('cpl')
+        .leftJoinAndSelect('cpl.position', 'position')
+        .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
+        .leftJoinAndSelect('ciltMstr.sequences', 'sequences')
+        .leftJoinAndSelect('sequences.executions', 'executions', 'executions.createdAt >= :date', {
+          date: twentyFourHoursAgo
+        })
+        .where('cpl.levelId = :levelId AND cpl.deletedAt IS NULL', { levelId })
+        .getMany();
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
