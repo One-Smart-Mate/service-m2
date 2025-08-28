@@ -7,6 +7,7 @@ import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequences
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
 import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
+import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { ChartFiltersDTO } from './models/dto/chart.filters.dto';
 import { 
   ExecutionChartResponseDTO, 
@@ -78,6 +79,15 @@ export class CiltSequencesExecutionsController {
   @ApiBody({ type: CreateCiltSequencesExecutionDTO })
   create(@Body() createCiltSequencesExecutionDTO: CreateCiltSequencesExecutionDTO) {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
+  }
+
+  @Post("/generate")
+  @ApiOperation({ summary: 'Generate a new CILT sequence execution from sequence data' })
+  @ApiBody({ type: GenerateCiltSequencesExecutionDTO })
+  @ApiResponse({ status: 201, description: 'CILT sequence execution generated successfully' })
+  @ApiResponse({ status: 404, description: 'Sequence or User not found' })
+  generate(@Body() generateDto: GenerateCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.generate(generateDto);
   }
 
   @Put("/start")
