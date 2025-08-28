@@ -1,158 +1,398 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { makeWASocket, DisconnectReason, useMultiFileAuthState } from '@whiskeysockets/baileys';
-import * as qrcode from 'qrcode-terminal';
-import { Boom } from '@hapi/boom';
 import { CustomLoggerService } from '../../common/logger/logger.service';
-// import { IaService } from '../ia/ia.service';
+import axios from 'axios';
+
+export interface AuthMessage {
+  phoneNumber: string;
+  code: string;
+  language?: string;
+}
+
+export interface WhatsAppTemplateResponse {
+  messaging_product: string;
+  contacts: Array<{
+    input: string;
+    wa_id: string;
+  }>;
+  messages: Array<{
+    id: string;
+  }>;
+}
 
 @Injectable()
-export class WhatsappService implements OnModuleInit {
-  private sock: any;
-  private qrCode: string | null = null;
-  private connectionStatus: 'disconnected' | 'connecting' | 'connected' | 'qr_required' = 'disconnected';
-  private readonly notificationNumbers: string[];
+export class WhatsappService {
+  private readonly whatsappApiUrl = 'https://graph.facebook.com/v23.0';
+  private readonly accessToken: string;
+  private readonly phoneNumberId: string;
+  private readonly wabaId: string;
 
   constructor(
-    private readonly logger: CustomLoggerService,
     private readonly configService: ConfigService,
+    private readonly logger: CustomLoggerService,
   ) {
-    const userPhoneOne = this.configService.get<string>('USER_ONE');
-    const userPhoneTwo = this.configService.get<string>('USER_TWO');
+    this.accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
+    this.phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    this.wabaId = this.configService.get<string>('WHATSAPP_WABA_ID') || this.phoneNumberId;
     
-    this.notificationNumbers = [userPhoneOne, userPhoneTwo].filter(Boolean);
+    this.logger.log(`WhatsApp Service initialized with Phone Number ID: ${this.phoneNumberId}`);
+  }
+
+  async sendAuthenticationMessages(authMessages: AuthMessage[]): Promise<WhatsAppTemplateResponse[]> {
+    const results: WhatsAppTemplateResponse[] = [];
+
+    for (const authMessage of authMessages) {
+      try {
+        const result = await this.sendAuthenticationMessage(
+          authMessage.phoneNumber, 
+          authMessage.code, 
+          authMessage.language
+        );
+        results.push(result);
+        this.logger.log(`Authentication message sent successfully to ${authMessage.phoneNumber}`);
+      } catch (error) {
+        this.logger.error(`Failed to send authentication message to ${authMessage.phoneNumber}`, error);
+        throw new HttpException(
+          `Failed to send message to ${authMessage.phoneNumber}: ${error.message}`,
+          HttpStatus.BAD_REQUEST
+        );
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Cleans phone number by removing special characters and formatting
+   * @param phoneNumber - Raw phone number string
+   * @returns Cleaned phone number with only digits and country code
+   */
+  private cleanPhoneNumber(phoneNumber: string): string {
+    // Remove all non-digit characters except '+'
+    let cleaned = phoneNumber.replace(/[^\d+]/g, '');
     
-    this.logger.logWhatsapp(`Notification numbers configured: ${this.notificationNumbers.length} numbers`);
+    // If it doesn't start with '+', add it for international format
+    if (!cleaned.startsWith('+')) {
+      cleaned = '+' + cleaned;
+      this.logger.debug(`Added country code prefix to phone number: ${cleaned}`);
+    }
+    
+    this.logger.debug(`Phone number cleaned from "${phoneNumber}" to "${cleaned}"`);
+    return cleaned;
   }
 
-  async onModuleInit() {
-    this.logger.logWhatsapp('Starting WhatsApp service');
-    await this.initializeConnection();
-  }
-
-  getConnectionInfo() {
-    return {
-      status: this.connectionStatus,
-      qrRequired: this.connectionStatus === 'qr_required',
-      qrCode: this.qrCode
-    };
-  }
-
-  private async initializeConnection() {
-    try {
-      const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-
-      this.connectionStatus = 'connecting';
-      this.logger.logWhatsapp('Starting connection with WhatsApp');
-
-      this.sock = makeWASocket({
-        printQRInTerminal: true,
-        auth: state,
-      });
-
-      this.sock.ev.on('connection.update', (update: any) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          this.qrCode = qr;
-          this.connectionStatus = 'qr_required';
-          qrcode.generate(qr, { small: true });
-          this.logger.logWhatsapp('Scan QR code required');
-        }
-
-        if (connection === 'close') {
-          const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-          if (shouldReconnect) {
-            this.connectionStatus = 'disconnected';
-            this.qrCode = null;
-            this.logger.logWhatsapp('Connection closed, trying to reconnect in 3 seconds');
-            setTimeout(() => this.initializeConnection(), 3000);
+  private async sendAuthenticationMessage(phoneNumber: string, code: string, userLanguage?: string): Promise<WhatsAppTemplateResponse> {
+    const url = `${this.whatsappApiUrl}/${this.phoneNumberId}/messages`;
+    
+    // Clean phone number before sending
+    const cleanedPhoneNumber = this.cleanPhoneNumber(phoneNumber);
+    
+    // Use the created authentication template
+    const templateName = 'fast_password';
+    // Map user language to WhatsApp template language codes
+    let templateLanguage = 'es_ES'; // Default to Spanish
+    if (userLanguage === 'EN') {
+      templateLanguage = 'en_US';
+    } else if (userLanguage === 'ES') {
+      templateLanguage = 'es_ES';
+    }
+    
+    this.logger.log(`Using authentication template: ${templateName} (${templateLanguage})`);
+    this.logger.log(`Template ID: 24829177996687017 (APPROVED - login_code)`);
+    
+    // Template payload (funciona siempre)
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: cleanedPhoneNumber,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: {
+          code: templateLanguage
+        },
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: code
+              }
+            ]
+          },
+          {
+            type: 'button',
+            sub_type: 'url',
+            index: '0',
+            parameters: [
+              {
+                type: 'text',
+                text: code
+              }
+            ]
           }
-        } else if (connection === 'open') {
-          this.connectionStatus = 'connected';
-          this.qrCode = null;
-          this.logger.logWhatsapp('Connection established with WhatsApp');
-          // this.setupMessageHandler();
-        }
-      });
+        ]
+      }
+    };
 
-      this.sock.ev.on('creds.update', saveCreds);
+    const headers = {
+      'Authorization': `Bearer ${this.accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      this.logger.log(`Sending authentication template message to ${cleanedPhoneNumber} with code: ${code}`);
+      this.logger.debug(`Request payload:`, JSON.stringify(payload, null, 2));
+      
+      const response = await axios.post(url, payload, { headers });
+      
+      this.logger.log(`WhatsApp API Response Status: ${response.status}`);
+      this.logger.log(`WhatsApp API Response Data:`, JSON.stringify(response.data, null, 2));
+      
+      return response.data;
     } catch (error) {
-      this.logger.logException('WhatsappService', 'initializeConnection', error);
-      throw error;
+      const errorDetails = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        phoneNumber: cleanedPhoneNumber,
+        code: code
+      };
+      
+      this.logger.error('WhatsApp API Error Details:', JSON.stringify(errorDetails, null, 2));
+      
+      const finalErrorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message
+        || error.message 
+        || 'Failed to send WhatsApp template message';
+      
+      throw new HttpException(
+        `WhatsApp API Error: ${finalErrorMessage} (Phone: ${cleanedPhoneNumber})`,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
     }
   }
 
-  async sendToMultipleNumbers(message: string, numbers?: string[]) {
-    if (this.connectionStatus !== 'connected') {
-      this.logger.logWhatsapp('WhatsApp not connected, cannot send messages');
-      return { success: false, error: 'WhatsApp not connected' };
+  async getPhoneNumberInfo(): Promise<any> {
+    const url = `${this.whatsappApiUrl}/${this.phoneNumberId}`;
+    
+    const headers = {
+      'Authorization': `Bearer ${this.accessToken}`,
+    };
+
+    try {
+      const response = await axios.get(url, { headers });
+      return response.data;
+    } catch (error) {
+      this.logger.error('Failed to get phone number info:', error.response?.data || error.message);
+      throw new HttpException(
+        'Failed to get phone number information',
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getMessageTemplates(): Promise<any> {
+    // Correct endpoint according to Meta docs: GET /{whatsapp-business-account-id}/message_templates
+    const url = `${this.whatsappApiUrl}/${this.wabaId}/message_templates`;
+    
+    const headers = {
+      'Authorization': `Bearer ${this.accessToken}`,
+    };
+
+    try {
+      this.logger.log(`Fetching message templates for WABA ID: ${this.wabaId}`);
+      this.logger.debug(`Request URL: ${url}`);
+      
+      const response = await axios.get(url, { headers });
+      
+      // Templates are directly in the data array
+      const templates = response.data.data || [];
+      this.logger.log(`Found ${templates.length} templates`);
+      this.logger.debug('Templates response:', JSON.stringify(response.data, null, 2));
+      
+      return {
+        waba_id: this.wabaId,
+        templates: templates,
+        total_templates: templates.length,
+        paging: response.data.paging
+      };
+    } catch (error) {
+      const errorDetails = {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message,
+        wabaId: this.wabaId,
+        url: url
+      };
+      
+      this.logger.error('WhatsApp Templates API Error Details:', JSON.stringify(errorDetails, null, 2));
+      
+      const errorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message
+        || error.message 
+        || 'Failed to fetch WhatsApp message templates';
+      
+      throw new HttpException(
+        `WhatsApp Templates API Error: ${errorMessage}`,
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async getTemplateByName(templateName: string, language?: string): Promise<any> {
+    try {
+      const templatesResponse = await this.getMessageTemplates();
+      
+      let template = templatesResponse.templates.find(t => t.name === templateName);
+      
+      if (language) {
+        template = templatesResponse.templates.find(t => 
+          t.name === templateName && t.language === language
+        );
+      }
+      
+      if (!template) {
+        throw new HttpException(
+          `Template "${templateName}" not found${language ? ` for language ${language}` : ''}`,
+          HttpStatus.NOT_FOUND
+        );
+      }
+      
+      this.logger.log(`Found template: ${template.name} (${template.language}) - Status: ${template.status}`);
+      
+      return template;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      
+      this.logger.error('Failed to get template by name:', error.message);
+      throw new HttpException(
+        `Failed to retrieve template: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+    async buildTemplateComponents(template: any, parameters: { [key: string]: string }): Promise<any[]> {
+      const components = [];
+      
+      if (!template.components) {
+        this.logger.warn('Template has no components defined');
+        return components;
+      }
+      
+      for (const component of template.components) {
+        if (component.type === 'BODY' && component.text && component.text.includes('{{')) {
+          // Extract parameter placeholders and map them
+          const bodyParams = [];
+          const matches = component.text.match(/\{\{(\d+)\}\}/g) || [];
+          
+          for (let i = 0; i < matches.length; i++) {
+            const paramKey = Object.keys(parameters)[i];
+            if (paramKey && parameters[paramKey]) {
+              bodyParams.push({
+                type: 'text',
+                text: parameters[paramKey]
+              });
+            }
+          }
+          
+          if (bodyParams.length > 0) {
+            components.push({
+              type: 'body',
+              parameters: bodyParams
+            });
+          }
+        }
+        
+        if (component.type === 'HEADER' && component.format === 'TEXT' && parameters.header) {
+          components.push({
+            type: 'header',
+            parameters: [
+              {
+                type: 'text',
+                text: parameters.header
+              }
+            ]
+          });
+        }
+      }
+      
+      return components;
     }
 
-    const numbersToSend = numbers || this.notificationNumbers;
-    const results = [];
+    async createAuthenticationTemplate(): Promise<any> {
+      const url = `${this.whatsappApiUrl}/${this.wabaId}/upsert_message_templates`;
+      
+      const headers = {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      };
 
-    this.logger.logWhatsapp(`Sending incident notification to ${numbersToSend.length} numbers`);
+      const templatePayload = {
+        name: 'login_code',
+        code: 'login_code',
+        languages: ['en_US', 'es_ES'],
+        category: 'AUTHENTICATION',
+        components: [
+          {
+            type: 'BODY',
+            add_security_recommendation: true
+          },
+          {
+            type: 'BUTTONS',
+            buttons: [
+              {
+                type: 'OTP',
+                otp_type: 'COPY_CODE'
+              }
+            ]
+          }
+        ]
+      };
 
-    for (const number of numbersToSend) {
       try {
-        const formattedNumber = `${number}@s.whatsapp.net`;
-        await this.sock.sendMessage(formattedNumber, { text: message });
+        this.logger.log('Creating authentication template...');
+        this.logger.debug('Template payload:', JSON.stringify(templatePayload, null, 2));
         
-        results.push({ number, success: true });
-        this.logger.logWhatsapp(`Message sent successfully to ${number}`);
+        const response = await axios.post(url, templatePayload, { headers });
         
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        this.logger.log('Template created successfully:', JSON.stringify(response.data, null, 2));
         
+        return {
+          success: true,
+          template_id: response.data.id,
+          status: response.data.status,
+          message: 'Authentication template created successfully. It needs to be approved by WhatsApp before use.',
+          template: response.data
+        };
       } catch (error) {
-        results.push({ number, success: false, error: error.message });
-        this.logger.logException('WhatsappService', 'sendToMultipleNumbers', error);
+        const errorDetails = {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          message: error.message,
+          wabaId: this.wabaId,
+          url: url,
+          payload: templatePayload
+        };
+        
+        this.logger.error('Template creation failed:', JSON.stringify(errorDetails, null, 2));
+        
+        const errorMessage = error.response?.data?.error?.message 
+          || error.response?.data?.message
+          || error.message 
+          || 'Failed to create authentication template';
+        
+        throw new HttpException(
+          `Template Creation Error: ${errorMessage}`,
+          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
+        );
       }
     }
-
-    return { success: true, results };
   }
-
-
-  async sendIncidentNotification(incidentDescription: string) {
-    return await this.sendToMultipleNumbers(incidentDescription);
-  }
-
-  /* 
-  private setupMessageHandler() {
-    this.sock.ev.on('messages.upsert', async (m: any) => {
-      try {
-        const msg = m.messages[0];
-
-        if (msg.key.remoteJid.endsWith('@g.us') || msg.key.fromMe) {
-          return;
-        }
-
-        const sender = msg.key.remoteJid;
-        const messageText = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
-
-        if (!messageText) {
-            this.logger.logWhatsapp('Message without text, ignoring.');
-            return;
-        }
-
-        try {
-            await this.sock.sendPresenceUpdate('composing', sender);
-            
-            const iaResponse = await this.iaService.convertToSQL(messageText);
-
-            await this.sock.sendPresenceUpdate('paused', sender);
-            await this.sock.sendMessage(sender, { text: iaResponse.beautifiedData });
-
-        } catch (error) {
-            this.logger.logException('WhatsappService', 'iaProcessing', error);
-            await this.sock.sendMessage(sender, { text: ' There was an error processing your request. Please try again.' });
-        }
-        
-      } catch (error) {
-        this.logger.logException('WhatsappService', 'messageHandler', error);
-      }
-    });
-  }
-  */
-}

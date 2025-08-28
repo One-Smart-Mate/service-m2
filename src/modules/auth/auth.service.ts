@@ -18,6 +18,8 @@ import { SiteService } from '../site/site.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
+import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
+import { PhoneNumberDTO } from './models/dto/phone-number.dto';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 
 @Injectable()
@@ -182,6 +184,83 @@ export class AuthService {
         lastLoginDate: loginDate,
       };
     } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  refreshToken = async (data: RefreshTokenDTO) => {
+    try {
+      let payload;
+      try {
+        payload = await this.jwtService.verifyAsync(data.token);
+      } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+          payload = this.jwtService.decode(data.token) as any;
+          if (!payload || !payload.id) {
+            throw new UnauthorizedException('Invalid token');
+          }
+        } else {  
+          throw new UnauthorizedException('Invalid token');
+        }
+      }
+        const user = await this.usersSevice.findOneByEmail(payload.email);
+        if (!user) {
+          throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+        }
+
+        if (user.status === stringConstants.inactiveStatus) {
+          throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+        }
+
+        const roles = await this.usersSevice.getUserRoles(user.id);
+
+        const newPayload = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          platform: payload.platform || stringConstants.OS_WEB,
+          timezone: payload.timezone || 'UTC',
+        };
+
+        const access_token = await this.jwtService.signAsync(newPayload);
+
+        const companyName = await this.siteService.getCompanyName(
+          user.userHasSites[0].site.companyId,
+        );
+
+        const site = user.userHasSites[0].site;
+        const dueDate = new Date(site.dueDate);
+        const today = new Date();
+        const diffTime = dueDate.getTime() - today.getTime();
+        const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return new UserResponse(user, access_token, roles, companyName, app_history);
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  sendFastPasswordByPhone = async (data: PhoneNumberDTO) => {
+    try {
+      const user = await this.usersSevice.findOneByPhoneNumber(data.phoneNumber);
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      if (user.status === stringConstants.inactiveStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
+      await this.usersSevice.sendFastPasswordWhatsApp(user.phoneNumber, user.fastPassword, user.translation);
+
+      return {
+        message: 'Fast password sent successfully',
+        phoneNumber: user.phoneNumber
+      };
+    } catch (exception) {
+      console.log(exception);
       HandleException.exception(exception);
     }
   };

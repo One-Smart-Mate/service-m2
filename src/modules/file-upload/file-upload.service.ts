@@ -17,6 +17,8 @@ import { stringConstants } from 'src/utils/string.constant';
 import { UsersAndRolesDTO } from './dto/users.and.roles.dto';
 import { RoleEntity } from '../roles/entities/role.entity';
 import { MailService } from '../mail/mail.service';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 @Injectable()
 export class FileUploadService {
@@ -27,7 +29,30 @@ export class FileUploadService {
     private readonly userService: UsersService,
     private readonly siteService: SiteService,
     private readonly mailService: MailService,
+    private readonly whatsappService: WhatsappService,
+    private readonly customLogger: CustomLoggerService,
   ) {}
+
+  private async sendFastPasswordWhatsAppMessage(phoneNumber: string | number, fastPassword: string, language?: string | null): Promise<void> {
+    try {
+      if (phoneNumber && fastPassword) {
+        // Convert phoneNumber to string if it's a number
+        const phoneNumberStr = String(phoneNumber);
+        
+        // Ensure language is valid, default to ES if null, undefined, or invalid
+        const validLanguage = (language === stringConstants.LANG_EN) ? stringConstants.LANG_EN : stringConstants.LANG_ES;
+        
+        await this.whatsappService.sendAuthenticationMessages([{
+          phoneNumber: phoneNumberStr,
+          code: fastPassword,
+          language: validLanguage
+        }]);
+        this.customLogger.log(`WhatsApp authentication message sent to ${phoneNumberStr} with fastPassword: ${fastPassword} in language: ${validLanguage}`);
+      }
+    } catch (error) {
+      this.customLogger.error(`Failed to send WhatsApp authentication message to ${String(phoneNumber)}: ${error.message}`);
+    }
+  }
 
   importUsers = async (file: Express.Multer.File, siteIdDTO: SiteIdDTO) => {
     try {
@@ -86,7 +111,7 @@ export class FileUploadService {
     const roleAssignments = new Map<string, RoleEntity>();
 
     for (const record of data) {
-      const { Name, Email, Role } = record;
+      const { Name, Email, Role, PhoneNumber, Translation } = record;
 
       if (!Name || !Email || !Role) {
         processedUsers.push({
@@ -160,6 +185,8 @@ export class FileUploadService {
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
+          phoneNumber: PhoneNumber || null,
+          translation: Translation || stringConstants.LANG_ES,
         });
         processedUsers.push({
           email: normalizedEmail,
@@ -195,9 +222,22 @@ export class FileUploadService {
     const appUrl = process.env.URL_WEB;
     for (const newUser of savedUsers) {
       try {
-        await this.mailService.sendWelcomeEmail(newUser, appUrl, stringConstants.LANG_ES);
+        await this.mailService.sendWelcomeEmail(newUser, appUrl, newUser.translation || stringConstants.LANG_ES);
       } catch (error) {
         this.logger.error(`Failed to send welcome email to ${newUser.email}: ${error.message}`);
+      }
+      
+      // Send fastPassword via WhatsApp if phone number is provided
+      if (newUser.phoneNumber && newUser.fastPassword) {
+        try {
+          await this.sendFastPasswordWhatsAppMessage(
+            newUser.phoneNumber, 
+            newUser.fastPassword, 
+            newUser.translation || stringConstants.LANG_ES
+          );
+        } catch (error) {
+          this.logger.error(`Failed to send WhatsApp authentication message to ${newUser.phoneNumber}: ${error.message}`);
+        }
       }
     }
 

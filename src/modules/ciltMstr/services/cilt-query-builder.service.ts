@@ -258,8 +258,8 @@ export class CiltQueryBuilderService {
     seq: CiltSequencesEntity,
     executionsBySequence: Map<number, CiltSequencesExecutionsEntity[]>
   ): SequenceWithExecutions | null {
-    const executions = (executionsBySequence.get(seq.id) ?? [])
-      .sort((a, b) => new Date(a.secuenceSchedule).getTime() - new Date(b.secuenceSchedule).getTime());
+    // Get executions (already sorted by secuenceSchedule in groupSequencesAndExecutions)
+    const executions = executionsBySequence.get(seq.id) ?? [];
     
     // Exclude sequences that don't have executions
     if (executions.length === 0) {

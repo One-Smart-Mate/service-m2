@@ -1,9 +1,10 @@
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { IncidentService } from '../modules/incident/incident.service';
 import { CustomLoggerService } from '../common/logger/logger.service';
 import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
+import { stringConstants } from '../utils/string.constant';
 
 @Injectable()
 export class IncidentInterceptor implements NestInterceptor {
@@ -15,58 +16,79 @@ export class IncidentInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
-      tap({
-        error: async (error) => {
-          try {
-            const request = context.switchToHttp().getRequest();
-            const controller = context.getClass().name;
-            const method = context.getHandler().name;
-            const timestamp = new Date().toISOString();
+      catchError((error) => {
+        const request = context.switchToHttp().getRequest();
+        
+        // Early return conditions - skip incident registration for these cases
+        if(request.method === 'GET' && error.status === 404){
+          return throwError(() => error);
+        }
+        if((error.message === stringConstants.incorrectAuth || error.message === stringConstants.inactiveStatus) && error.status === 400){
+          return throwError(() => error);
+        }
 
-            const user = request.user;
-            const userId = user?.id || 0;
-            const userName = user?.name || 'SYSTEM';
+        // Process the incident in the background without blocking the error response
+        this.processIncident(error, context).catch((incidentError) => {
+          this.logger.logException('IncidentInterceptor', 'processIncident', incidentError);
+        });
 
-            const userAgent = request.headers['user-agent'] || '';
-            let platform: 'browser' | 'android' | 'ios' = 'browser';
-            
-            if (userAgent.toLowerCase().includes('android')) {
-              platform = 'android';
-            } else if (userAgent.toLowerCase().includes('iphone') || userAgent.toLowerCase().includes('ios')) {
-              platform = 'ios';
-            }
+        // Always re-throw the original error to maintain the error flow
+        return throwError(() => error);
+      })
+    );
+  }
 
-            const errorDetails = {
-              timestamp,
-              controller: controller,
-              method: method,
-              url: request.url,
-              httpMethod: request.method,
-              body: request.body,
-              query: request.query,
-              params: request.params,
-              userAgent: userAgent,
-              ip: request.ip || request.connection?.remoteAddress,
-              headers: {
-                authorization: request.headers.authorization ? '[PRESENT]' : '[NOT PRESENT]',
-                'content-type': request.headers['content-type'],
-                'accept': request.headers['accept'],
-              },
-              user: {
-                id: userId,
-                name: userName,
-                email: user?.email || 'N/A'
-              },
-              error: {
-                name: error.name,
-                message: error.message,
-                status: error.status,
-                statusCode: error.statusCode,
-                stack: error.stack
-              }
-            };
+  private async processIncident(error: any, context: ExecutionContext): Promise<void> {
+    try {
+      const request = context.switchToHttp().getRequest();
+      const controller = context.getClass().name;
+      const method = context.getHandler().name;
+      const timestamp = new Date().toISOString();
 
-            const description = `COMPLETE ERROR DETAILS:
+      const user = request.user;
+      const userId = user?.id || 0;
+      const userName = user?.name || 'SYSTEM';
+
+      const userAgent = request.headers['user-agent'] || '';
+      let platform: 'browser' | 'android' | 'ios' = 'browser';
+      
+      if (userAgent.toLowerCase().includes('android')) {
+        platform = 'android';
+      } else if (userAgent.toLowerCase().includes('iphone') || userAgent.toLowerCase().includes('ios')) {
+        platform = 'ios';
+      }
+
+      const errorDetails = {
+        timestamp,
+        controller: controller,
+        method: method,
+        url: request.url,
+        httpMethod: request.method,
+        body: request.body,
+        query: request.query,
+        params: request.params,
+        userAgent: userAgent,
+        ip: request.ip || request.connection?.remoteAddress,
+        headers: {
+          authorization: request.headers.authorization ? '[PRESENT]' : '[NOT PRESENT]',
+          'content-type': request.headers['content-type'],
+          'accept': request.headers['accept'],
+        },
+        user: {
+          id: userId,
+          name: userName,
+          email: user?.email || 'N/A'
+        },
+        error: {
+          name: error.name,
+          message: error.message,
+          status: error.status,
+          statusCode: error.statusCode,
+          stack: error.stack
+        }
+      };
+
+      const description = `COMPLETE ERROR DETAILS:
 🕐 TIMESTAMP: ${errorDetails.timestamp}
 🎯 CONTROLLER: ${errorDetails.controller}
 ⚙️ METHOD: ${errorDetails.method}
@@ -99,42 +121,39 @@ ${errorDetails.error.stack}
 ${errorDetails.userAgent}
 ══════════════════════════════════`;
 
-            await this.incidentService.create(
-              {
-                platform,
-                description
-              },
-              userId,
-              userName
-            );
+      await this.incidentService.create(
+        {
+          platform,
+          description
+        },
+        userId,
+        userName
+      );
 
-            this.logger.logProcess('INCIDENT AUTO-REGISTERED WITH FULL DETAILS', {
-              controller,
-              method,
-              userId,
-              userName,
-              platform,
-              errorMessage: error.message,
-              url: request.url
-            });
+      this.logger.logProcess('INCIDENT AUTO-REGISTERED WITH FULL DETAILS', {
+        controller,
+        method,
+        userId,
+        userName,
+        platform,
+        errorMessage: error.message,
+        url: request.url
+      });
 
-            try {
-              await this.whatsappService.sendIncidentNotification(description);
-              
-              this.logger.logProcess('WHATSAPP NOTIFICATION SENT', {
-                controller,
-                method,
-                userName
-              });
-            } catch (whatsappError) {
-              this.logger.logException('IncidentInterceptor', 'whatsappNotification', whatsappError);
-            }
+      try {
+        // k
+        
+        this.logger.logProcess('WHATSAPP NOTIFICATION SENT', {
+          controller,
+          method,
+          userName
+        });
+      } catch (whatsappError) {
+        this.logger.logException('IncidentInterceptor', 'whatsappNotification', whatsappError);
+      }
 
-          } catch (incidentError) {
-            this.logger.logException('IncidentInterceptor', 'registerIncident', incidentError);
-          }
-        }
-      })
-    );
+    } catch (incidentError) {
+      this.logger.logException('IncidentInterceptor', 'registerIncident', incidentError);
+    }
   }
 } 

@@ -11,6 +11,12 @@ export class UserWithPositionsResponseDTO {
   @ApiProperty()
   email: string;
 
+  @ApiProperty({ required: false })
+  phoneNumber?: string;
+
+  @ApiProperty({ required: false })
+  translation?: string;
+
   @ApiProperty({ type: [PositionResponseDTO] })
   positions: PositionResponseDTO[];
 } 
