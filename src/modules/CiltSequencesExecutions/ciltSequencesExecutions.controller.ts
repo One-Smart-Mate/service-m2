@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
@@ -65,6 +65,13 @@ export class CiltSequencesExecutionsController {
     @Param('date') date: string
   ) {
     return this.ciltSequencesExecutionsService.findByCiltSequenceIdAndDate(ciltSequenceId, date);
+  }
+
+  @Get('of-day')
+  @ApiOperation({ summary: 'Get data for day' })
+  @ApiResponse({ status: 200, description: 'Day chart data' })
+  getOfDay(@Request() req: any) {
+    return this.ciltSequencesExecutionsService.getOfDay(req.user);
   }
 
   @Get(':id')
@@ -194,6 +201,4 @@ export class CiltSequencesExecutionsController {
   getAnomaliesChart(@Query() filters: ChartFiltersDTO) {
     return this.ciltSequencesExecutionsService.getAnomaliesChart(filters);
   }
-
-
 } 
