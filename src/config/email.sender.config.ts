@@ -1,19 +1,20 @@
-import { MailerModule } from '@nestjs-modules/mailer';
+import { MailerModule, MailerOptions } from '@nestjs-modules/mailer';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
 import { join } from 'path';
+import { ConfigService } from '@nestjs/config';
 
-const mailConfig = MailerModule.forRoot({
+const mailConfig = (configService: ConfigService): MailerOptions => ({
   transport: {
-    host: process.env.MAIL_HOST,
-    port: parseInt(process.env.MAIL_PORT || '456', 10),
+    host: configService.get<string>('MAIL_HOST'),
+    port: configService.get<number>('MAIL_PORT'),
     secure: true,
     auth: {
-      user: process.env.MAIL_USER,
-      pass: process.env.MAIL_PASSWORD,
+      user: configService.get<string>('MAIL_USER'),
+      pass: configService.get<string>('MAIL_PASSWORD'),
     },
   },
   defaults: {
-    from: process.env.MAIL_FROM,
+    from: configService.get<string>('MAIL_FROM'),
   },
   template: {
     dir: join(__dirname, 'templates'),

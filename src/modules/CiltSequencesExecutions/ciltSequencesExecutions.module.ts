@@ -18,6 +18,7 @@ import { RolesModule } from '../roles/roles.module';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEvidencesModule } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 import { CardEntity } from '../card/entities/card.entity';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { CardEntity } from '../card/entities/card.entity';
       UserHasSitesEntity,
       UsersPositionsEntity,
       CardEntity,
+      CiltMstrPositionLevelsEntity,
     ]),
     forwardRef(() => CiltMstrModule),
     forwardRef(() => CiltSequencesModule),

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between } from 'typeorm';
+import { getUTCRangeFromLocalDate } from '../../utils/timezone.utils';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
@@ -17,9 +18,12 @@ import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesEx
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltSequencesExecutionsEvidencesType, CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 import { CardEntity } from '../card/entities/card.entity';
+import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
+import { CustomLoggerService } from '../../common/logger/logger.service';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -33,9 +37,12 @@ export class CiltSequencesExecutionsService {
     private readonly firebaseService: FirebaseService,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
+    @InjectRepository(CiltMstrPositionLevelsEntity)
+    private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
     private readonly ciltSequencesExecutionsEvidencesService: CiltSequencesExecutionsEvidencesService,
     @InjectRepository(CardEntity)
     private readonly cardRepository: Repository<CardEntity>,
+    private readonly logger: CustomLoggerService,
   ) {}
 
   findAll = async () => {
@@ -618,6 +625,276 @@ export class CiltSequencesExecutionsService {
     }
   }
 
+  generate = async (generateDto: GenerateCiltSequencesExecutionDTO) => {
+    try {
+      const sequence = await this.ciltSequencesRepository.findOne({
+        where: { 
+          id: generateDto.sequenceId,
+          deletedAt: IsNull()
+        },
+        relations: ['ciltMstr', 'site']
+      });
 
-  
+      if (!sequence) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
+      }
+
+      const user = await this.usersService.findById(generateDto.userId);
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      const ciltMstrPositionLevel = await this.ciltMstrPositionLevelsRepository.findOne({
+        where: {
+          ciltMstrId: sequence.ciltMstrId,
+          deletedAt: IsNull()
+        }
+      });
+
+      if (!ciltMstrPositionLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
+      }
+
+      const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
+        where: {
+          siteId: sequence.siteId,
+          deletedAt: IsNull()
+        },
+        order: {
+          siteExecutionId: 'DESC'
+        }
+      });
+
+      const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
+
+      const newExecution = this.ciltSequencesExecutionsRepository.create({
+        siteId: sequence.siteId,
+        siteExecutionId: nextSiteExecutionId,
+        positionId: ciltMstrPositionLevel.positionId,
+        ciltId: sequence.ciltMstrId,
+        ciltSecuenceId: sequence.id,
+        levelId: ciltMstrPositionLevel.levelId,
+        route: null,
+        userId: generateDto.userId,
+        userWhoExecutedId: null,
+        specialWarning: sequence.specialWarning,
+        machineStatus: null,
+        secuenceSchedule: new Date(),
+        allowExecuteBefore: true,
+        allowExecuteBeforeMinutes: 30,
+        toleranceBeforeMinutes: 5,
+        toleranceAfterMinutes: 15,
+        allowExecuteAfterDue: true,
+        secuenceStart: null,
+        secuenceStop: null,
+        duration: sequence.standardTime,
+        realDuration: null,
+        standardOk: sequence.standardOk,
+        initialParameter: null,
+        evidenceAtCreation: false,
+        finalParameter: null,
+        evidenceAtFinal: false,
+        nok: false,
+        stoppageReason: sequence.stoppageReason === 1,
+        machineStopped: sequence.machineStopped === 1,
+        amTagId: null,
+        referencePoint: sequence.referencePoint,
+        secuenceList: sequence.secuenceList,
+        secuenceColor: sequence.secuenceColor,
+        ciltTypeId: sequence.ciltTypeId,
+        ciltTypeName: sequence.ciltTypeName,
+        referenceOplSopId: sequence.referenceOplSopId,
+        remediationOplSopId: sequence.remediationOplSopId,
+        toolsRequiered: sequence.toolsRequired,
+        selectableWithoutProgramming: sequence.selectableWithoutProgramming === 1,
+        status: 'A'
+      });
+
+      return await this.ciltSequencesExecutionsRepository.save(newExecution);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getOfDay = async (user: any) => {
+    try {
+      this.logger.logProcess('[GET_OF_DAY] Starting getOfDay method', { userId: user?.id, timezone: user?.timezone });
+      
+      const timezone = user?.timezone || 'UTC';
+      const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+      
+      this.logger.logProcess('[GET_OF_DAY] Timezone and date info', { timezone, today });
+      
+      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(today, timezone);
+      
+      this.logger.logProcess('[GET_OF_DAY] UTC range calculated', { 
+        dayStart: dayStart.toISOString(), 
+        dayEnd: dayEnd.toISOString(), 
+        timezone,
+        localDate: today
+      });
+      
+      const executions = await this.ciltSequencesExecutionsRepository.find({
+        where: {
+          userId: user.id,
+          secuenceSchedule: Between(dayStart, dayEnd),
+          deletedAt: IsNull()
+        },
+        relations: [
+          'evidences',
+          'referenceOplSop',
+          'remediationOplSop',
+          'position',
+          'ciltMstr',
+          'site',
+          'ciltSequence'
+        ],
+        order: {
+          secuenceSchedule: 'ASC'
+        }
+      });
+
+      this.logger.logProcess('[GET_OF_DAY] Executions found', { count: executions?.length });
+
+      if (!executions || executions.length === 0) {
+        return {
+          userInfo: {
+            id: user.id,
+            name: user.name,
+            email: user.email
+          },
+          positions: []
+        };
+      }
+
+      // Group executions by position
+      const positionsMap = new Map();
+
+      for (const execution of executions) {
+        const positionId = execution.positionId || 'unknown';
+        const ciltId = execution.ciltId || 'unknown';
+
+        if (!positionsMap.has(positionId)) {
+          positionsMap.set(positionId, {
+            id: execution.positionId,
+            name: execution.position?.name || 'Unknown Position',
+            siteName: execution.site?.name || 'Unknown Site',
+            areaName: execution.position?.areaName || 'Unknown Area',
+            ciltMasters: new Map()
+          });
+        }
+
+        const position = positionsMap.get(positionId);
+        
+        if (!position.ciltMasters.has(ciltId)) {
+          position.ciltMasters.set(ciltId, {
+            id: execution.ciltId,
+            siteId: execution.siteId,
+            ciltName: execution.ciltMstr?.ciltName || 'Unknown CILT',
+            ciltDescription: execution.ciltMstr?.ciltDescription || 'No description available',
+            creatorId: execution.ciltMstr?.creatorId,
+            creatorName: execution.ciltMstr?.creatorName,
+            reviewerId: execution.ciltMstr?.reviewerId,
+            reviewerName: execution.ciltMstr?.reviewerName,
+            approvedById: execution.ciltMstr?.approvedById,
+            approvedByName: execution.ciltMstr?.approvedByName,
+            ciltDueDate: execution.ciltMstr?.ciltDueDate,
+            standardTime: execution.ciltMstr?.standardTime || 0,
+            urlImgLayout: execution.ciltMstr?.urlImgLayout,
+            order: 1,
+            status: execution.ciltMstr?.status || 'A',
+            dateOfLastUsed: execution.ciltMstr?.dateOfLastUsed,
+            createdAt: execution.ciltMstr?.createdAt,
+            updatedAt: execution.ciltMstr?.updatedAt,
+            deletedAt: null,
+            sequences: new Map()
+          });
+        }
+
+        const ciltMaster = position.ciltMasters.get(ciltId);
+        const sequenceId = execution.ciltSecuenceId || 'unknown';
+
+        if (!ciltMaster.sequences.has(sequenceId)) {
+          // Use data from CiltSequencesEntity (ciltSequence relation)
+          const sequence = execution.ciltSequence;
+          ciltMaster.sequences.set(sequenceId, {
+            id: sequence?.id || execution.ciltSecuenceId,
+            siteId: sequence?.siteId || execution.siteId,
+            siteName: sequence?.siteName || execution.site?.name || '',
+            ciltMstrId: sequence?.ciltMstrId || execution.ciltId,
+            ciltMstrName: sequence?.ciltMstrName || execution.ciltMstr?.ciltName || 'Unknown CILT',
+            frecuencyId: sequence?.frecuencyId,
+            frecuencyCode: sequence?.frecuencyCode || 'IT',
+            referencePoint: sequence?.referencePoint || '1',
+            order: sequence?.order || 1,
+            secuenceList: sequence?.secuenceList || 'No sequence description',
+            secuenceColor: sequence?.secuenceColor || '00ccff',
+            ciltTypeId: sequence?.ciltTypeId,
+            ciltTypeName: sequence?.ciltTypeName,
+            referenceOplSopId: sequence?.referenceOplSopId,
+            standardTime: sequence?.standardTime || 0,
+            standardOk: sequence?.standardOk || 'Complete tasks',
+            remediationOplSopId: sequence?.remediationOplSopId,
+            toolsRequired: sequence?.toolsRequired || 'Mobile',
+            stoppageReason: sequence?.stoppageReason || 0,
+            machineStopped: sequence?.machineStopped || 0,
+            specialWarning: sequence?.specialWarning,
+            quantityPicturesCreate: sequence?.quantityPicturesCreate || 1,
+            quantityPicturesClose: sequence?.quantityPicturesClose || 1,
+            selectableWithoutProgramming: sequence?.selectableWithoutProgramming || 0,
+            status: sequence?.status || 'A',
+            createdAt: sequence?.createdAt,
+            updatedAt: sequence?.updatedAt,
+            deletedAt: sequence?.deletedAt,
+            executions: []
+          });
+        }
+
+        // Add the execution to the sequence
+        ciltMaster.sequences.get(sequenceId).executions.push(execution);
+      }
+
+      // Convert Maps to arrays
+      const positions = Array.from(positionsMap.values()).map((position: any) => ({
+        id: position.id,
+        name: position.name,
+        siteName: position.siteName,
+        areaName: position.areaName,
+        ciltMasters: Array.from(position.ciltMasters.values()).map((ciltMaster: any) => ({
+          id: ciltMaster.id,
+          siteId: ciltMaster.siteId,
+          ciltName: ciltMaster.ciltName,
+          ciltDescription: ciltMaster.ciltDescription,
+          creatorId: ciltMaster.creatorId,
+          creatorName: ciltMaster.creatorName,
+          reviewerId: ciltMaster.reviewerId,
+          reviewerName: ciltMaster.reviewerName,
+          approvedById: ciltMaster.approvedById,
+          approvedByName: ciltMaster.approvedByName,
+          ciltDueDate: ciltMaster.ciltDueDate,
+          standardTime: ciltMaster.standardTime,
+          urlImgLayout: ciltMaster.urlImgLayout,
+          order: ciltMaster.order,
+          status: ciltMaster.status,
+          dateOfLastUsed: ciltMaster.dateOfLastUsed,
+          createdAt: ciltMaster.createdAt,
+          updatedAt: ciltMaster.updatedAt,
+          deletedAt: ciltMaster.deletedAt,
+          sequences: Array.from(ciltMaster.sequences.values())
+        }))
+      }));
+
+      return {
+        userInfo: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        },
+        positions
+      };
+    } catch (exception) {
+      this.logger.logException('CiltSequencesExecutionsService', 'getOfDay', exception);
+      HandleException.exception(exception);
+    }
+  };
 } 
