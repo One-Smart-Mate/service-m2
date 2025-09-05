@@ -317,9 +317,10 @@ export class AuthService {
                  c.preclassifier_code as preclassifierCode, c.preclassifier_description as preclassifierDescription,
                  c.card_creation_date as cardCreationDate, c.card_due_date as cardDueDate
           FROM cards c 
-          WHERE c.site_id = ? AND c.deleted_at IS NULL
+          INNER JOIN sites s ON c.site_id = s.id
+          WHERE c.site_id = ? AND c.deleted_at IS NULL 
+          AND c.created_at >= DATE_SUB(NOW(), INTERVAL s.app_history_days DAY)
           ORDER BY c.site_card_id DESC
-          LIMIT 100
         `, [siteId])
       ]);
 
