@@ -653,13 +653,20 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
       
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -684,13 +691,20 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       // Obtener todas las tarjetas con los filtros aplicados
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -835,13 +849,15 @@ export class CardService {
     areaId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       const useStartDate = startDate || null;
       const useEndDate = endDate || null;
+      const useStatus = status || null;
       const result = await this.cardRepository.query(
-        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
-        [siteId, areaId, useStartDate, useEndDate],
+        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?, ?)',
+        [siteId, areaId, useStartDate, useEndDate, useStatus],
       );
       return result[0];
     } catch (exception) {
@@ -853,13 +869,20 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -885,13 +908,20 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       // Get all cards with the applied filters
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -1064,13 +1094,21 @@ export class CardService {
     }
   };
 
-  findSiteCardsGroupedByWeeks = async (siteId: number) => {
+  findSiteCardsGroupedByWeeks = async (siteId: number, status?: string) => {
     try {
-      const rawWeeks = await this.cardRepository
+      const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC', { statusC: 'C' })
+        .where('card.site_id = :siteId', { siteId });
+      
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
+      
+      const rawWeeks = await queryBuilder
         .groupBy('year')
         .addGroupBy('week')
         .orderBy('year, week')
@@ -1452,12 +1490,12 @@ export class CardService {
         )
         .where('card.site_id = :siteId', { siteId })
         .andWhere('card.status = :status', {
-          status: stringConstants.CANCELLED,
+          status: stringConstants.DISCARDED,
         });
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
-          'card.created_at BETWEEN :startDate AND :endDate',
+          'card.created_at   BETWEEN :startDate AND :endDate',
           {
             startDate,
             endDate: `${endDate} 23:59:59`,
