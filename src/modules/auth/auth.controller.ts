@@ -64,10 +64,4 @@ export class AuthController {
   sendFastPasswordByPhone(@Body() phoneNumberDto: PhoneNumberDTO) {
     return this.authService.sendFastPasswordByPhone(phoneNumberDto);
   }
-
-  @Get('catalogs/:siteId')
-  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
-  getCatalogs(@Param('siteId') siteId: number) {
-    return this.authService.getCatalogs(siteId);
-  }
 }

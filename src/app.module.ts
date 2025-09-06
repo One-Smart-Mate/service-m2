@@ -46,6 +46,7 @@ import { AuthGuard } from './modules/auth/guard/auth.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 import { IncidentModule } from './modules/incident/incident.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { IncidentModule } from './modules/incident/incident.module';
     AmDiscardReasonModule,
     OplTypesModule,
     IncidentModule,
+    CatalogModule,
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,
