@@ -75,15 +75,23 @@ export class CardController {
   }
 
   @Get('/site/preclassifiers/:siteId')
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter (comma-separated: A,C,R)', 
+    example: 'A' 
+  })
   findSiteCardsGroupedByPreclassifier(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByPreclassifier(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
@@ -211,15 +219,24 @@ export class CardController {
   }
 
   @Get('/site/definitive-user/:siteId')
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter - Note: Always uses C,R regardless of parameter', 
+    example: 'C,R' 
+  })
   findSiteCardsGroupedByDefinitveUser(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
+    // Always use C,R status for definitive users regardless of parameter
     return this.cardService.findSiteCardsGroupedByDefinitiveUser(
       siteId,
       startDate,
       endDate,
+      'C,R',
     );
   }
 
@@ -256,6 +273,12 @@ export class CardController {
   }
 
   @Get()
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter (comma-separated: A,C,R)', 
+    example: 'A' 
+  })
   getCards(
     @Query('siteId') siteId: number,
     @Query('area') area?: string,
@@ -265,6 +288,7 @@ export class CardController {
     @Query('creator') creator?: string,
     @Query('definitiveUser') definitiveUser?: string,
     @Query('cardTypeName') cardTypeName?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.getCards({
       siteId,
@@ -275,6 +299,7 @@ export class CardController {
       creator,
       definitiveUser,
       cardTypeName,
+      status,
     });
   }
   @Get('by-level/:levelId')
