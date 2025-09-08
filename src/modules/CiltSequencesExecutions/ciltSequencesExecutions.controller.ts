@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
@@ -7,6 +7,7 @@ import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequences
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
 import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
+import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { ChartFiltersDTO } from './models/dto/chart.filters.dto';
 import { 
   ExecutionChartResponseDTO, 
@@ -66,6 +67,13 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findByCiltSequenceIdAndDate(ciltSequenceId, date);
   }
 
+  @Get('of-day')
+  @ApiOperation({ summary: 'Get data for day' })
+  @ApiResponse({ status: 200, description: 'Day chart data' })
+  getOfDay(@Request() req: any) {
+    return this.ciltSequencesExecutionsService.getOfDay(req.user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT sequence execution by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT sequence execution ID' })
@@ -78,6 +86,15 @@ export class CiltSequencesExecutionsController {
   @ApiBody({ type: CreateCiltSequencesExecutionDTO })
   create(@Body() createCiltSequencesExecutionDTO: CreateCiltSequencesExecutionDTO) {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
+  }
+
+  @Post("/generate")
+  @ApiOperation({ summary: 'Generate a new CILT sequence execution from sequence data' })
+  @ApiBody({ type: GenerateCiltSequencesExecutionDTO })
+  @ApiResponse({ status: 201, description: 'CILT sequence execution generated successfully' })
+  @ApiResponse({ status: 404, description: 'Sequence or User not found' })
+  generate(@Body() generateDto: GenerateCiltSequencesExecutionDTO) {
+    return this.ciltSequencesExecutionsService.generate(generateDto);
   }
 
   @Put("/start")
@@ -184,6 +201,4 @@ export class CiltSequencesExecutionsController {
   getAnomaliesChart(@Query() filters: ChartFiltersDTO) {
     return this.ciltSequencesExecutionsService.getAnomaliesChart(filters);
   }
-
-
 } 
