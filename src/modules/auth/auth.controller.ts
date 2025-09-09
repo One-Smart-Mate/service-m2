@@ -1,6 +1,8 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
   Post,
   Request,
   UnauthorizedException,
@@ -10,13 +12,15 @@ import { AuthService } from './auth.service';
 import { LoginDTO } from './models/dto/login.dto';
 import { AuthGuard } from './guard/auth.guard';
 import { ResestPasswordDTO } from './models/dto/reset.password.dto';
-import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
 import { PhoneNumberDTO } from './models/dto/phone-number.dto';
 import { Public } from 'src/common/decorators/public.decorator';
 
+@ApiBearerAuth()
+@UseGuards(AuthGuard)
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -29,7 +33,6 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Public()
   @Post('login-fast')
   @ApiBody({ type: FastLoginDTO })
   loginWithFastPassword(@Body() fastLoginDto: FastLoginDTO) {
@@ -37,23 +40,18 @@ export class AuthController {
   }
 
   @Public()
-  @ApiBearerAuth()
   @Post('reset-password')
-  @UseGuards(AuthGuard)
   @ApiBody({ type: ResestPasswordDTO })
   resetPassword(@Body() resetPasswordDto: ResestPasswordDTO, @Request() req) {
     return this.authService.resetPassword(resetPasswordDto, req.user?.email);
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard)
   @Post('update-last-login')
   @ApiBody({ type: UpdateLastLoginDTO })
   updateLastLogin(@Body() updateLastLoginDto: UpdateLastLoginDTO) {
     return this.authService.updateLastLogin(updateLastLoginDto);
   }
 
-  @Public()
   @Post('refresh-token')
   @ApiBody({ type: RefreshTokenDTO })
   refreshToken(@Body() refreshTokenDto: RefreshTokenDTO) {
