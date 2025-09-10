@@ -24,6 +24,13 @@ jobs:
         run: |
           IMAGE=service-m2:${{ github.sha }}
           docker build -t $IMAGE .
+          
+      - name: Install lightsailctl plugin
+        run: |
+          curl https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
+            -o lightsailctl
+          chmod +x lightsailctl
+          sudo mv lightsailctl /usr/local/bin/
 
       - name: Push image to Lightsail
         env:
