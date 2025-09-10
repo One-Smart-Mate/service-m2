@@ -32,6 +32,16 @@ jobs:
           chmod +x lightsailctl
           sudo mv lightsailctl /usr/local/bin/
 
+      - name: Verify Lightsail service and region
+        env:
+          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo "🔎 Checking Lightsail service '$LIGHTSAIL_SERVICE' in region '$AWS_REGION'..."
+          aws lightsail get-container-services \
+            --service-name "$LIGHTSAIL_SERVICE" \
+            --region "$AWS_REGION"
+
       - name: Push image to Lightsail
         id: push
         env:
