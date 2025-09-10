@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { CardService } from './card.service';
-import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -75,15 +75,23 @@ export class CardController {
   }
 
   @Get('/site/preclassifiers/:siteId')
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter (comma-separated: A,C,R)', 
+    example: 'A' 
+  })
   findSiteCardsGroupedByPreclassifier(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByPreclassifier(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
@@ -113,88 +121,133 @@ export class CardController {
     );
   }
   @Get('/site/areas/more/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
   findSiteCardsGroupedByAreaMore(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByAreaMore(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
   @Get('/site/machines/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
   findSiteCardsGroupedByMachine(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByMachine(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
   @Get('/site/area/machines/:siteId/:areaId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiParam({ name: 'areaId', description: 'Area ID', example: 1 })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
   findAreaCardsGroupedByMachine(
     @Param('siteId') siteId: number,
     @Param('areaId') areaId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findAreaCardsGroupedByMachine(
       siteId,
       areaId,
       startDate,
       endDate,
+      status,
     );
   }
 
   @Get('/site/creators/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1  })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
   findSiteCardsGroupedByCreator(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByCreator(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
   @Get('/site/mechanics/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
   findSiteCardsGroupedByMechanic(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByMechanic(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
   @Get('/site/definitive-user/:siteId')
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter - Note: Always uses C,R regardless of parameter', 
+    example: 'C,R' 
+  })
   findSiteCardsGroupedByDefinitveUser(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
+    // Always use C,R status for definitive users regardless of parameter
     return this.cardService.findSiteCardsGroupedByDefinitiveUser(
       siteId,
       startDate,
       endDate,
+      'C,R',
     );
   }
 
   @Get('/site/weeks/:siteId')
-  findSiteCardsGroupedByWeeks(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCardsGroupedByWeeks(siteId);
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
+  findSiteCardsGroupedByWeeks(
+    @Param('siteId') siteId: number,
+    @Query('status') status?: string,
+  ) {
+    return this.cardService.findSiteCardsGroupedByWeeks(siteId, status);
   }
 
   @Get('/notes/:cardId')
@@ -220,6 +273,12 @@ export class CardController {
   }
 
   @Get()
+  @ApiQuery({ 
+    name: 'status', 
+    required: false, 
+    description: 'Card status filter (comma-separated: A,C,R)', 
+    example: 'A' 
+  })
   getCards(
     @Query('siteId') siteId: number,
     @Query('area') area?: string,
@@ -229,6 +288,7 @@ export class CardController {
     @Query('creator') creator?: string,
     @Query('definitiveUser') definitiveUser?: string,
     @Query('cardTypeName') cardTypeName?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.getCards({
       siteId,
@@ -239,6 +299,7 @@ export class CardController {
       creator,
       definitiveUser,
       cardTypeName,
+      status,
     });
   }
   @Get('by-level/:levelId')
@@ -262,6 +323,9 @@ export class CardController {
   }
 
   @Get('/site/discarded-cards/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID', example: 1 })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date filter (YYYY-MM-DD)', example: '2025-01-01' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date filter (YYYY-MM-DD)', example: '2025-09-05' })
   findSiteDiscardedCardsGroupedByUser(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,

@@ -7,7 +7,7 @@ const typeOrmConfig = TypeOrmModule.forRoot({
   port: parseInt(process.env.DB_PORT),
   database: process.env.DB_NAME,
   host: process.env.DB_HOST,
-  entities: [__dirname + '/**/*.entity{.ts,.js}'],
+  entities: [__dirname + '//*.entity{.ts,.js}'],
   synchronize: false,
   autoLoadEntities: true,
   extra: {

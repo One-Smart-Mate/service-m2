@@ -1,0 +1,68 @@
+name: Deploy to Lightsail Container
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Build Docker image
+        run: |
+          IMAGE=service-m2:${{ github.sha }}
+          docker build -t $IMAGE .
+
+      - name: Push image to Lightsail
+        env:
+          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          IMAGE=service-m2:${{ github.sha }}
+          aws lightsail push-container-image \
+            --service-name "$LIGHTSAIL_SERVICE" \
+            --label service-m2 \
+            --image "$IMAGE" \
+            --region "$AWS_REGION"
+
+      - name: Create deployment
+        env:
+          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          IMAGE=service-m2:${{ github.sha }}
+          cat > containers.json <<EOF
+{
+  "service": {
+    "image": "$IMAGE",
+    "ports": { "3000": "HTTP" },
+    "environment": {
+      "NODE_ENV": "production"
+    }
+  }
+}
+EOF
+
+          cat > public.json <<EOF
+{
+  "containerName": "service",
+  "containerPort": 3000,
+  "healthCheck": { "path": "/", "protocol": "HTTP", "successCodes": "200" }
+}
+EOF
+
+          aws lightsail create-container-service-deployment \
+            --service-name "$LIGHTSAIL_SERVICE" \
+            --containers file://containers.json \
+            --public-endpoint file://public.json \
+            --region "$AWS_REGION"
