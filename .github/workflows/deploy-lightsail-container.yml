@@ -55,15 +55,17 @@ jobs:
             --image "$IMAGE" \
             --region "$AWS_REGION")
 
-          echo "Lightsail push output: $OUTPUT"
+          echo "Lightsail push output:"
+          echo "$OUTPUT"
 
-          IMAGE_URI=$(echo $OUTPUT | jq -r '.containerImage.image // empty')
+          # Extraer la referencia de imagen correcta (ej: :service-m2.3)
+          IMAGE_URI=$(echo "$OUTPUT" | grep -oP 'Refer to this image as "\K[^"]+')
           if [ -z "$IMAGE_URI" ]; then
-            echo "❌ ERROR: No se pudo obtener la URI de la imagen de Lightsail"
+            echo "❌ ERROR: No se pudo extraer IMAGE_URI"
             exit 1
           fi
 
-          echo "✅ Imagen subida: $IMAGE_URI"
+          echo "✅ Imagen registrada como: $IMAGE_URI"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Create deployment
