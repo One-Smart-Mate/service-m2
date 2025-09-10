@@ -24,7 +24,7 @@ jobs:
         run: |
           IMAGE=service-m2:${{ github.sha }}
           docker build -t $IMAGE .
-          
+
       - name: Install lightsailctl plugin
         run: |
           curl https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
@@ -33,23 +33,25 @@ jobs:
           sudo mv lightsailctl /usr/local/bin/
 
       - name: Push image to Lightsail
+        id: push
         env:
           LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           IMAGE=service-m2:${{ github.sha }}
-          aws lightsail push-container-image \
+          OUTPUT=$(aws lightsail push-container-image \
             --service-name "$LIGHTSAIL_SERVICE" \
             --label service-m2 \
             --image "$IMAGE" \
-            --region "$AWS_REGION"
+            --region "$AWS_REGION")
+          echo "IMAGE_URI=$(echo $OUTPUT | jq -r '.containerImage.image')" >> $GITHUB_ENV
 
       - name: Create deployment
         env:
           LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          IMAGE=service-m2:${{ github.sha }}
+          IMAGE=${{ env.IMAGE_URI }}
 
           echo '{
             "service": {
@@ -65,7 +67,7 @@ jobs:
             "containerName": "service",
             "containerPort": 3000,
             "healthCheck": {
-              "path": "/",
+              "path": "/api",
               "protocol": "HTTP",
               "successCodes": "200"
             }
@@ -76,4 +78,3 @@ jobs:
             --containers file://containers.json \
             --public-endpoint file://public.json \
             --region "$AWS_REGION"
-
