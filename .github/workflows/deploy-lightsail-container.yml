@@ -2,11 +2,13 @@ name: Deploy to Lightsail Container
 
 on:
   push:
-    branches: [ develop ]
+    branches:
+      - develop
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,28 +43,30 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           IMAGE=service-m2:${{ github.sha }}
-          cat > containers.json <<EOF
-{
-  "service": {
-    "image": "$IMAGE",
-    "ports": { "3000": "HTTP" },
-    "environment": {
-      "NODE_ENV": "production"
-    }
-  }
-}
-EOF
 
-          cat > public.json <<EOF
-{
-  "containerName": "service",
-  "containerPort": 3000,
-  "healthCheck": { "path": "/", "protocol": "HTTP", "successCodes": "200" }
-}
-EOF
+          echo '{
+            "service": {
+              "image": "'"$IMAGE"'",
+              "ports": { "3000": "HTTP" },
+              "environment": {
+                "NODE_ENV": "production"
+              }
+            }
+          }' > containers.json
+
+          echo '{
+            "containerName": "service",
+            "containerPort": 3000,
+            "healthCheck": {
+              "path": "/",
+              "protocol": "HTTP",
+              "successCodes": "200"
+            }
+          }' > public.json
 
           aws lightsail create-container-service-deployment \
             --service-name "$LIGHTSAIL_SERVICE" \
             --containers file://containers.json \
             --public-endpoint file://public.json \
             --region "$AWS_REGION"
+
