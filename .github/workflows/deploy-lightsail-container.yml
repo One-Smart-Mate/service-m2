@@ -80,7 +80,22 @@ jobs:
               "image": "'"$IMAGE"'",
               "ports": { "3000": "HTTP" },
               "environment": {
-                "NODE_ENV": "production"
+                "APP_ENV": "'"${{ secrets.APP_ENV }}"'",
+                "DB_USERNAME": "'"${{ secrets.DB_USERNAME }}"'",
+                "DB_PASSWORD": "'"${{ secrets.DB_PASSWORD }}"'",
+                "DB_PORT": "'"${{ secrets.DB_PORT }}"'",
+                "DB_NAME": "'"${{ secrets.DB_NAME }}"'",
+                "DB_HOST": "'"${{ secrets.DB_HOST }}"'",
+                "FIREBASE_PROJECT_ID": "'"${{ secrets.FIREBASE_PROJECT_ID }}"'",
+                "FIREBASE_PRIVATE_KEY_ID": "'"${{ secrets.FIREBASE_PRIVATE_KEY_ID }}"'",
+                "FIREBASE_PRIVATE_KEY": "'"${{ secrets.FIREBASE_PRIVATE_KEY }}"'",
+                "FIREBASE_EMAIL": "'"${{ secrets.FIREBASE_EMAIL }}"'",
+                "FIREBASE_CLIENT_ID": "'"${{ secrets.FIREBASE_CLIENT_ID }}"'",
+                "FIREBASE_AUTH_URI": "'"${{ secrets.FIREBASE_AUTH_URI }}"'",
+                "FIREBASE_TOKEN_URI": "'"${{ secrets.FIREBASE_TOKEN_URI }}"'",
+                "FIREBASE_AUTH_PROVIDER": "'"${{ secrets.FIREBASE_AUTH_PROVIDER }}"'",
+                "FIREBASE_CLIENT": "'"${{ secrets.FIREBASE_CLIENT }}"'",
+                "FIREBASE_UNIVERSE_DOMAIN": "'"${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}"'"
               }
             }
           }' > containers.json
