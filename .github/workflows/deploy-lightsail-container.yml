@@ -54,7 +54,17 @@ jobs:
             --label service-m2 \
             --image "$IMAGE" \
             --region "$AWS_REGION")
-          echo "IMAGE_URI=$(echo $OUTPUT | jq -r '.containerImage.image')" >> $GITHUB_ENV
+
+          echo "Lightsail push output: $OUTPUT"
+
+          IMAGE_URI=$(echo $OUTPUT | jq -r '.containerImage.image // empty')
+          if [ -z "$IMAGE_URI" ]; then
+            echo "❌ ERROR: No se pudo obtener la URI de la imagen de Lightsail"
+            exit 1
+          fi
+
+          echo "✅ Imagen subida: $IMAGE_URI"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Create deployment
         env:
