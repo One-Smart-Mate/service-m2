@@ -2,9 +2,9 @@ name: Deploy to Lightsail Container
 
 on:
   push:
-    tags:
-      - "dev-v*"
-      - "v*"
+    branches:
+      - develop
+      - main
 
 jobs:
   build-and-deploy:
