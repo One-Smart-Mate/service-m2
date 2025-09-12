@@ -24,7 +24,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      
       - name: Bump version and push tag
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
@@ -44,7 +43,8 @@ jobs:
             VERSION="${{ steps.tag_version.outputs.new_tag }}-dev"
           fi
 
-          VERSION="${VERSION#v}"  # quitamos la "v"
+          # Quitar prefijo "v" (ej: v1.2.3 → 1.2.3 o 1.2.3-dev)
+          VERSION="${VERSION#v}"
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
           echo "✅ DEPLOY_ENV=$DEPLOY_ENV"
@@ -59,7 +59,7 @@ jobs:
 
       - name: Install lightsailctl plugin
         run: |
-          curl https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
+          curl -s https://s3.us-west-2.amazonaws.com/lightsailctl/latest/linux-amd64/lightsailctl \
             -o lightsailctl
           chmod +x lightsailctl
           sudo mv lightsailctl /usr/local/bin/
