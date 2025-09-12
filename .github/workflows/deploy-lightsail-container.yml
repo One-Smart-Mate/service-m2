@@ -24,7 +24,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 🔹 Leer último tag existente
       - name: Get latest tag
         id: get_tag
         run: |
@@ -40,7 +39,8 @@ jobs:
             VERSION="$TAG"
           else
             DEPLOY_ENV=develop
-            VERSION="$TAG-dev"
+            CLEAN_TAG="${TAG#dev-}"
+            VERSION="$CLEAN_TAG-dev"
           fi
 
           VERSION="${VERSION#v}"  # quitar prefijo "v"
@@ -49,6 +49,7 @@ jobs:
 
           echo "✅ DEPLOY_ENV=$DEPLOY_ENV"
           echo "✅ APP_VERSION=$VERSION"
+
 
       - name: Build Docker image
         env:
