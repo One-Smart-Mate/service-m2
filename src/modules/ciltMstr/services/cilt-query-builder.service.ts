@@ -175,7 +175,7 @@ export class CiltQueryBuilderService {
     });
 
     // Sort executions within each sequence by schedule date
-    executionsBySequence.forEach((executions, sequenceId) => {
+    executionsBySequence.forEach((executions) => {
       executions.sort((a, b) => {
         const dateA = a.secuenceSchedule ? new Date(a.secuenceSchedule).getTime() : 0;
         const dateB = b.secuenceSchedule ? new Date(b.secuenceSchedule).getTime() : 0;
@@ -266,7 +266,7 @@ export class CiltQueryBuilderService {
       return null;
     }
     
-    const { ciltMstr, ...seqFields } = seq as any;
+    const { ...seqFields } = seq as any;
     return { ...seqFields, executions };
   }
 } 

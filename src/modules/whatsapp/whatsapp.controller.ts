@@ -1,6 +1,6 @@
 import { Controller, Post, Body, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiProperty } from '@nestjs/swagger';
-import { WhatsappService, AuthMessage } from './whatsapp.service';
+import { WhatsappService } from './whatsapp.service';
 import { IsArray, ValidateNested, IsString, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 

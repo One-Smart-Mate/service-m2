@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
 import { UserEntity } from 'src/modules/users/entities/user.entity';
-import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,

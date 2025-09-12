@@ -5,7 +5,6 @@ import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequenc
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto'
-import { CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { ChartFiltersDTO } from './models/dto/chart.filters.dto';

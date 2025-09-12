@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Put,
 } from '@nestjs/common';
 import { SiteService } from './site.service';

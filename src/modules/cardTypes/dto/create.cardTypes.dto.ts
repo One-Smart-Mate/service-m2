@@ -3,12 +3,10 @@ import {
   IsOptional,
   IsString,
   IsInt,
-  Length,
   MaxLength,
   IsNumber,
   Max,
   Min,
-  IsEnum,
   IsHexColor,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';

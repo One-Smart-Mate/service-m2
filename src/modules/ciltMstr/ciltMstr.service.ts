@@ -240,6 +240,7 @@ export class CiltMstrService {
       
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
+      console.log(`Unused variable: ${scheduleDate}`)
 
       // Usar utilidad de timezone para calcular el rango correcto
       const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
@@ -331,6 +332,7 @@ export class CiltMstrService {
 
       // Get all sequence IDs
       const sequenceIds = ciltSequences.map(sequence => sequence.id);
+      console.log(sequenceIds)
 
       // Get executions for all sequences
       const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
@@ -470,6 +472,9 @@ export class CiltMstrService {
       try {
         // 4. Create a new CILT master with the same data
         const { id: originalId, sequences, createdAt, updatedAt, deletedAt, ...ciltData } = originalCilt;
+
+        console.log(`Unused variable: ${originalId} - ${createdAt} - ${updatedAt} - ${deletedAt}`)
+
         const newCilt = this.ciltRepository.create({
           ...ciltData,
           ciltName: `${ciltData.ciltName} (Copy)`,
@@ -481,6 +486,8 @@ export class CiltMstrService {
         const clonedSequences = [];
         for (const sequence of sequences) {
           const { id: seqId, createdAt: seqCreatedAt, updatedAt: seqUpdatedAt, deletedAt: seqDeletedAt, ...seqData } = sequence;
+          console.log(`Unused variable: ${seqId} - ${seqCreatedAt} - ${seqUpdatedAt} - ${seqDeletedAt}`)
+
           const newSequence = this.ciltSequencesRepository.create({
             ...seqData,
             ciltMstrId: savedCilt.id,

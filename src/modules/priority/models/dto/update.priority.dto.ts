@@ -1,6 +1,5 @@
-import { ApiProperty, PartialType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -8,7 +7,6 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdatePriorityDTO {
   @ApiProperty({

@@ -10,7 +10,6 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
-import { LevelEntity } from '../level/entities/level.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { In } from 'typeorm';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';

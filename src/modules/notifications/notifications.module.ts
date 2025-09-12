@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { CardTypesModule } from '../cardTypes/cardTypes.module';
 import { UsersModule } from '../users/users.module';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { TypeOrmModule } from '@nestjs/typeorm';

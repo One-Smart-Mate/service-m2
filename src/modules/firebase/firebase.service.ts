@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { app } from 'firebase-admin';
-import { Message } from 'firebase-admin/lib/messaging/messaging-api';
 import { NotificationDTO } from './models/firebase.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
 import { CustomLoggerService } from 'src/common/logger/logger.service';

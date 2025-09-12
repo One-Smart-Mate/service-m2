@@ -3,8 +3,6 @@ import { CardTypesService } from './cardTypes.service';
 import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
-import { plainToClass } from 'class-transformer';
-import { FindOneCardTypeDTO } from './dto/findOne.cardType.dto';
 
 @Controller('card-types')
 @ApiTags('card-types')

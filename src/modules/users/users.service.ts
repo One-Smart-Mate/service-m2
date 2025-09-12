@@ -1,7 +1,7 @@
 import { In, Not, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { CreateUserDTO } from './models/create.user.dto';
 import {
@@ -18,7 +18,7 @@ import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdateUserDTO } from './models/update.user.dto';
 import { MailService } from '../mail/mail.service';
-import { generateRandomCode, generateRandomHex } from 'src/utils/general.functions';
+import { generateRandomCode } from 'src/utils/general.functions';
 import { SendCodeDTO } from './models/send.code.dto';
 import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';

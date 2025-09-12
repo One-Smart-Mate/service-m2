@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsISO8601 } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCiltMstrPositionLevelsDto {

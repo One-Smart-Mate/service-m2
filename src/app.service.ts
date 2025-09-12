@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { stringConstants } from './utils/string.constant';
 
 @Injectable()
 export class AppService {

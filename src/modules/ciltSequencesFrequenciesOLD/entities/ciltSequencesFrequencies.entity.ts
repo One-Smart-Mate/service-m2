@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, } from 'typeorm';
 
 @Entity('cilt_sequences_frequencies_OLD')
 export class CiltSequencesFrequenciesEntity {

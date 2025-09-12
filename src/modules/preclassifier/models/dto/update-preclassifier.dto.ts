@@ -1,13 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsIn,
   IsNotEmpty,
   IsNumber,
   IsString,
   Length,
   MaxLength,
 } from 'class-validator';
-import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdatePreclassifierDTO {
   @ApiProperty({

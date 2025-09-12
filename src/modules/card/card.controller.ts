@@ -232,6 +232,7 @@ export class CardController {
     @Query('status') status?: string,
   ) {
     // Always use C,R status for definitive users regardless of parameter
+    console.log(status)
     return this.cardService.findSiteCardsGroupedByDefinitiveUser(
       siteId,
       startDate,

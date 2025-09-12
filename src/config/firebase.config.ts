@@ -4,7 +4,7 @@ import * as admin from 'firebase-admin';
 export const firebaseProvider = {
   provide: 'FIREBASE_APP',
   inject: [ConfigService],
-  useFactory: (configService: ConfigService) => {
+  useFactory: () => {
     const firebaseConfig = {
       type: 'service_account',
       project_id: process.env.FIREBASE_PROJECT_ID,

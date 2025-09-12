@@ -1,5 +1,5 @@
 import { Exclude } from 'class-transformer';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
 @Entity('cards_notes') // Nombre de la tabla
 export class CardNoteEntity {

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Post,
@@ -21,7 +20,6 @@ import {
   ValidationException,
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
-import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
 
 // DTO para documentación de Swagger

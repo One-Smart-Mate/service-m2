@@ -6,7 +6,6 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
-import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateLevelDTO {
   @ApiProperty({ description: 'Id', required: true })

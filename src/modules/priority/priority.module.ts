@@ -3,7 +3,6 @@ import { PriorityService } from './priority.service';
 import { PriorityController } from './priority.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
-import { CompanyModule } from '../company/company.module';
 import { SiteModule } from '../site/site.module';
 import { UsersModule } from '../users/users.module';
 import { FirebaseModule } from '../firebase/firebase.module';

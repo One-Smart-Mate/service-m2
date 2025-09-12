@@ -1,12 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsDecimal,
   IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
-  IsDate
 } from 'class-validator';
 
 export class UpdatePositionDto {

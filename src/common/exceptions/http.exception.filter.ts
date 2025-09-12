@@ -6,7 +6,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { capitalizeAndJoinWords } from 'src/utils/general.functions';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {

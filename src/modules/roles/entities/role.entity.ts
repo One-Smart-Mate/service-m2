@@ -1,10 +1,7 @@
-import { UserEntity } from 'src/modules/users/entities/user.entity';
 import { UserRoleEntity } from 'src/modules/roles/entities/user-role.entity';
 import {
   Column,
   Entity,
-  JoinTable,
-  ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';

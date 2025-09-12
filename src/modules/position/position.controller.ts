@@ -5,7 +5,6 @@ import {
   Body,
   Param,
   Put,
-  Delete,
 } from '@nestjs/common';
 import { PositionService } from './position.service';
 import { ApiParam, ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';

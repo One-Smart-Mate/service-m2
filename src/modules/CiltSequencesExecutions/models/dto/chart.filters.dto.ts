@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, IsDateString } from 'class-validator';
+import { IsOptional, IsInt, IsDateString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class ChartFiltersDTO {

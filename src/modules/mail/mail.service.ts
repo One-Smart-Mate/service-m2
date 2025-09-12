@@ -1,5 +1,5 @@
 import { MailerService } from '@nestjs-modules/mailer';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { UserEntity } from '../users/entities/user.entity';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { emailTemplates } from './templates/email.templates';

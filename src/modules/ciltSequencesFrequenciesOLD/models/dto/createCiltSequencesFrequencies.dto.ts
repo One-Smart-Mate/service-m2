@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, IsString, IsISO8601 } from 'class-validator';
+import { IsOptional, IsNumber, IsString } from 'class-validator';
 
 export class CreateCiltSequencesFrequenciesDTO {
   @ApiProperty({ description: 'Site ID', required: false })

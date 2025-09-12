@@ -3,7 +3,6 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { UsersService } from '../users/users.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
-import { title } from 'process';
 import { UpdateAppRequestDTO } from './models/update.app.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
 import { SendCustomNotificationDTO } from './models/send.custom.notification.dto';

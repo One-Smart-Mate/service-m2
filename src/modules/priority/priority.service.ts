@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
 import { Repository } from 'typeorm';
@@ -9,7 +9,6 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { ValidationException, ValidationExceptionType } from 'src/common/exceptions/types/validation.exception';
 import { CreatePriorityDTO } from './models/dto/create.priority.dto';
-import { CompanyService } from '../company/company.service';
 import { stringConstants } from 'src/utils/string.constant';
 import { UpdatePriorityDTO } from './models/dto/update.priority.dto';
 import { SiteService } from '../site/site.service';

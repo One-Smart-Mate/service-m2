@@ -3,16 +3,13 @@ import {
   IsOptional,
   IsString,
   IsInt,
-  Length,
   MaxLength,
   IsNumber,
-  IsIn,
   Min,
   Max,
   IsHexColor,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { stringConstants } from 'src/utils/string.constant';
 export class UpdateCardTypesDTO {
   @ApiProperty({
     example: 1,

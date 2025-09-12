@@ -11,7 +11,6 @@ import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { PositionResponseDTO } from './models/position.response.dto';
 import { ApiOkResponse } from '@nestjs/swagger/dist/decorators/api-response.decorator';
 import { LogoutDTO } from './models/logout.dto';
-import { stringConstants } from 'src/utils/string.constant';
 import { SendCodeEmailDto } from './models/send.code.email.dto';
 import { UserWithPositionsResponseDTO } from './models/user.with.positions.response.dto';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';

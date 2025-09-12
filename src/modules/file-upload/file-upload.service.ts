@@ -11,7 +11,7 @@ import {
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { UsersAndSitesDTO } from './dto/users.and.sites.dto';
-import { generateRandomCode, generateRandomHex } from 'src/utils/general.functions';
+import { generateRandomCode } from 'src/utils/general.functions';
 import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
 import { UsersAndRolesDTO } from './dto/users.and.roles.dto';

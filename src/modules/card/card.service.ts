@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Not, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -24,7 +24,6 @@ import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solu
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { PriorityEntity } from '../priority/entities/priority.entity';
-import { UUID } from 'typeorm/driver/mongodb/bson.typings';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { Week } from './models/card.response.dto';
@@ -35,6 +34,7 @@ import { addDaysToDate, addDaysToDateString, convertToISOFormat } from 'src/util
 import { UserEntity } from '../users/entities/user.entity';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class CardService {
@@ -161,7 +161,7 @@ export class CardService {
       });
 
       while (cardUUIDisNotUnique) {
-        cardUUID = require('crypto').randomUUID();
+        cardUUID = randomUUID();
         cardUUIDisNotUnique = await this.cardRepository.exists({
           where: { cardUUID: cardUUID },
         });
@@ -873,6 +873,7 @@ export class CardService {
         );
         return result[0];
       } catch (newVersionError) {
+        console.error(newVersionError)
         // If new version fails, try with the old 4-parameter version (without status)
         const result = await this.cardRepository.query(
           'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',

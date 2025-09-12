@@ -86,7 +86,7 @@ export class TaskService {
         `🕐 Executed at: ${new Date().toLocaleTimeString('es-MX')}`;
 
       // await this.whatsappService.sendIncidentNotification(message);
-      this.logger.logProcess(`[WHATSAPP] Completion notification sent`);
+      this.logger.logProcess(`[WHATSAPP] Completion notification sent ${message}`);
       
     } catch (error) {
       this.logger.logProcess(`[WHATSAPP] Error sending notification: ${error.message}`);
@@ -107,7 +107,7 @@ export class TaskService {
         `⚠️ Check logs for more details`;
 
       // await this.whatsappService.sendIncidentNotification(message);
-      this.logger.logProcess(`[WHATSAPP] Critical error notification sent`);
+      this.logger.logProcess(`[WHATSAPP] Critical error notification sent ${message}`);
       
     } catch (error) {
       this.logger.logProcess(`[WHATSAPP] Error sending error notification: ${error.message}`);

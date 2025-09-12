@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsEnum, IsNumber, IsISO8601 } from 'class-validator';
+import { IsNotEmpty, IsString, IsOptional, IsNumber, IsISO8601 } from 'class-validator';
 
 export class CreateOplMstrDTO {
   @ApiProperty({ description: 'Title of the OPL' })

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsISO8601 } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional } from 'class-validator';
 
 export class CreateOplLevelsDTO {
   @ApiProperty({ description: 'Site ID', example: 1, required: false })

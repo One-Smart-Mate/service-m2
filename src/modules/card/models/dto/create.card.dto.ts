@@ -4,7 +4,6 @@ import {
   IsString,
   IsEnum,
   IsOptional,
-  IsISO8601,
   IsArray,
   ValidateNested,
 } from 'class-validator';

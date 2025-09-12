@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MinLength, Matches, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, MinLength, Matches, MaxLength } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class FastLoginDTO {

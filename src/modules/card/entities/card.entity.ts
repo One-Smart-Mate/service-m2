@@ -1,4 +1,3 @@
-import { Exclude } from 'class-transformer';
 import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 

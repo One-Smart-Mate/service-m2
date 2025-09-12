@@ -1,18 +1,15 @@
 import {
   Body,
   Controller,
-  Get,
-  Param,
   Post,
   Request,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDTO } from './models/dto/login.dto';
 import { AuthGuard } from './guard/auth.guard';
 import { ResestPasswordDTO } from './models/dto/reset.password.dto';
-import { ApiBearerAuth, ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';

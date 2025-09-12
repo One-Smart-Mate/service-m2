@@ -6,7 +6,6 @@ import { AmDiscardReasonEntity } from './entities/am-discard-reason.entity';
 import { CreateAmDiscardReasonDto } from './models/dto/create-am-discard-reason.dto';
 import { UpdateAmDiscardReasonDto } from './models/dto/update-am-discard-reason.dto';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
-import { UpdateOplMstrDTO } from '../oplMstr/models/dto/updateOplMstr.dto';
 
 @Injectable()
 export class AmDiscardReasonService {

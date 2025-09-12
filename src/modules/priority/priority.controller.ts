@@ -3,9 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
-  Delete,
   Put,
 } from '@nestjs/common';
 import { PriorityService } from './priority.service';
