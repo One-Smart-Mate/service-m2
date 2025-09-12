@@ -10,6 +10,7 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 COPY --from=builder /app/package*.json ./
+ENV HUSKY=0
 RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 
