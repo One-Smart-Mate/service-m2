@@ -4,14 +4,18 @@ on:
   push:
     branches:
       - develop
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || 'develop' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -20,19 +24,37 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Verify Lightsail service and region
-        env:
-          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+      
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          release_branches: main,develop
+          default_bump: patch
+          tag_prefix: v
+
+      - name: Set DEPLOY_ENV and APP_VERSION
         run: |
-          echo "🔎 Checking Lightsail service '$LIGHTSAIL_SERVICE' in region '$AWS_REGION'..."
-          aws lightsail get-container-services \
-            --service-name "$LIGHTSAIL_SERVICE" \
-            --region "$AWS_REGION"
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "DEPLOY_ENV=production" >> $GITHUB_ENV
+            VERSION="${{ steps.tag_version.outputs.new_tag }}"
+          else
+            echo "DEPLOY_ENV=develop" >> $GITHUB_ENV
+            VERSION="${{ steps.tag_version.outputs.new_tag }}-dev"
+          fi
+
+          VERSION="${VERSION#v}"  # quitamos la "v"
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+          echo "✅ DEPLOY_ENV=$DEPLOY_ENV"
+          echo "✅ APP_VERSION=$VERSION"
 
       - name: Build Docker image
+        env:
+          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
         run: |
-          IMAGE=service-m2:${{ github.sha }}
+          IMAGE=$LIGHTSAIL_SERVICE:${{ env.APP_VERSION }}
           docker build -t $IMAGE .
 
       - name: Install lightsailctl plugin
@@ -48,17 +70,16 @@ jobs:
           LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          IMAGE=service-m2:${{ github.sha }}
+          IMAGE=$LIGHTSAIL_SERVICE:${{ env.APP_VERSION }}
           OUTPUT=$(aws lightsail push-container-image \
             --service-name "$LIGHTSAIL_SERVICE" \
-            --label service-m2 \
+            --label "$LIGHTSAIL_SERVICE" \
             --image "$IMAGE" \
             --region "$AWS_REGION")
 
           echo "Lightsail push output:"
           echo "$OUTPUT"
 
-          # Extraer la referencia de imagen correcta (ej: :service-m2.3)
           IMAGE_URI=$(echo "$OUTPUT" | grep -oP 'Refer to this image as "\K[^"]+')
           if [ -z "$IMAGE_URI" ]; then
             echo "❌ ERROR: No se pudo extraer IMAGE_URI"
@@ -76,51 +97,52 @@ jobs:
           IMAGE=${{ env.IMAGE_URI }}
 
           echo '{
-            "service": {
+            "'"$LIGHTSAIL_SERVICE"'": {
               "image": "'"$IMAGE"'",
               "ports": { "3000": "HTTP" },
               "environment": {
-                 "APP_ENV": "'"${{ secrets.APP_ENV }}"'",
-                  "DB_HOST": "'"${{ secrets.DB_HOST }}"'",
-                  "DB_HOST_IA": "'"${{ secrets.DB_HOST_IA }}"'",
-                  "DB_NAME": "'"${{ secrets.DB_NAME }}"'",
-                  "DB_NAME_IA": "'"${{ secrets.DB_NAME_IA }}"'",
-                  "DB_PASSWORD": "'"${{ secrets.DB_PASSWORD }}"'",
-                  "DB_PASSWORD_IA": "'"${{ secrets.DB_PASSWORD_IA }}"'",
-                  "DB_PORT": "'"${{ secrets.DB_PORT }}"'",
-                  "DB_PORT_IA": "'"${{ secrets.DB_PORT_IA }}"'",
-                  "DB_USERNAME": "'"${{ secrets.DB_USERNAME }}"'",
-                  "DB_USERNAME_IA": "'"${{ secrets.DB_USERNAME_IA }}"'",
-                  "FIREBASE_AUTH_PROVIDER": "'"${{ secrets.FIREBASE_AUTH_PROVIDER }}"'",
-                  "FIREBASE_AUTH_URI": "'"${{ secrets.FIREBASE_AUTH_URI }}"'",
-                  "FIREBASE_CLIENT": "'"${{ secrets.FIREBASE_CLIENT }}"'",
-                  "FIREBASE_CLIENT_ID": "'"${{ secrets.FIREBASE_CLIENT_ID }}"'",
-                  "FIREBASE_EMAIL": "'"${{ secrets.FIREBASE_EMAIL }}"'",
-                  "FIREBASE_PRIVATE_KEY": "'"${{ secrets.FIREBASE_PRIVATE_KEY }}"'",
-                  "FIREBASE_PRIVATE_KEY_ID": "'"${{ secrets.FIREBASE_PRIVATE_KEY_ID }}"'",
-                  "FIREBASE_PROJECT_ID": "'"${{ secrets.FIREBASE_PROJECT_ID }}"'",
-                  "FIREBASE_TOKEN_URI": "'"${{ secrets.FIREBASE_TOKEN_URI }}"'",
-                  "FIREBASE_UNIVERSE_DOMAIN": "'"${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}"'",
-                  "GEMINI_API_KEY": "'"${{ secrets.GEMINI_API_KEY }}"'",
-                  "MAIL_FROM": "'"${{ secrets.MAIL_FROM }}"'",
-                  "MAIL_HOST": "'"${{ secrets.MAIL_HOST }}"'",
-                  "MAIL_PASSWORD": "'"${{ secrets.MAIL_PASSWORD }}"'",
-                  "MAIL_PORT": "'"${{ secrets.MAIL_PORT }}"'",
-                  "MAIL_USER": "'"${{ secrets.MAIL_USER }}"'",
-                  "URL_WEB": "'"${{ secrets.URL_WEB }}"'",
-                  "JWT_EXPIRES_IN": "'"${{ secrets.JWT_EXPIRES_IN }}"'",
-                  "JWT_SECRET": "'"${{ secrets.JWT_SECRET }}"'",
-                  "USER_ONE": "'"${{ secrets.USER_ONE }}"'",
-                  "USER_TWO": "'"${{ secrets.USER_TWO }}"'",
-                  "WHATSAPP_ACCESS_TOKEN": "'"${{ secrets.WHATSAPP_ACCESS_TOKEN }}"'",
-                  "WHATSAPP_PHONE_NUMBER_ID": "'"${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"'",
-                  "WHATSAPP_WABA_ID": "'"${{ secrets.WHATSAPP_WABA_ID }}"'"
+                 "DEPLOY_ENV": "'"${{ env.DEPLOY_ENV }}"'",
+                 "APP_VERSION": "'"${{ env.APP_VERSION }}"'",
+                 "DB_HOST": "'"${{ secrets.DB_HOST }}"'",
+                 "DB_HOST_IA": "'"${{ secrets.DB_HOST_IA }}"'",
+                 "DB_NAME": "'"${{ secrets.DB_NAME }}"'",
+                 "DB_NAME_IA": "'"${{ secrets.DB_NAME_IA }}"'",
+                 "DB_PASSWORD": "'"${{ secrets.DB_PASSWORD }}"'",
+                 "DB_PASSWORD_IA": "'"${{ secrets.DB_PASSWORD_IA }}"'",
+                 "DB_PORT": "'"${{ secrets.DB_PORT }}"'",
+                 "DB_PORT_IA": "'"${{ secrets.DB_PORT_IA }}"'",
+                 "DB_USERNAME": "'"${{ secrets.DB_USERNAME }}"'",
+                 "DB_USERNAME_IA": "'"${{ secrets.DB_USERNAME_IA }}"'",
+                 "FIREBASE_AUTH_PROVIDER": "'"${{ secrets.FIREBASE_AUTH_PROVIDER }}"'",
+                 "FIREBASE_AUTH_URI": "'"${{ secrets.FIREBASE_AUTH_URI }}"'",
+                 "FIREBASE_CLIENT": "'"${{ secrets.FIREBASE_CLIENT }}"'",
+                 "FIREBASE_CLIENT_ID": "'"${{ secrets.FIREBASE_CLIENT_ID }}"'",
+                 "FIREBASE_EMAIL": "'"${{ secrets.FIREBASE_EMAIL }}"'",
+                 "FIREBASE_PRIVATE_KEY": "'"${{ secrets.FIREBASE_PRIVATE_KEY }}"'",
+                 "FIREBASE_PRIVATE_KEY_ID": "'"${{ secrets.FIREBASE_PRIVATE_KEY_ID }}"'",
+                 "FIREBASE_PROJECT_ID": "'"${{ secrets.FIREBASE_PROJECT_ID }}"'",
+                 "FIREBASE_TOKEN_URI": "'"${{ secrets.FIREBASE_TOKEN_URI }}"'",
+                 "FIREBASE_UNIVERSE_DOMAIN": "'"${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}"'",
+                 "GEMINI_API_KEY": "'"${{ secrets.GEMINI_API_KEY }}"'",
+                 "MAIL_FROM": "'"${{ secrets.MAIL_FROM }}"'",
+                 "MAIL_HOST": "'"${{ secrets.MAIL_HOST }}"'",
+                 "MAIL_PASSWORD": "'"${{ secrets.MAIL_PASSWORD }}"'",
+                 "MAIL_PORT": "'"${{ secrets.MAIL_PORT }}"'",
+                 "MAIL_USER": "'"${{ secrets.MAIL_USER }}"'",
+                 "URL_WEB": "'"${{ secrets.URL_WEB }}"'",
+                 "JWT_EXPIRES_IN": "'"${{ secrets.JWT_EXPIRES_IN }}"'",
+                 "JWT_SECRET": "'"${{ secrets.JWT_SECRET }}"'",
+                 "USER_ONE": "'"${{ secrets.USER_ONE }}"'",
+                 "USER_TWO": "'"${{ secrets.USER_TWO }}"'",
+                 "WHATSAPP_ACCESS_TOKEN": "'"${{ secrets.WHATSAPP_ACCESS_TOKEN }}"'",
+                 "WHATSAPP_PHONE_NUMBER_ID": "'"${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"'",
+                 "WHATSAPP_WABA_ID": "'"${{ secrets.WHATSAPP_WABA_ID }}"'"
               }
             }
           }' > containers.json
 
           echo '{
-            "containerName": "service",
+            "containerName": "'"$LIGHTSAIL_SERVICE"'",
             "containerPort": 3000,
             "healthCheck": {
               "path": "/api",
