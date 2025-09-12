@@ -1,73 +1,84 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Service M2 API - README</title>
+</head>
+<body>
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+  <h1>🚀 Service M2 API</h1>
+  <p>Backend built with <strong>NestJS</strong>, ready for development, automatic versioning, and AWS deployment.</p>
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+  <hr>
 
-## Description
+  <h2>📦 Requirements</h2>
+  <ul>
+    <li>Node.js v22+</li>
+    <li>npm v10+</li>
+    <li>Docker (for builds and deployments)</li>
+  </ul>
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+  <h2>🛠️ Local Development</h2>
+  <ol>
+    <li>
+      Install dependencies:
+      <pre><code>npm install</code></pre>
+    </li>
+    <li>
+      Start in development mode:
+      <pre><code>npm run start:dev</code></pre>
+    </li>
+    <li>
+      Build the project:
+      <pre><code>npm run build</code></pre>
+    </li>
+    <li>
+      Run the build:
+      <pre><code>npm run start:prod</code></pre>
+    </li>
+  </ol>
 
-## Installation
+  <h2>🐳 Docker</h2>
+  <h3>Build locally</h3>
+  <pre><code>docker build -t service-m2 .</code></pre>
 
-```bash
-$ npm install
-```
+  <h3>Run locally</h3>
+  <pre><code>docker run -p 3000:3000 service-m2</code></pre>
 
-## Running the app
+  <h2>🔀 Commits &amp; Versioning</h2>
+  <p>We follow <strong>Conventional Commits</strong> so that versioning is handled automatically.</p>
 
-```bash
-# development
-$ npm run start
+  <p>Examples:</p>
+  <ul>
+    <li><code>feat(api): add user endpoints</code></li>
+    <li><code>fix(auth): handle expired tokens</code></li>
+    <li><code>chore(deps): update eslint config</code></li>
+  </ul>
 
-# watch mode
-$ npm run start:dev
+  <p>👉 If you don’t follow the convention, the commit will be rejected by <strong>husky + commitlint</strong>.</p>
 
-# production mode
-$ npm run start:prod
-```
+  <h2>🧹 Linting &amp; Tests</h2>
+  <p>Run lint:</p>
+  <pre><code>npm run lint</code></pre>
 
-## Test
+  <p>Run tests:</p>
+  <pre><code>npm test</code></pre>
 
-```bash
-# unit tests
-$ npm run test
+  <p>⚡ <strong>Pre-commit hooks</strong> automatically run lint and tests,<br>
+  but commits will <strong>not be blocked if tests are missing or failing</strong>.</p>
 
-# e2e tests
-$ npm run test:e2e
+  <h2>🚀 Deployment</h2>
+  <p>Deployment is done via a <strong>Docker multi-stage build</strong> on AWS.<br>
+  The runtime starts with:</p>
+  <pre><code>node dist/main.js</code></pre>
 
-# test coverage
-$ npm run test:cov
-```
+  <h2>📖 Developer Notes</h2>
+  <ul>
+    <li>Always use <code>feat</code>, <code>fix</code>, <code>chore</code>, <code>refactor</code>, etc. in your commits.</li>
+    <li>Version tags (<code>dev-x.y.z</code>) are generated automatically.</li>
+    <li><code>dist/</code> should <strong>never</strong> be committed; it’s generated during the build.</li>
+  </ul>
 
-## Support
+</body>
+</html>
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).

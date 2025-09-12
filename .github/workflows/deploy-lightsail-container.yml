@@ -29,10 +29,10 @@ jobs:
         run: |
           TAG=$(git describe --tags --abbrev=0)
           if [ -z "$TAG" ]; then
-            echo "❌ No se encontró ningún tag"
+            echo "❌ No image found. Please create a tag before deploying."
             exit 1
           fi
-          echo "Último tag encontrado: $TAG"
+          echo "Last tag found: $TAG"
 
           if [ "${{ github.ref_name }}" = "main" ]; then
             DEPLOY_ENV=production
@@ -43,7 +43,7 @@ jobs:
             VERSION="$CLEAN_TAG-dev"
           fi
 
-          VERSION="${VERSION#v}"  # quitar prefijo "v"
+          VERSION="${VERSION#v}"
           echo "DEPLOY_ENV=$DEPLOY_ENV" >> $GITHUB_ENV
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
 
@@ -83,11 +83,11 @@ jobs:
 
           IMAGE_URI=$(echo "$OUTPUT" | grep -oP 'Refer to this image as "\K[^"]+')
           if [ -z "$IMAGE_URI" ]; then
-            echo "❌ ERROR: No se pudo extraer IMAGE_URI"
+            echo "❌ ERROR: Can not extract image URI from output."
             exit 1
           fi
 
-          echo "✅ Imagen registrada como: $IMAGE_URI"
+          echo "✅ Image registered as: $IMAGE_URI"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Create deployment
