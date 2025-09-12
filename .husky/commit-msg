@@ -1,2 +1,14 @@
 #!/bin/sh
 npx --no -- commitlint --edit "$1"
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "⚠️  Valid commits are required for a clean and meaningful project history."
+  echo "X.Y.Z where: fix = patch, feat = minor, breaking change = major, patch means z, minor means y, major means x"
+  echo "👉 Use the format: <type>(<scope>): <message>"
+  echo "   Examples:"
+  echo "     feat(api): add user authentication"
+  echo "     fix(card): correct null reference bug"
+  echo "     chore: update dependencies"
+  exit 1
+fi
