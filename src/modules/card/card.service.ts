@@ -463,7 +463,7 @@ export class CardService {
         updateProvisionalSolutionDTO.userAppProvisionalSolutionId,
       );
 
-      if (!userProvisionalSolution || !userProvisionalSolution) {
+      if (!userProvisionalSolution || !userAppProvisionalSolution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
