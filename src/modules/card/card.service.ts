@@ -248,7 +248,12 @@ export class CardService {
         creatorName: creator.name,
         createdAt: createdAt,
         cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
-        cardDueDate: priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays),
+        cardDueDate: createCardDTO.customDueDate
+          ? (() => {
+              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
+              return new Date(year, month - 1, day);
+            })()
+          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
@@ -1217,6 +1222,8 @@ export class CardService {
       card.priorityId = priority.id;
       card.priorityCode = priority.priorityCode;
       card.priorityDescription = priority.priorityDescription;
+
+      // Set due date based on priority days
       card.cardDueDate = addDaysToDate(card.createdAt, priority.priorityDays);
 
       await this.cardRepository.save(card);
@@ -1282,6 +1289,43 @@ export class CardService {
           tokens,
         );
       }
+
+      return await this.cardNoteRepository.save(note);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateCardCustomDueDate = async (body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }) => {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: body.cardId },
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      const user = await this.userService.findOneById(body.idOfUpdatedBy);
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      // Fix timezone issue by creating date in local timezone
+      // Split the date string and create date with explicit components
+      const [year, month, day] = body.customDueDate.split('-').map(Number);
+      const newDate = new Date(year, month - 1, day); // month is 0-indexed in JS
+
+      card.cardDueDate = newDate;
+
+      await this.cardRepository.save(card);
+
+      const note = new CardNoteEntity();
+      note.cardId = card.id;
+      note.siteId = card.siteId;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> estableció fecha de vencimiento personalizada: <${body.customDueDate}>`;
+      note.createdAt = new Date();
 
       return await this.cardNoteRepository.save(note);
     } catch (exception) {

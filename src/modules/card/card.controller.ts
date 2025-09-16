@@ -273,6 +273,13 @@ export class CardController {
     return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
   }
 
+  @Post('/update/custom-due-date')
+  updateCardCustomDueDate(
+    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }
+  ) {
+    return this.cardService.updateCardCustomDueDate(body);
+  }
+
   @Get()
   @ApiQuery({ 
     name: 'status', 
