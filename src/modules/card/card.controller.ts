@@ -96,15 +96,23 @@ export class CardController {
   }
 
   @Get('/site/methodologies/:siteId')
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Card status filter (comma-separated: A,C,R)',
+    example: 'A'
+  })
   findSiteCardsGroupedByMethodology(
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
   ) {
     return this.cardService.findSiteCardsGroupedByMethodology(
       siteId,
       startDate,
       endDate,
+      status,
     );
   }
 
@@ -273,6 +281,13 @@ export class CardController {
     return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
   }
 
+  @Post('/update/custom-due-date')
+  updateCardCustomDueDate(
+    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }
+  ) {
+    return this.cardService.updateCardCustomDueDate(body);
+  }
+
   @Get()
   @ApiQuery({ 
     name: 'status', 
@@ -321,6 +336,20 @@ export class CardController {
   @ApiBody({ type: DiscardCardDto })
   discardCard(@Body() dto: DiscardCardDto) {
     return this.cardService.discardCard(dto);
+  }
+
+  @Get('/site/calendar/:siteId')
+  @ApiParam({ name: 'siteId' })
+  @ApiQuery({ name: 'startDate', required: true })
+  @ApiQuery({ name: 'endDate', required: true })
+  @ApiQuery({ name: 'status', required: false })
+  findCardsForCalendar(
+    @Param('siteId') siteId: number,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Query('status') status?: string,
+  ) {
+    return this.cardService.findCardsForCalendar(siteId, startDate, endDate, status);
   }
 
   @Get('/site/discarded-cards/:siteId')

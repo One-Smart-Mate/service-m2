@@ -248,7 +248,12 @@ export class CardService {
         creatorName: creator.name,
         createdAt: createdAt,
         cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
-        cardDueDate: priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays),
+        cardDueDate: createCardDTO.customDueDate
+          ? (() => {
+              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
+              return new Date(year, month - 1, day);
+            })()
+          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
@@ -595,13 +600,22 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
+    status?: string,
   ) => {
     try {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
-        .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+        .where('card.site_id = :siteId', { siteId });
+
+      // Apply status filtering if provided
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        // Default behavior if no status provided: exclude C and R
+        queryBuilder.andWhere('card.status != :statusC AND card.status != :statusR', { statusC: 'C', statusR: 'R' });
+      }
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -1217,6 +1231,8 @@ export class CardService {
       card.priorityId = priority.id;
       card.priorityCode = priority.priorityCode;
       card.priorityDescription = priority.priorityDescription;
+
+      // Set due date based on priority days
       card.cardDueDate = addDaysToDate(card.createdAt, priority.priorityDays);
 
       await this.cardRepository.save(card);
@@ -1282,6 +1298,43 @@ export class CardService {
           tokens,
         );
       }
+
+      return await this.cardNoteRepository.save(note);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  updateCardCustomDueDate = async (body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }) => {
+    try {
+      const card = await this.cardRepository.findOne({
+        where: { id: body.cardId },
+      });
+
+      if (!card) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
+      }
+
+      const user = await this.userService.findOneById(body.idOfUpdatedBy);
+
+      if (!user) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      // Fix timezone issue by creating date in local timezone
+      // Split the date string and create date with explicit components
+      const [year, month, day] = body.customDueDate.split('-').map(Number);
+      const newDate = new Date(year, month - 1, day); // month is 0-indexed in JS
+
+      card.cardDueDate = newDate;
+
+      await this.cardRepository.save(card);
+
+      const note = new CardNoteEntity();
+      note.cardId = card.id;
+      note.siteId = card.siteId;
+      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> estableció fecha de vencimiento personalizada: <${body.customDueDate}>`;
+      note.createdAt = new Date();
 
       return await this.cardNoteRepository.save(note);
     } catch (exception) {
@@ -1512,6 +1565,67 @@ export class CardService {
       card.updatedAt = new Date();
 
       return await this.cardRepository.save(card);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findCardsForCalendar = async (
+    siteId: number,
+    startDate: string,
+    endDate: string,
+    status?: string,
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select([
+          'card.id',
+          'card.siteCardId',
+          'card.cardUUID',
+          'card.cardDueDate',
+          'card.cardTypeName',
+          'card.cardTypeColor',
+          'card.priorityCode',
+          'card.priorityDescription',
+          'card.mechanicName',
+          'card.nodeName',
+          'card.preclassifierDescription',
+          'card.status',
+          'card.createdAt',
+          'card.cardCreationDate',
+        ])
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.cardDueDate IS NOT NULL')
+        .andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
+          startDate,
+          endDate: `${endDate} 23:59:59`,
+        });
+
+      // Apply status filter
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        // Default: only active cards
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+      }
+
+      queryBuilder.orderBy('card.cardDueDate', 'ASC');
+
+      const cards = await queryBuilder.getMany();
+
+      // Group cards by date
+      const groupedByDate = cards.reduce((acc, card) => {
+        const dateKey = new Date(card.cardDueDate).toISOString().split('T')[0];
+        if (!acc[dateKey]) {
+          acc[dateKey] = [];
+        }
+        acc[dateKey].push(card);
+        return acc;
+      }, {} as Record<string, typeof cards>);
+
+      return groupedByDate;
     } catch (exception) {
       HandleException.exception(exception);
     }
