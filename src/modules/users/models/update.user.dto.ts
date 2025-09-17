@@ -25,9 +25,9 @@ export class UpdateUserDTO {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Phone number of the user' })
+  @ApiProperty({ description: 'Phone number of the user', required: true })
   @IsString()
-  phoneNumber?: string;
+  phoneNumber: string;
 
   @ApiProperty({ 
     description: 'Language of the welcome email', 

@@ -101,4 +101,9 @@ export class CreateCardDTO {
   @IsString()
   @IsOptional()
   appVersion: string | null;
+
+  @ApiProperty({ required: false, description: 'Custom due date for wildcard priority in YYYY-MM-DD format' })
+  @IsString()
+  @IsOptional()
+  customDueDate: string | null;
 }
