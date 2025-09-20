@@ -11,7 +11,12 @@ const typeOrmConfig = TypeOrmModule.forRoot({
   synchronize: false,
   autoLoadEntities: true,
   extra: {
-    connectionLimit: 1000,
+    connectionLimit: 10,      
+    acquireTimeout: 5000,     
+    timeout: 30000,          
+    reconnect: true,
+    idleTimeout: 300000,     
+    maxIdle: 3,             
   },
   logging: true
 });
