@@ -11,9 +11,12 @@ export class OplTypes {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;
 
-  @Column("varchar", { 
-    name: "document_type", 
-    nullable: true, 
+  @Column({ name: 'site_id', type: 'bigint', unsigned: true })
+  siteId: number;
+
+  @Column("varchar", {
+    name: "document_type",
+    nullable: true,
     length: 50,
     comment: "Type of document: OPL, OPL for improvement, security OPL, basic knowledge OPL, SOP, etc."
   })

@@ -887,9 +887,20 @@ export class CardService {
 
       // Important: The stored procedure returns ALL cards regardless of status
       // We need to filter in application layer to maintain consistency with other charts
+
+      // Validate that result is not empty and is an array before accessing index 0
+      if (!result || !Array.isArray(result) || result.length === 0) {
+        return [];
+      }
+
       let filteredResult = result[0];
 
-      if (filteredResult && Array.isArray(filteredResult)) {
+      // Additional validation to ensure filteredResult is a valid array
+      if (!filteredResult || !Array.isArray(filteredResult)) {
+        return [];
+      }
+
+      if (filteredResult.length > 0) {
         // Filter by status if the result has status field
         if (requestedStatus && filteredResult.length > 0 && 'status' in filteredResult[0]) {
           const statusArray = requestedStatus.split(',').map(s => s.trim());
