@@ -877,33 +877,41 @@ export class CardService {
     try {
       const useStartDate = startDate || null;
       const useEndDate = endDate || null;
-      const useStatus = status || 'A'; // Default to 'A' if not provided
+      const requestedStatus = status || 'A'; // Default to 'A' like other charts
 
-      // First try with the new 5-parameter version (with status)
-      try {
-        const result = await this.cardRepository.query(
-          'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?, ?)',
-          [siteId, areaId, useStartDate, useEndDate, useStatus],
-        );
-        return result[0];
-      } catch (newVersionError) {
-        console.error(newVersionError)
-        // If new version fails, try with the old 4-parameter version (without status)
-        const result = await this.cardRepository.query(
-          'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
-          [siteId, areaId, useStartDate, useEndDate],
-        );
-        
-        // Apply status filtering in the application layer
-        let filteredResult = result[0];
-        if (filteredResult && Array.isArray(filteredResult)) {
-          // Since we don't have status info from old SP, we'll return all data
-          // This is temporary until migration is applied
-          console.warn(`Using legacy stored procedure for findAreaCardsGroupedByMachine - status filtering disabled`);
-        }
-        
-        return filteredResult;
+      // Use the 4-parameter version as the database stored procedure expects
+      const result = await this.cardRepository.query(
+        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
+        [siteId, areaId, useStartDate, useEndDate],
+      );
+
+      // Important: The stored procedure returns ALL cards regardless of status
+      // We need to filter in application layer to maintain consistency with other charts
+
+      // Validate that result is not empty and is an array before accessing index 0
+      if (!result || !Array.isArray(result) || result.length === 0) {
+        return [];
       }
+
+      let filteredResult = result[0];
+
+      // Additional validation to ensure filteredResult is a valid array
+      if (!filteredResult || !Array.isArray(filteredResult)) {
+        return [];
+      }
+
+      if (filteredResult.length > 0) {
+        // Filter by status if the result has status field
+        if (requestedStatus && filteredResult.length > 0 && 'status' in filteredResult[0]) {
+          const statusArray = requestedStatus.split(',').map(s => s.trim());
+          filteredResult = filteredResult.filter(item => statusArray.includes(item.status));
+        } else if (requestedStatus !== 'A,C,R') {
+          // If we can't filter (no status field) but user requested specific status, warn
+          console.warn(`Status filtering requested (${requestedStatus}) but stored procedure doesn't return status field. Returning all results.`);
+        }
+      }
+
+      return filteredResult;
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -6,9 +6,18 @@ import {
   IsOptional,
   Length,
   IsISO8601,
+  IsNumber,
 } from 'class-validator';
 
 export class CreateOplTypeDto {
+  @ApiProperty({
+    description: 'Site ID where this OPL type belongs',
+    example: 1,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  siteId: number;
+
   @ApiProperty({
     description:
       'Document type: OPL, OPL for improvement, security OPL, basic knowledge OPL, SOP, etc.',

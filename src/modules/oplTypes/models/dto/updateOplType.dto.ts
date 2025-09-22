@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsISO8601, IsOptional, Length, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsNotEmpty, IsISO8601, IsOptional, Length, IsString, MaxLength, IsNumber } from 'class-validator';
 
 export class UpdateOplTypeDto {
   @ApiProperty({
@@ -9,6 +9,14 @@ export class UpdateOplTypeDto {
   @IsNotEmpty()
   @IsInt()
   id: number;
+
+  @ApiProperty({
+    description: 'Site ID where this OPL type belongs',
+    example: 1,
+  })
+  @IsNotEmpty()
+  @IsNumber()
+  siteId: number;
 
   @ApiProperty({
     description:

@@ -25,6 +25,17 @@ export class OplTypesService {
     }
   };
 
+  findBySite = async (siteId: number) => {
+    try {
+      return await this.oplTypesRepository.find({
+        where: { siteId },
+        order: { createdAt: 'DESC' }
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const oplType = await this.oplTypesRepository.findOneBy({ id });
