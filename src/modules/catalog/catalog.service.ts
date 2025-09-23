@@ -23,7 +23,6 @@ export class CatalogService {
         throw new UnauthorizedException();
       }
 
-      // Validar que el usuario tenga acceso al siteId solicitado
       const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
       if (!hasAccessToSite) {
         throw new UnauthorizedException();
