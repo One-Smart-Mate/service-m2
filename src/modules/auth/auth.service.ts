@@ -92,9 +92,9 @@ export class AuthService {
   loginWithFastPassword = async (data: FastLoginDTO, userId: number): Promise<UserResponse> => {
     try {
 
-      const authUser = await this.usersSevice.findById(userId);
+      const authUser = await this.usersSevice.findByIdWithSites(userId);
       if (!authUser || !authUser.userHasSites?.length) {
-        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+        throw new UnauthorizedException();
       }
 
       const siteId = authUser.userHasSites[0].site.id;
@@ -105,7 +105,7 @@ export class AuthService {
       );
 
       if (!user) {
-        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+        throw new UnauthorizedException();
       }
 
       const now = new Date();

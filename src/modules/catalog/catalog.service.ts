@@ -1,17 +1,33 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
+import { UsersService } from '../users/users.service';
+import {
+  ValidationException,
+  ValidationExceptionType,
+} from 'src/common/exceptions/types/validation.exception';
 
 @Injectable()
 export class CatalogService {
   constructor(
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly usersSevice: UsersService,
   ) {}
 
-  getCatalogs = async (siteId: number) => {
+  getCatalogs = async (siteId: number, userId: number) => {
     try {
+      const authUser = await this.usersSevice.findByIdWithSites(userId);
+      if (!authUser || !authUser.userHasSites?.length) {
+        throw new UnauthorizedException();
+      }
+
+      // Validar que el usuario tenga acceso al siteId solicitado
+      const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+      if (!hasAccessToSite) {
+        throw new UnauthorizedException();
+      }
       const queryRunner = this.dataSource.createQueryRunner();
       
       const [cardTypes, priorities, preclassifiers, levels, employees, cards] = await Promise.all([
@@ -52,20 +68,36 @@ export class CatalogService {
         `, [siteId]),
         
         queryRunner.query(`
-          SELECT c.id, c.site_card_id as siteCardId, c.card_UUID as cardUUID, c.status, c.node_name as nodeName, 
-                 c.area_name as areaName, c.creator_name as creatorName, c.cardType_name as cardTypeName,
-                 c.mechanic_name as mechanicName, c.priority_code as priorityCode, c.priority_description as priorityDescription,
-                 c.preclassifier_code as preclassifierCode, c.preclassifier_description as preclassifierDescription,
-                 c.card_creation_date as cardCreationDate, c.card_due_date as cardDueDate
-          FROM cards c 
-          INNER JOIN sites s ON c.site_id = s.id
-          WHERE c.site_id = ? AND c.deleted_at IS NULL 
-          AND c.created_at >= DATE_SUB(NOW(), INTERVAL s.app_history_days DAY)
+          SELECT c.*
+          FROM cards c
+          WHERE c.site_id = ? AND c.deleted_at IS NULL
           ORDER BY c.site_card_id DESC
         `, [siteId])
       ]);
 
+      const evidencesResult = await queryRunner.query(`
+        SELECT e.id, e.card_id as cardId, e.site_id as siteId, e.evidence_name as evidenceName,
+               e.evidence_type as evidenceType, e.status, e.created_at as createdAt,
+               e.updated_at as updatedAt, e.deleted_at as deletedAt
+        FROM evidences e
+        WHERE e.site_id = ? AND e.deleted_at IS NULL
+      `, [siteId]);
+
       await queryRunner.release();
+
+      const evidencesMap = new Map();
+      evidencesResult.forEach((evidence) => {
+        if (!evidencesMap.has(evidence.cardId)) {
+          evidencesMap.set(evidence.cardId, []);
+        }
+        evidencesMap.get(evidence.cardId).push(evidence);
+      });
+
+      const cardsWithEvidences = cards.map(card => ({
+        ...card,
+        levelName: card.nodeName,
+        evidences: evidencesMap.get(card.id) || []
+      }));
 
       return {
         cardTypes,
@@ -73,7 +105,7 @@ export class CatalogService {
         preclassifiers,
         levels,
         employees,
-        cards
+        cards: cardsWithEvidences
       };
     } catch (exception) {
       console.log(exception);

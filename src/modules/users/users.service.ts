@@ -243,6 +243,13 @@ export class UsersService {
     return await this.userRepository.findOneBy({ id: userId });
   };
 
+  findByIdWithSites = async (userId: number) => {
+    return await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { userHasSites: { site: true } },
+    });
+  };
+
   findSiteUsersResponsibleData = async (siteId: number) => {
     try {
       return await this.userRepository.find({
