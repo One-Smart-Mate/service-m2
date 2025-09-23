@@ -129,7 +129,7 @@ export class FileUploadController {
       },
     }),
   )
-  uploadFile(
+  async uploadFile(
     @Body() siteIdDTO: SiteIdDTO,
     @UploadedFile() file: Express.Multer.File,
   ) {
@@ -137,6 +137,9 @@ export class FileUploadController {
       throw new ValidationException(ValidationExceptionType.NO_FILE_UPLOADED);
     }
 
-    return this.fileUploadService.importUsers(file, siteIdDTO);
+    const result = await this.fileUploadService.importUsers(file, siteIdDTO);
+
+    // Return simple response
+    return result;
   }
 }
