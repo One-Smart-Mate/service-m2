@@ -33,7 +33,8 @@ export class AuthController {
   @Post('login-fast')
   @ApiBody({ type: FastLoginDTO })
   loginWithFastPassword(@Body() fastLoginDto: FastLoginDTO, @Request() req) {
-    return this.authService.loginWithFastPassword(fastLoginDto, req.user.siteId);
+    console.log(req.user)
+    return this.authService.loginWithFastPassword(fastLoginDto, req.user.id);
   }
 
   @Public()

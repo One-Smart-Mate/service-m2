@@ -89,8 +89,16 @@ export class AuthService {
     }
   };
 
-  loginWithFastPassword = async (data: FastLoginDTO, siteId: number): Promise<UserResponse> => {
+  loginWithFastPassword = async (data: FastLoginDTO, userId: number): Promise<UserResponse> => {
     try {
+
+      const authUser = await this.usersSevice.findById(userId);
+      if (!authUser || !authUser.userHasSites?.length) {
+        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+      }
+
+      const siteId = authUser.userHasSites[0].site.id;
+
       const user = await this.usersSevice.findOneByFastPassword(
         data.fastPassword,
         siteId,
