@@ -89,10 +89,11 @@ export class AuthService {
     }
   };
 
-  loginWithFastPassword = async (data: FastLoginDTO): Promise<UserResponse> => {
+  loginWithFastPassword = async (data: FastLoginDTO, siteId: number): Promise<UserResponse> => {
     try {
       const user = await this.usersSevice.findOneByFastPassword(
         data.fastPassword,
+        siteId,
       );
 
       if (!user) {

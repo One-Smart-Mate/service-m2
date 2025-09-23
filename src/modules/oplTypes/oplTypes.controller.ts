@@ -17,6 +17,14 @@ export class OplTypesController {
     return await this.oplTypesService.findAll();
   }
 
+  @Get('/site/:siteId')
+  @ApiOperation({ summary: 'Get all OPL types by site ID' })
+  @ApiParam({ name: 'siteId', required: true, example: 1 })
+  @ApiResponse({ status: 200, description: 'List of OPL types for the specified site'})
+  async findBySite(@Param('siteId') siteId: number) {
+    return await this.oplTypesService.findBySite(siteId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an OPL type by ID' })
   @ApiResponse({ status: 200, description: 'OPL type found'})

@@ -111,7 +111,9 @@ export class FileUploadService {
     const roleAssignments = new Map<string, RoleEntity>();
 
     for (const record of data) {
-      const { Name, Email, Role, PhoneNumber, Translation } = record;
+      // Support both PhoneNumber and Celular column names for compatibility
+      const { Name, Email, Role, PhoneNumber, Celular, Translation } = record;
+      const phoneNumber = PhoneNumber || Celular; // Use PhoneNumber if available, otherwise use Celular
 
       if (!Name || !Email || !Role) {
         processedUsers.push({
@@ -185,7 +187,7 @@ export class FileUploadService {
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
-          phoneNumber: PhoneNumber || null,
+          phoneNumber: phoneNumber || null,
           translation: Translation || stringConstants.LANG_ES,
         });
         processedUsers.push({

@@ -885,9 +885,9 @@ export class UsersService {
     }
   };
 
-  findOneByFastPassword = (fastPassword: string) => {
+  findOneByFastPassword = (fastPassword: string, siteId: number) => {
     return this.userRepository.findOne({
-      where: { fastPassword },
+      where: { fastPassword, siteId },
       relations: { userHasSites: { site: true } },
     });
   };
