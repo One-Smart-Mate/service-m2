@@ -721,10 +721,19 @@ export class CiltSequencesExecutionsService {
       this.logger.logProcess('[GET_OF_DAY] Starting getOfDay method', { userId: user?.id, timezone: user?.timezone });
       
       const timezone = user?.timezone || 'UTC';
-      const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
-      
-      this.logger.logProcess('[GET_OF_DAY] Timezone and date info', { timezone, today });
-      
+
+      // Get today's date in the USER'S timezone, not UTC
+      const nowInUserTimezone = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date());
+
+      const today = nowInUserTimezone; // This is YYYY-MM-DD in user's timezone
+
+      this.logger.logProcess('[GET_OF_DAY] Timezone and date info', { timezone, today, userLocalDate: today });
+
       const { dayStart, dayEnd } = getUTCRangeFromLocalDate(today, timezone);
       
       this.logger.logProcess('[GET_OF_DAY] UTC range calculated', { 
