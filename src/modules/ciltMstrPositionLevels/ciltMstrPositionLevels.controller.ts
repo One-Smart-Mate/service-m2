@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltMstrPositionLevelsService } from './ciltMstrPositionLevels.service';
 import { CreateCiltMstrPositionLevelsDto } from './model/create.ciltMstrPositionLevels.dto';
@@ -32,6 +32,12 @@ export class CiltMstrPositionLevelsController {
     return await this.ciltMstrPositionLevelsService.findByCiltMstrId(ciltMstrId);
   }
 
+  @Get('position/user')
+  @ApiOperation({ summary: 'Get all CILT Position Levels for current user positions with executions from last 24 hours' })
+  async findByUserPositionsWithRecentExecutions(@Request() req) {
+    return await this.ciltMstrPositionLevelsService.findByUserIdWithRecentExecutions(req.user.id);
+  }
+
   @Get('position/:positionId')
   @ApiOperation({ summary: 'Get all CILT Position Levels by Position ID' })
   @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
@@ -51,13 +57,6 @@ export class CiltMstrPositionLevelsController {
   @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
   async findByLevelIdWithRecentExecutions(@Param('levelId') levelId: number) {
     return await this.ciltMstrPositionLevelsService.findByLevelIdWithRecentExecutions(levelId);
-  }
-
-  @Get('position/:positionId/recent-executions')
-  @ApiOperation({ summary: 'Get all CILT Position Levels by Position ID with executions from last 24 hours' })
-  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
-  async findByPositionIdWithRecentExecutions(@Param('positionId') positionId: number) {
-    return await this.ciltMstrPositionLevelsService.findByPositionIdWithRecentExecutions(positionId);
   }
 
   @Get(':id')
