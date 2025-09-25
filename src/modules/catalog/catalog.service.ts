@@ -31,8 +31,33 @@ export class CatalogService {
       
       const [cardTypes, priorities, preclassifiers, levels, employees, cards] = await Promise.all([
         queryRunner.query(`
-          SELECT ct.id, ct.cardType_name as name, ct.color, ct.cardType_methodology_name as cardTypeMethodologyName, ct.cardType_methodology as cardTypeMethodology
-          FROM card_types ct 
+          SELECT
+            ct.id,
+            ct.site_id as siteId,
+            ct.cardType_methodology as cardTypeMethodology,
+            ct.cardType_methodology_name as methodology,
+            ct.cardType_name as name,
+            ct.cardType_description as description,
+            ct.color,
+            ct.responsable_id as responsableId,
+            ct.responsable_name as responsableName,
+            ct.status,
+            ct.quantity_pictures_create as quantityPicturesCreate,
+            ct.quantity_audios_create as quantityAudiosCreate,
+            ct.quantity_videos_create as quantityVideosCreate,
+            ct.audios_duration_create as audiosDurationCreate,
+            ct.videos_duration_create as videosDurationCreate,
+            ct.quantity_pictures_close as quantityPicturesClose,
+            ct.quantity_audios_close as quantityAudiosClose,
+            ct.quantity_videos_close as quantityVideosClose,
+            ct.audios_duration_close as audiosDurationClose,
+            ct.videos_duration_close as videosDurationClose,
+            ct.quantity_pictures_ps as quantityPicturesPs,
+            ct.quantity_audios_ps as quantityAudiosPs,
+            ct.quantity_videos_ps as quantityVideosPs,
+            ct.audios_duration_ps as audiosDurationPs,
+            ct.videos_duration_ps as videosDurationPs
+          FROM card_types ct
           WHERE ct.site_id = ? AND ct.deleted_at IS NULL
           ORDER BY ct.cardType_name
         `, [siteId]),
