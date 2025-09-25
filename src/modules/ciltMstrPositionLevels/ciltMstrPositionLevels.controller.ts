@@ -53,6 +53,13 @@ export class CiltMstrPositionLevelsController {
     return await this.ciltMstrPositionLevelsService.findByLevelIdWithRecentExecutions(levelId);
   }
 
+  @Get('position/:positionId/recent-executions')
+  @ApiOperation({ summary: 'Get all CILT Position Levels by Position ID with executions from last 24 hours' })
+  @ApiParam({ name: 'positionId', type: 'number', description: 'Position ID' })
+  async findByPositionIdWithRecentExecutions(@Param('positionId') positionId: number) {
+    return await this.ciltMstrPositionLevelsService.findByPositionIdWithRecentExecutions(positionId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a CILT Position Level by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Position Level ID' })
