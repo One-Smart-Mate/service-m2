@@ -63,15 +63,15 @@ export class CatalogService {
         `, [siteId]),
         
         queryRunner.query(`
-          SELECT p.id, p.priority_code as priorityCode, p.priority_description as priorityDescription, p.priority_days as priorityDays
-          FROM priorities p 
+          SELECT p.id, p.priority_code as priorityCode, p.priority_description as priorityDescription, p.priority_days as priorityDays, p.status
+          FROM priorities p
           WHERE p.site_id = ? AND p.deleted_at IS NULL
           ORDER BY p.priority_code
         `, [siteId]),
         
         queryRunner.query(`
-          SELECT pc.id, pc.preclassifier_code as preclassifierCode, pc.preclassifier_description as preclassifierDescription
-          FROM preclassifiers pc 
+          SELECT pc.id, pc.cardType_id as cardTypeId, pc.preclassifier_code as preclassifierCode, pc.preclassifier_description as preclassifierDescription, pc.status
+          FROM preclassifiers pc
           WHERE pc.site_id = ? AND pc.deleted_at IS NULL
           ORDER BY pc.preclassifier_code
         `, [siteId]),
@@ -84,10 +84,14 @@ export class CatalogService {
         `, [siteId]),
         
         queryRunner.query(`
-          SELECT u.id, u.name, u.email, u.phone_number as phoneNumber, u.fast_password as fastPassword
+          SELECT u.id, u.name, u.email,
+                 GROUP_CONCAT(r.name) as roles
           FROM users u
           INNER JOIN user_has_sites uhs ON u.id = uhs.user_id
+          LEFT JOIN user_role ur ON u.id = ur.user_id
+          LEFT JOIN role r ON ur.role_id = r.id
           WHERE uhs.site_id = ? AND u.status = 'A' AND u.deleted_at IS NULL
+          GROUP BY u.id, u.name, u.email
           ORDER BY u.name
         `, [siteId]),
         
