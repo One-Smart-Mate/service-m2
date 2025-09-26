@@ -39,13 +39,14 @@ export class CiltMstrPositionLevelsService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltMstrPositionLevelsRepository.find({ 
-        where: { 
+      const results = await this.ciltMstrPositionLevelsRepository.find({
+        where: {
           siteId,
-          deletedAt: IsNull() 
+          deletedAt: IsNull()
         },
         relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
+      return results.filter(result => result.ciltMstr !== null);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -228,7 +229,7 @@ export class CiltMstrPositionLevelsService {
     try {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      return await this.ciltMstrPositionLevelsRepository
+      const results = await this.ciltMstrPositionLevelsRepository
         .createQueryBuilder('cpl')
         .leftJoinAndSelect('cpl.position', 'position')
         .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
@@ -241,6 +242,7 @@ export class CiltMstrPositionLevelsService {
         .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
         .where('cpl.levelId = :levelId AND cpl.deletedAt IS NULL', { levelId })
         .getMany();
+      return results.filter(result => result.ciltMstr !== null);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -268,7 +270,7 @@ export class CiltMstrPositionLevelsService {
 
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-      return await this.ciltMstrPositionLevelsRepository
+      const results = await this.ciltMstrPositionLevelsRepository
         .createQueryBuilder('cpl')
         .leftJoinAndSelect('cpl.position', 'position')
         .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
@@ -281,6 +283,7 @@ export class CiltMstrPositionLevelsService {
         .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
         .where('cpl.positionId IN (:...positionIds) AND cpl.deletedAt IS NULL', { positionIds })
         .getMany();
+      return results.filter(result => result.ciltMstr !== null);
     } catch (exception) {
       HandleException.exception(exception);
     }
