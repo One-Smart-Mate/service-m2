@@ -875,43 +875,40 @@ export class CardService {
     status?: string,
   ) => {
     try {
-      const useStartDate = startDate || null;
-      const useEndDate = endDate || null;
-      const requestedStatus = status || 'A'; // Default to 'A' like other charts
+      const queryBuilder = this.cardRepository
+        .createQueryBuilder('card')
+        .select([
+          'card.cardTypeName as cardTypeName',
+          'card.nodeName as machine',
+          'COUNT(*) as totalCards'
+        ])
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.area_id = :areaId', { areaId });
 
-      // Use the 4-parameter version as the database stored procedure expects
-      const result = await this.cardRepository.query(
-        'CALL findAreaCardsGroupedByMachine(?, ?, ?, ?)',
-        [siteId, areaId, useStartDate, useEndDate],
-      );
-
-      // Important: The stored procedure returns ALL cards regardless of status
-      // We need to filter in application layer to maintain consistency with other charts
-
-      // Validate that result is not empty and is an array before accessing index 0
-      if (!result || !Array.isArray(result) || result.length === 0) {
-        return [];
+      // Apply status filtering
+      if (status) {
+        const statusArray = status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
       }
 
-      let filteredResult = result[0];
-
-      // Additional validation to ensure filteredResult is a valid array
-      if (!filteredResult || !Array.isArray(filteredResult)) {
-        return [];
+      // Apply date filtering
+      if (startDate && endDate) {
+        queryBuilder.andWhere(
+          'card.created_at BETWEEN :startDate AND :endDate',
+          {
+            startDate,
+            endDate: `${endDate} 23:59:59`,
+          },
+        );
       }
 
-      if (filteredResult.length > 0) {
-        // Filter by status if the result has status field
-        if (requestedStatus && filteredResult.length > 0 && 'status' in filteredResult[0]) {
-          const statusArray = requestedStatus.split(',').map(s => s.trim());
-          filteredResult = filteredResult.filter(item => statusArray.includes(item.status));
-        } else if (requestedStatus !== 'A,C,R') {
-          // If we can't filter (no status field) but user requested specific status, warn
-          console.warn(`Status filtering requested (${requestedStatus}) but stored procedure doesn't return status field. Returning all results.`);
-        }
-      }
+      const result = await queryBuilder
+        .groupBy('card.cardTypeName, card.nodeName')
+        .getRawMany();
 
-      return filteredResult;
+      return result;
     } catch (exception) {
       HandleException.exception(exception);
     }
