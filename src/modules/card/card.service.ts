@@ -1429,11 +1429,13 @@ export class CardService {
           );
         }
         break;
-      case !!nodeName:
-        queryBuilder.andWhere('card.nodeName = :nodeName', { nodeName });
-        break;
       default:
         break;
+    }
+
+    // Apply nodeName filter independently (can be combined with area filter)
+    if (nodeName) {
+      queryBuilder.andWhere('card.nodeName = :nodeName', { nodeName });
     }
 
     if (preclassifier) {
