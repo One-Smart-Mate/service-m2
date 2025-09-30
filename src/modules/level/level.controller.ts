@@ -55,4 +55,14 @@ export class LevelController {
   moveLevel(@Body() moveLevelDto: MoveLevelDto) {
     return this.levelService.moveLevel(moveLevelDto);
   }
+
+  @Get('/machine/:siteId/:machineId')
+  @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  @ApiParam({ name: 'machineId', required: true, example: 'ABC123', description: 'Level Machine ID' })
+  async findByMachineIdWithPath(
+    @Param('siteId') siteId: number,
+    @Param('machineId') machineId: string
+  ) {
+    return this.levelService.findByMachineIdWithPath(+siteId, machineId);
+  }
 }

@@ -515,4 +515,45 @@ export class LevelService {
       HandleException.exception(exception);
     }
   };
+
+  findByMachineIdWithPath = async (siteId: number, machineId: string) => {
+    try {
+      // First find the level by machine ID
+      const level = await this.levelRepository.findOne({
+        where: {
+          siteId: siteId,
+          levelMachineId: machineId,
+        },
+      });
+
+      if (!level) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      // Get the full path from this level to the root
+      const pathString = await this.getLevelPathById(level.id);
+
+      // Build the hierarchy - get all levels in the path
+      const levelPath: LevelEntity[] = [];
+      let currentLevel = level;
+      levelPath.unshift(currentLevel);
+
+      while (currentLevel.superiorId && Number(currentLevel.superiorId) !== 0) {
+        const parent = await this.levelRepository.findOne({
+          where: { id: currentLevel.superiorId },
+        });
+        if (!parent) break;
+        levelPath.unshift(parent);
+        currentLevel = parent;
+      }
+
+      return {
+        level,
+        path: pathString,
+        hierarchy: levelPath,
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }
