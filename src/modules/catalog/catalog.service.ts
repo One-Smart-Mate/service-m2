@@ -3,10 +3,6 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { UsersService } from '../users/users.service';
-import {
-  ValidationException,
-  ValidationExceptionType,
-} from 'src/common/exceptions/types/validation.exception';
 
 @Injectable()
 export class CatalogService {
