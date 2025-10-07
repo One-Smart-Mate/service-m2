@@ -25,7 +25,6 @@ export class LevelEntity {
   })
   responsibleName: string;
 
-  @Exclude()
   @Column({ type: 'int', default: 0 })
   level: number;
 
