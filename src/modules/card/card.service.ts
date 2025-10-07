@@ -230,6 +230,8 @@ export class CardService {
         superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
         responsableId: node.responsibleId && node.responsibleId,
         responsableName: node.responsibleName && node.responsibleName,
+        mechanicId: createCardDTO.assignWhenCreating === 1 ? node.responsibleId : null,
+        mechanicName: createCardDTO.assignWhenCreating === 1 ? node.responsibleName : null,
         priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
