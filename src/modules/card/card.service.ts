@@ -118,6 +118,150 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
+  // Paginated version for better performance with large datasets
+  findSiteCardsPaginated = async (
+    siteId: number,
+    page: number = 1,
+    limit: number = 50,
+    filters?: {
+      searchText?: string;
+      cardNumber?: string;
+      location?: string;
+      creator?: string;
+      resolver?: string;
+      dateFilterType?: 'creation' | 'due' | '';
+      startDate?: string;
+      endDate?: string;
+      sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '';
+    }
+  ) => {
+    try {
+      const queryBuilder = this.cardRepository.createQueryBuilder('card')
+        .where('card.siteId = :siteId', { siteId });
+
+      // Apply filters
+      if (filters?.searchText) {
+        queryBuilder.andWhere(
+          '(card.creatorName LIKE :searchText OR card.areaName LIKE :searchText OR ' +
+          'card.cardTypeMethodologyName LIKE :searchText OR card.cardTypeName LIKE :searchText OR ' +
+          'card.preclassifierDescription LIKE :searchText OR card.priorityDescription LIKE :searchText OR ' +
+          'card.mechanicName LIKE :searchText OR card.responsableName LIKE :searchText OR ' +
+          'card.userProvisionalSolutionName LIKE :searchText OR card.userDefinitiveSolutionName LIKE :searchText)',
+          { searchText: `%${filters.searchText}%` }
+        );
+      }
+
+      if (filters?.cardNumber) {
+        queryBuilder.andWhere('CAST(card.siteCardId AS CHAR) LIKE :cardNumber', {
+          cardNumber: `%${filters.cardNumber}%`
+        });
+      }
+
+      if (filters?.location) {
+        queryBuilder.andWhere('card.cardLocation LIKE :location', {
+          location: `%${filters.location}%`
+        });
+      }
+
+      if (filters?.creator) {
+        queryBuilder.andWhere('card.creatorName LIKE :creator', {
+          creator: `%${filters.creator}%`
+        });
+      }
+
+      if (filters?.resolver) {
+        queryBuilder.andWhere(
+          '(card.responsableName LIKE :resolver OR ' +
+          'card.userProvisionalSolutionName LIKE :resolver OR ' +
+          'card.userDefinitiveSolutionName LIKE :resolver)',
+          { resolver: `%${filters.resolver}%` }
+        );
+      }
+
+      // Date range filter
+      if (filters?.dateFilterType && filters?.startDate && filters?.endDate) {
+        if (filters.dateFilterType === 'creation') {
+          queryBuilder.andWhere('card.cardCreationDate BETWEEN :startDate AND :endDate', {
+            startDate: filters.startDate,
+            endDate: filters.endDate
+          });
+        } else if (filters.dateFilterType === 'due') {
+          queryBuilder.andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
+            startDate: filters.startDate,
+            endDate: filters.endDate
+          });
+        }
+      }
+
+      // Apply sorting
+      if (filters?.sortOption) {
+        switch (filters.sortOption) {
+          case 'dueDate-asc':
+            queryBuilder.orderBy('card.cardDueDate', 'ASC', 'NULLS LAST');
+            break;
+          case 'dueDate-desc':
+            queryBuilder.orderBy('card.cardDueDate', 'DESC', 'NULLS LAST');
+            break;
+          case 'creationDate-asc':
+            queryBuilder.orderBy('card.cardCreationDate', 'ASC');
+            break;
+          case 'creationDate-desc':
+            queryBuilder.orderBy('card.cardCreationDate', 'DESC');
+            break;
+          default:
+            queryBuilder.orderBy('card.siteCardId', 'DESC');
+        }
+      } else {
+        queryBuilder.orderBy('card.siteCardId', 'DESC');
+      }
+
+      // Get total count
+      const total = await queryBuilder.getCount();
+
+      // Apply pagination
+      const skip = (page - 1) * limit;
+      queryBuilder.skip(skip).take(limit);
+
+      // Get cards
+      const cards = await queryBuilder.getMany();
+
+      // Add evidences and level name
+      if (cards && cards.length > 0) {
+        const cardIds = cards.map(card => card.id);
+        const evidences = await this.evidenceRepository.find({
+          where: { cardId: In(cardIds) }
+        });
+
+        const cardEvidencesMap = new Map();
+        evidences.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          card['levelName'] = card.nodeName;
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+
+      const totalPages = Math.ceil(total / limit);
+      const hasMore = page < totalPages;
+
+      return {
+        data: cards,
+        total,
+        page,
+        limit,
+        totalPages,
+        hasMore
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
   findResponsibleCards = async (responsibleId: number) => {
     try {
       const cards = await this.cardRepository.findBy({
@@ -230,6 +374,8 @@ export class CardService {
         superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
         responsableId: node.responsibleId && node.responsibleId,
         responsableName: node.responsibleName && node.responsibleName,
+        mechanicId: createCardDTO.assignWhenCreating === 1 ? node.responsibleId : null,
+        mechanicName: createCardDTO.assignWhenCreating === 1 ? node.responsibleName : null,
         priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
@@ -1430,11 +1576,13 @@ export class CardService {
           );
         }
         break;
-      case !!nodeName:
-        queryBuilder.andWhere('card.nodeName = :nodeName', { nodeName });
-        break;
       default:
         break;
+    }
+
+    // Apply nodeName filter independently (can be combined with area filter)
+    if (nodeName) {
+      queryBuilder.andWhere('card.nodeName = :nodeName', { nodeName });
     }
 
     if (preclassifier) {

@@ -556,4 +556,144 @@ export class LevelService {
       HandleException.exception(exception);
     }
   };
+
+  // Get level tree with lazy loading - only loads specified depth
+  getLevelTreeLazy = async (siteId: number, parentId?: number, depth: number = 2) => {
+    try {
+      // If no parentId, get root levels
+      const rootLevels = await this.levelRepository.find({
+        where: {
+          siteId: siteId,
+          status: stringConstants.A,
+          ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
+        },
+      });
+
+      // Recursively load children up to specified depth
+      const loadChildrenRecursive = async (levels: LevelEntity[], currentDepth: number): Promise<any[]> => {
+        if (currentDepth <= 0) {
+          // Just mark if they have children without loading them
+          return Promise.all(levels.map(async (level) => {
+            const childCount = await this.levelRepository.count({
+              where: { superiorId: level.id, status: stringConstants.A }
+            });
+            return {
+              ...level,
+              hasChildren: childCount > 0,
+              childrenCount: childCount,
+              children: []
+            };
+          }));
+        }
+
+        return Promise.all(levels.map(async (level) => {
+          const children = await this.levelRepository.find({
+            where: { superiorId: level.id, status: stringConstants.A }
+          });
+
+          const childrenWithNested = await loadChildrenRecursive(children, currentDepth - 1);
+
+          return {
+            ...level,
+            hasChildren: children.length > 0,
+            childrenCount: children.length,
+            children: childrenWithNested
+          };
+        }));
+      };
+
+      const treeData = await loadChildrenRecursive(rootLevels, depth - 1);
+
+      // Return the tree data with metadata for compatibility
+      return {
+        data: treeData,
+        parentId: parentId || null,
+        depth: depth
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  // Get only direct children of a level
+  getChildrenLevels = async (siteId: number, parentId: number) => {
+    try {
+      const children = await this.levelRepository.find({
+        where: {
+          siteId: siteId,
+          superiorId: parentId,
+          status: stringConstants.A
+        }
+      });
+
+      // For each child, check if it has children
+      const childrenWithMeta = await Promise.all(children.map(async (child) => {
+        const grandchildrenCount = await this.levelRepository.count({
+          where: { superiorId: child.id, status: stringConstants.A }
+        });
+
+        return {
+          ...child,
+          hasChildren: grandchildrenCount > 0,
+          childrenCount: grandchildrenCount
+        };
+      }));
+
+      return childrenWithMeta;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  // Get statistics about levels
+  getLevelStats = async (siteId: number) => {
+    try {
+      const totalLevels = await this.levelRepository.count({
+        where: { siteId: siteId }
+      });
+
+      const activeLevels = await this.levelRepository.count({
+        where: { siteId: siteId, status: stringConstants.A }
+      });
+
+      const rootLevels = await this.levelRepository.count({
+        where: {
+          siteId: siteId,
+          status: stringConstants.A,
+          superiorId: In([0, null])
+        }
+      });
+
+      // Get max depth
+      const query = `
+        WITH RECURSIVE level_depth AS (
+          SELECT id, superior_id, 1 as depth
+          FROM levels
+          WHERE site_id = ? AND (superior_id = 0 OR superior_id IS NULL) AND status = 'A'
+
+          UNION ALL
+
+          SELECT l.id, l.superior_id, ld.depth + 1
+          FROM levels l
+          INNER JOIN level_depth ld ON l.superior_id = ld.id
+          WHERE l.site_id = ? AND l.status = 'A'
+        )
+        SELECT MAX(depth) as maxDepth FROM level_depth;
+      `;
+
+      const maxDepthResult = await this.levelRepository.query(query, [siteId, siteId]);
+      const maxDepth = maxDepthResult[0]?.maxDepth || 0;
+
+      return {
+        totalLevels,
+        activeLevels,
+        inactiveLevels: totalLevels - activeLevels,
+        rootLevels,
+        maxDepth,
+        performanceWarning: totalLevels > 1000
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { LevelService } from './level.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
@@ -48,7 +48,7 @@ export class LevelController {
   }
 
   @Put('/move')
-  @ApiBody({ 
+  @ApiBody({
     type: MoveLevelDto,
     description: 'Move a level to a new position in the hierarchy. The children are automatically reassigned.'
   })
@@ -64,5 +64,31 @@ export class LevelController {
     @Param('machineId') machineId: string
   ) {
     return this.levelService.findByMachineIdWithPath(+siteId, machineId);
+  }
+
+  @Get('/tree/:siteId/lazy')
+  @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  async getLevelTreeLazy(
+    @Param('siteId') siteId: number,
+    @Query('parentId') parentId?: number,
+    @Query('depth') depth: number = 2
+  ) {
+    return this.levelService.getLevelTreeLazy(+siteId, parentId, depth);
+  }
+
+  @Get('/tree/:siteId/children/:parentId')
+  @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  @ApiParam({ name: 'parentId', required: true, example: 1, description: 'Parent Level ID' })
+  async getChildrenLevels(
+    @Param('siteId') siteId: number,
+    @Param('parentId') parentId: number
+  ) {
+    return this.levelService.getChildrenLevels(+siteId, +parentId);
+  }
+
+  @Get('/stats/:siteId')
+  @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  async getLevelStats(@Param('siteId') siteId: number) {
+    return this.levelService.getLevelStats(+siteId);
   }
 }

@@ -6,6 +6,7 @@ import { CiltMstrPositionLevelsEntity } from './entities/ciltMstrPositionLevels.
 import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
 import { PositionEntity } from '../position/entities/position.entity';
 import { LevelEntity } from '../level/entities/level.entity';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { LevelEntity } from '../level/entities/level.entity';
       CiltMstrPositionLevelsEntity,
       CiltMstrEntity,
       PositionEntity,
-      LevelEntity
+      LevelEntity,
+      UsersPositionsEntity
     ])
   ],
   controllers: [CiltMstrPositionLevelsController],

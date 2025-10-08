@@ -9,6 +9,7 @@ import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common
 import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
 import { PositionEntity } from '../position/entities/position.entity';
 import { LevelEntity } from '../level/entities/level.entity';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 
 @Injectable()
 export class CiltMstrPositionLevelsService {
@@ -21,6 +22,8 @@ export class CiltMstrPositionLevelsService {
     private readonly positionRepository: Repository<PositionEntity>,
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
+    @InjectRepository(UsersPositionsEntity)
+    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
   ) {}
 
   findAll = async () => {
@@ -36,13 +39,14 @@ export class CiltMstrPositionLevelsService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.ciltMstrPositionLevelsRepository.find({ 
-        where: { 
+      const results = await this.ciltMstrPositionLevelsRepository.find({
+        where: {
           siteId,
-          deletedAt: IsNull() 
+          deletedAt: IsNull()
         },
         relations: ['position', 'ciltMstr', 'ciltMstr.sequences']
       });
+      return results.filter(result => result.ciltMstr !== null);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -224,8 +228,8 @@ export class CiltMstrPositionLevelsService {
   findByLevelIdWithRecentExecutions = async (levelId: number) => {
     try {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      
-      return await this.ciltMstrPositionLevelsRepository
+
+      const results = await this.ciltMstrPositionLevelsRepository
         .createQueryBuilder('cpl')
         .leftJoinAndSelect('cpl.position', 'position')
         .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
@@ -238,6 +242,48 @@ export class CiltMstrPositionLevelsService {
         .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
         .where('cpl.levelId = :levelId AND cpl.deletedAt IS NULL', { levelId })
         .getMany();
+      return results.filter(result => result.ciltMstr !== null);
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  findByUserIdWithRecentExecutions = async (userId: number) => {
+    try {
+      const userPositions = await this.usersPositionsRepository.find({
+        where: {
+          userId,
+          deletedAt: IsNull()
+        },
+        select: ['positionId']
+      });
+
+      if (userPositions.length === 0) {
+        return [];
+      }
+
+      const positionIds = userPositions.map(up => up.positionId).filter(id => id != null);
+
+      if (positionIds.length === 0) {
+        return [];
+      }
+
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const results = await this.ciltMstrPositionLevelsRepository
+        .createQueryBuilder('cpl')
+        .leftJoinAndSelect('cpl.position', 'position')
+        .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
+        .leftJoinAndSelect('ciltMstr.sequences', 'sequences')
+        .leftJoinAndSelect('sequences.executions', 'executions', 'executions.createdAt >= :date', {
+          date: twentyFourHoursAgo
+        })
+        .leftJoinAndSelect('executions.evidences', 'evidences')
+        .leftJoinAndSelect('executions.referenceOplSop', 'referenceOplSop')
+        .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
+        .where('cpl.positionId IN (:...positionIds) AND cpl.deletedAt IS NULL', { positionIds })
+        .getMany();
+      return results.filter(result => result.ciltMstr !== null);
     } catch (exception) {
       HandleException.exception(exception);
     }

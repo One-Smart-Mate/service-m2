@@ -22,7 +22,7 @@ export class PreclassifierEntity {
   @Column({ name: 'site_code', type: 'char', length: 6 })
   siteCode: string;
 
-  @Column({ name: 'preclassifier_code', type: 'char', length: 3 })
+  @Column({ name: 'preclassifier_code', type: 'char', length: 6 })
   preclassifierCode: string;
 
   @Column({ name: 'preclassifier_description', type: 'varchar', length: 100 })

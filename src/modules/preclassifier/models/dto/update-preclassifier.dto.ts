@@ -19,10 +19,10 @@ export class UpdatePreclassifierDTO {
 
   @ApiProperty({
     description: 'Preclassifier code',
-    maxLength: 3,
+    maxLength: 6,
   })
   @IsString()
-  @MaxLength(3)
+  @MaxLength(6)
   @IsNotEmpty()
   preclassifierCode: string;
 

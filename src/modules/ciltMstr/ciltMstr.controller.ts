@@ -27,7 +27,7 @@ export class CiltMstrController {
   }
 
   @Post('user')
-  @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
+  @ApiOperation({ summary: 'DEPRECATED' })
   @ApiBody({ type: FindByUserDTO })
   async findByUserId(@Body() findByUserDto: FindByUserDTO, @Request() req: any) {
     const userTimezone = req.user?.timezone;    
@@ -39,7 +39,7 @@ export class CiltMstrController {
   }
   
   @Get('user-read-only/:userId/:date')
-  @ApiOperation({ summary: 'Get all CILTs related to positions assigned to a user' })
+  @ApiOperation({ summary: 'DEPRECATED' })
   @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
   @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
   async findCiltsByUserIdReadOnly(
