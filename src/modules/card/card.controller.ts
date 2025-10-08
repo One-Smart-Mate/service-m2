@@ -28,6 +28,51 @@ export class CardController {
   findBySiteId(@Param('siteId') siteId: number) {
     return this.cardService.findSiteCards(siteId);
   }
+
+  @Get('/all/:siteId/paginated')
+  @ApiParam({ name: 'siteId' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  @ApiQuery({ name: 'searchText', required: false, description: 'General search text' })
+  @ApiQuery({ name: 'cardNumber', required: false, description: 'Card number filter' })
+  @ApiQuery({ name: 'location', required: false, description: 'Location filter' })
+  @ApiQuery({ name: 'creator', required: false, description: 'Creator name filter' })
+  @ApiQuery({ name: 'resolver', required: false, description: 'Resolver/Responsible filter' })
+  @ApiQuery({ name: 'dateFilterType', required: false, description: 'Date filter type (creation or due)' })
+  @ApiQuery({ name: 'startDate', required: false, description: 'Start date (ISO format)' })
+  @ApiQuery({ name: 'endDate', required: false, description: 'End date (ISO format)' })
+  @ApiQuery({ name: 'sortOption', required: false, description: 'Sort option' })
+  findBySiteIdPaginated(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('searchText') searchText?: string,
+    @Query('cardNumber') cardNumber?: string,
+    @Query('location') location?: string,
+    @Query('creator') creator?: string,
+    @Query('resolver') resolver?: string,
+    @Query('dateFilterType') dateFilterType?: 'creation' | 'due' | '',
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('sortOption') sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '',
+  ) {
+    return this.cardService.findSiteCardsPaginated(
+      siteId,
+      page || 1,
+      limit || 50,
+      {
+        searchText,
+        cardNumber,
+        location,
+        creator,
+        resolver,
+        dateFilterType,
+        startDate,
+        endDate,
+        sortOption,
+      }
+    );
+  }
   @Get('/uuid/:uuid')
   @ApiParam({ name: 'uuid' })
   findByCardUUID(@Param('uuid') uuid: string) {

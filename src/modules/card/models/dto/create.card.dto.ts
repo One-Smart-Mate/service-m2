@@ -106,4 +106,9 @@ export class CreateCardDTO {
   @IsString()
   @IsOptional()
   customDueDate: string | null;
+
+  @ApiProperty({ required: false, description: 'Flag to indicate if the card should be assigned to the level responsible when created' })
+  @IsInt()
+  @IsOptional()
+  assignWhenCreating: number;
 }
