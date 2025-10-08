@@ -33,16 +33,13 @@ export class CardTypesService {
 
   findSiteActiveCardTypes = async (siteId: number) => {
     try {
-      const activeCardTypesWithPreclassifiers = await this.cardTypesRepository
+      const activeCardTypes = await this.cardTypesRepository
         .createQueryBuilder('cardTypes')
-        .leftJoin('cardTypes.preclassifiers', 'preclassifiers')
         .where('cardTypes.siteId = :siteId', { siteId })
         .andWhere('cardTypes.status = :status', { status: stringConstants.A })
-        .andWhere('preclassifiers.id IS NOT NULL')
-        .distinct(true)
         .getMany();
 
-      return activeCardTypesWithPreclassifiers;
+      return activeCardTypes;
     } catch (exception) {
       HandleException.exception(exception);
     }
