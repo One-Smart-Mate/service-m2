@@ -374,8 +374,8 @@ export class CardService {
         superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
         responsableId: node.responsibleId && node.responsibleId,
         responsableName: node.responsibleName && node.responsibleName,
-        mechanicId: createCardDTO.assignWhenCreating === 1 ? node.responsibleId : null,
-        mechanicName: createCardDTO.assignWhenCreating === 1 ? node.responsibleName : null,
+        mechanicId: node.assignWhileCreate === 1 ? node.responsibleId : null,
+        mechanicName: node.assignWhileCreate === 1 ? node.responsibleName : null,
         priorityId: priority.id,
         priorityCode: priority.priorityCode,
         priorityDescription: priority.priorityDescription,
@@ -1013,7 +1013,7 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  public findAreaCardsGroupedByMachine = async (
+   public findAreaCardsGroupedByMachine = async (
     siteId: number,
     areaId: number,
     startDate?: string,
@@ -1059,6 +1059,7 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
+
 
   findSiteCardsGroupedByCreator = async (
     siteId: number,

@@ -186,6 +186,12 @@ export class LevelService {
       level.name = updateLevelDTO.name;
       level.description = updateLevelDTO.description;
       level.levelMachineId = updateLevelDTO.levelMachineId;
+      level.notify = updateLevelDTO.notify;
+
+      // Update assignWhileCreate if provided
+      if (updateLevelDTO.assignWhileCreate !== undefined) {
+        level.assignWhileCreate = updateLevelDTO.assignWhileCreate;
+      }
 
       if (updateLevelDTO.status !== level.status) {
         const allLevels = await this.findAllChildLevels(level.id);
