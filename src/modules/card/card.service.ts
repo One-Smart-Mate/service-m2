@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Repository } from 'typeorm';
+import { In, Repository, DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -35,6 +35,12 @@ import { UserEntity } from '../users/entities/user.entity';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
 import { randomUUID } from "crypto";
+import {
+  CardReportGroupedDTO,
+  CardReportDetailsDTO,
+  CardsByMachineDTO,
+  CardsByComponentsDTO,
+} from './models/dto/card.report.dto';
 
 @Injectable()
 export class CardService {
@@ -56,6 +62,8 @@ export class CardService {
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(AmDiscardReasonEntity)
     private readonly amDiscardReasonRepository: Repository<AmDiscardReasonEntity>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
@@ -1877,6 +1885,226 @@ export class CardService {
         },
         cards: cards || []
       };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  // Card Report Methods (based on PHP demo)
+  getCardReportGrouped = async (dto: CardReportGroupedDTO) => {
+    try {
+      const sql = `
+        WITH RECURSIVE
+        tree AS (
+          SELECT * FROM levels WHERE id = ?
+          UNION ALL
+          SELECT l.* FROM levels l JOIN tree t ON l.superior_id = t.id
+        ),
+        cards_counts AS (
+          SELECT node_id, COUNT(*) AS total
+          FROM cards
+          WHERE site_id = ?
+            AND DATE(card_creation_date) BETWEEN ? AND ?
+          GROUP BY node_id
+        ),
+        target_nodes AS (
+          SELECT id FROM tree WHERE level = ?
+        ),
+        ancestors AS (
+          SELECT tn.id AS leaf_id, l.id AS anc_id, l.level, l.level_name, l.superior_id
+          FROM target_nodes tn
+          JOIN levels l ON l.id = tn.id
+          UNION ALL
+          SELECT a.leaf_id, p.id, p.level, p.level_name, p.superior_id
+          FROM ancestors a
+          JOIN levels p ON p.id = a.superior_id
+          WHERE a.level > ?
+        )
+        SELECT
+          a.anc_id AS grouping_id,
+          a.level_name AS level_name,
+          SUM(cc.total) AS total_cards
+        FROM ancestors a
+        JOIN cards_counts cc ON cc.node_id = a.leaf_id
+        WHERE a.level = ?
+        GROUP BY a.anc_id, a.level_name
+        ORDER BY total_cards DESC
+      `;
+
+      const result = await this.dataSource.query(sql, [
+        dto.rootNode,
+        dto.siteId,
+        dto.dateStart,
+        dto.dateEnd,
+        dto.targetLevel,
+        dto.groupingLevel,
+        dto.groupingLevel,
+      ]);
+
+      // Convert buffer values to numbers
+      return result.map((row: any) => ({
+        grouping_id: Number(row.grouping_id),
+        level_name: row.level_name,
+        total_cards: Number(row.total_cards),
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getCardReportDetails = async (dto: CardReportDetailsDTO) => {
+    try {
+      const sql = `
+        WITH RECURSIVE tree AS (
+          SELECT * FROM levels WHERE id = ?
+          UNION ALL
+          SELECT l.*
+          FROM levels l
+          JOIN tree t ON l.superior_id = t.id
+        )
+        SELECT
+          maq.id AS machine_id,
+          maq.level_name AS maquina,
+          comp.id AS comp_id,
+          comp.level_name AS comp_name,
+          COUNT(c.id) AS n_cards
+        FROM cards c
+        JOIN levels maq ON maq.id = c.superior_id
+        JOIN levels comp ON comp.id = c.node_id
+        WHERE c.site_id = ?
+          AND DATE(c.card_creation_date) BETWEEN ? AND ?
+          AND (
+            maq.id IN (SELECT id FROM tree)
+            OR c.superior_id = ?
+          )
+          AND (
+            comp.id IN (SELECT id FROM tree)
+            OR c.node_id = ?
+          )
+          AND comp.level = ?
+        GROUP BY maq.id, comp.id
+        ORDER BY n_cards DESC
+      `;
+
+      const result = await this.dataSource.query(sql, [
+        dto.rootId,
+        dto.siteId,
+        dto.dateStart,
+        dto.dateEnd,
+        dto.rootId,
+        dto.rootId,
+        dto.targetLevel,
+      ]);
+
+      // Convert buffer values to numbers
+      return result.map((row: any) => ({
+        machine_id: Number(row.machine_id),
+        maquina: row.maquina,
+        comp_id: Number(row.comp_id),
+        comp_name: row.comp_name,
+        n_cards: Number(row.n_cards),
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getCardsByMachine = async (dto: CardsByMachineDTO) => {
+    try {
+      const sql = `
+        SELECT
+          c.id, c.site_code, c.site_card_id, c.card_UUID,
+          c.card_creation_date, c.status, c.cardType_name,
+          c.preclassifier_code, c.preclassifier_description,
+          comp.level_name AS componente,
+          maq.level_name AS maquina
+        FROM cards c
+        JOIN levels maq ON maq.id = c.superior_id
+        JOIN levels comp ON comp.id = c.node_id AND comp.level = ?
+        WHERE c.superior_id = ?
+          AND c.site_id = ?
+          AND DATE(c.card_creation_date) BETWEEN ? AND ?
+        ORDER BY c.card_creation_date DESC, c.id DESC
+      `;
+
+      const cards = await this.dataSource.query(sql, [
+        dto.targetLevel,
+        dto.machineId,
+        dto.siteId,
+        dto.dateStart,
+        dto.dateEnd,
+      ]);
+
+      // Get evidences for all cards and convert buffer values to proper types
+      if (cards && cards.length > 0) {
+        const allEvidencesMap = await this.findAllEvidences(dto.siteId);
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          // Convert buffer values to numbers
+          card.id = Number(card.id);
+          card.site_card_id = Number(card.site_card_id);
+          card['levelName'] = card.componente;
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+
+      return cards;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getCardsByComponents = async (dto: CardsByComponentsDTO) => {
+    try {
+      const placeholders = dto.componentIds.map(() => '?').join(',');
+      const sql = `
+        SELECT
+          c.id, c.site_code, c.site_card_id, c.card_UUID,
+          c.card_creation_date, c.status, c.cardType_name,
+          c.preclassifier_code, c.preclassifier_description
+        FROM cards c
+        WHERE c.node_id IN (${placeholders})
+          AND c.site_id = ?
+          AND DATE(c.card_creation_date) BETWEEN ? AND ?
+        ORDER BY c.card_creation_date DESC, c.id DESC
+      `;
+
+      const cards = await this.dataSource.query(sql, [
+        ...dto.componentIds,
+        dto.siteId,
+        dto.dateStart,
+        dto.dateEnd,
+      ]);
+
+      // Get evidences for all cards and convert buffer values to proper types
+      if (cards && cards.length > 0) {
+        const allEvidencesMap = await this.findAllEvidences(dto.siteId);
+
+        const cardEvidencesMap = new Map();
+        allEvidencesMap.forEach((evidence) => {
+          if (!cardEvidencesMap.has(evidence.cardId)) {
+            cardEvidencesMap.set(evidence.cardId, []);
+          }
+          cardEvidencesMap.get(evidence.cardId).push(evidence);
+        });
+
+        for (const card of cards) {
+          // Convert buffer values to numbers
+          card.id = Number(card.id);
+          card.site_card_id = Number(card.site_card_id);
+          card['evidences'] = cardEvidencesMap.get(card.id) || [];
+        }
+      }
+
+      return cards;
     } catch (exception) {
       HandleException.exception(exception);
     }

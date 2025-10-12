@@ -7,6 +7,12 @@ import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.so
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
+import {
+  CardReportGroupedDTO,
+  CardReportDetailsDTO,
+  CardsByMachineDTO,
+  CardsByComponentsDTO,
+} from './models/dto/card.report.dto';
 
 @Controller('card')
 @ApiTags('card')
@@ -421,5 +427,30 @@ export class CardController {
     @Param('fastPassword') fastPassword: string,
   ) {
     return this.cardService.findCardsByFastPassword(siteId, fastPassword);
+  }
+
+  // Advanced Card Reports Endpoints
+  @Post('/report/grouped')
+  @ApiBody({ type: CardReportGroupedDTO })
+  getCardReportGrouped(@Body() dto: CardReportGroupedDTO) {
+    return this.cardService.getCardReportGrouped(dto);
+  }
+
+  @Post('/report/details')
+  @ApiBody({ type: CardReportDetailsDTO })
+  getCardReportDetails(@Body() dto: CardReportDetailsDTO) {
+    return this.cardService.getCardReportDetails(dto);
+  }
+
+  @Post('/report/by-machine')
+  @ApiBody({ type: CardsByMachineDTO })
+  getCardsByMachine(@Body() dto: CardsByMachineDTO) {
+    return this.cardService.getCardsByMachine(dto);
+  }
+
+  @Post('/report/by-components')
+  @ApiBody({ type: CardsByComponentsDTO })
+  getCardsByComponents(@Body() dto: CardsByComponentsDTO) {
+    return this.cardService.getCardsByComponents(dto);
   }
 }
