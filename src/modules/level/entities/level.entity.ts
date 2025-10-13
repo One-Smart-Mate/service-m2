@@ -45,7 +45,17 @@ export class LevelEntity {
 
   @Column({type: 'tinyint', default: 1})
   notify: number;
-  
+
+  @Column({
+    type: 'tinyint',
+    width: 1,
+    nullable: false,
+    default: () => '0',
+    name: 'assign_when_creating',
+    comment: 'Flag to indicate if cards created at this level should auto-assign the level responsible as mechanic'
+  })
+  assignWhileCreate: number;
+
   @Exclude()
   @Column({ name: 'created_at', type: 'timestamp', nullable: true })
   createdAt: Date;

@@ -1,14 +1,24 @@
-import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { SiteAccessGuard } from '../auth/guard/site-access.guard';
+import { SkipSiteAccess } from 'src/common/decorators/skip-site-access.decorator';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
+import {
+  CardReportGroupedDTO,
+  CardReportDetailsDTO,
+  CardsByMachineDTO,
+  CardsByComponentsDTO,
+} from './models/dto/card.report.dto';
 
 @Controller('card')
+@UseGuards(AuthGuard, SiteAccessGuard)
 @ApiTags('card')
 @ApiBearerAuth()
 export class CardController {
@@ -120,11 +130,11 @@ export class CardController {
   }
 
   @Get('/site/preclassifiers/:siteId')
-  @ApiQuery({ 
-    name: 'status', 
-    required: false, 
-    description: 'Card status filter (comma-separated: A,C,R)', 
-    example: 'A' 
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Card status filter (comma-separated: A,C,R)',
+    example: 'A'
   })
   findSiteCardsGroupedByPreclassifier(
     @Param('siteId') siteId: number,
@@ -136,7 +146,7 @@ export class CardController {
       siteId,
       startDate,
       endDate,
-      status,
+      status
     );
   }
 
@@ -421,5 +431,30 @@ export class CardController {
     @Param('fastPassword') fastPassword: string,
   ) {
     return this.cardService.findCardsByFastPassword(siteId, fastPassword);
+  }
+
+  // Advanced Card Reports Endpoints
+  @Post('/report/grouped')
+  @ApiBody({ type: CardReportGroupedDTO })
+  getCardReportGrouped(@Body() dto: CardReportGroupedDTO) {
+    return this.cardService.getCardReportGrouped(dto);
+  }
+
+  @Post('/report/details')
+  @ApiBody({ type: CardReportDetailsDTO })
+  getCardReportDetails(@Body() dto: CardReportDetailsDTO) {
+    return this.cardService.getCardReportDetails(dto);
+  }
+
+  @Post('/report/by-machine')
+  @ApiBody({ type: CardsByMachineDTO })
+  getCardsByMachine(@Body() dto: CardsByMachineDTO) {
+    return this.cardService.getCardsByMachine(dto);
+  }
+
+  @Post('/report/by-components')
+  @ApiBody({ type: CardsByComponentsDTO })
+  getCardsByComponents(@Body() dto: CardsByComponentsDTO) {
+    return this.cardService.getCardsByComponents(dto);
   }
 }
