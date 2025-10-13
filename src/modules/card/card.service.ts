@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
 import { In, Repository, DataSource } from 'typeorm';
@@ -65,6 +65,18 @@ export class CardService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
+
+  private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
+    const authUser = await this.userService.findByIdWithSites(userId);
+    if (!authUser || !authUser.userHasSites?.length) {
+      throw new UnauthorizedException();
+    }
+
+    const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+    if (!hasAccessToSite) {
+      throw new UnauthorizedException();
+    }
+  }
 
   findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
     try {
@@ -708,7 +720,7 @@ export class CardService {
     siteId: number,
     startDate?: string,
     endDate?: string,
-    status?: string,
+    status?: string
   ) => {
     try {
       const queryBuilder = this.cardRepository

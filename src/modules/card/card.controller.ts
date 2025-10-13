@@ -1,6 +1,9 @@
-import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from '../auth/guard/auth.guard';
+import { SiteAccessGuard } from '../auth/guard/site-access.guard';
+import { SkipSiteAccess } from 'src/common/decorators/skip-site-access.decorator';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -15,6 +18,7 @@ import {
 } from './models/dto/card.report.dto';
 
 @Controller('card')
+@UseGuards(AuthGuard, SiteAccessGuard)
 @ApiTags('card')
 @ApiBearerAuth()
 export class CardController {
@@ -126,11 +130,11 @@ export class CardController {
   }
 
   @Get('/site/preclassifiers/:siteId')
-  @ApiQuery({ 
-    name: 'status', 
-    required: false, 
-    description: 'Card status filter (comma-separated: A,C,R)', 
-    example: 'A' 
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Card status filter (comma-separated: A,C,R)',
+    example: 'A'
   })
   findSiteCardsGroupedByPreclassifier(
     @Param('siteId') siteId: number,
@@ -142,7 +146,7 @@ export class CardController {
       siteId,
       startDate,
       endDate,
-      status,
+      status
     );
   }
 

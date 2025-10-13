@@ -462,15 +462,24 @@ export class LevelService {
         where: { superiorId: moveLevelDto.levelId }
       });
 
+      // Capture child IDs and their descendants BEFORE reassigning
+      const reassignedLevelIds: number[] = [];
+      if (childLevels.length > 0) {
+        for (const child of childLevels) {
+          const childAndDescendants = await this.findAllChildLevels(child.id);
+          reassignedLevelIds.push(...childAndDescendants);
+        }
+      }
+
       const oldSuperiorId = levelToMove.superiorId;
       levelToMove.superiorId = moveLevelDto.newSuperiorId;
-      
+
       if (moveLevelDto.newSuperiorId === 0) {
         levelToMove.level = 0;
       } else {
         levelToMove.level = await this.getActualLevelBySuperiorId(moveLevelDto.newSuperiorId);
       }
-      
+
       levelToMove.updatedAt = new Date();
 
       const movedLevel = await this.levelRepository.save(levelToMove);
@@ -478,7 +487,7 @@ export class LevelService {
       if (childLevels.length > 0) {
         await this.levelRepository.update(
           { superiorId: moveLevelDto.levelId },
-          { 
+          {
             superiorId: oldSuperiorId,
             updatedAt: new Date()
           }
@@ -494,10 +503,14 @@ export class LevelService {
         }
       }
 
-      const allAffectedLevels = await this.findAllChildLevels(moveLevelDto.levelId);
+      // Get all levels affected by the move:
+      // 1. The moved level and its descendants (that stayed with it)
+      // 2. The reassigned children and their descendants
+      const movedLevelAndDescendants = await this.findAllChildLevels(moveLevelDto.levelId);
+      const allAffectedLevels = [...new Set([...movedLevelAndDescendants, ...reassignedLevelIds])];
+
       const levelMap = await this.findAllLevelsBySite(levelToMove.siteId);
-      
-      
+
       for (const affectedLevelId of allAffectedLevels) {
         await this.updateCardsForLevel(affectedLevelId, levelMap);
       }
