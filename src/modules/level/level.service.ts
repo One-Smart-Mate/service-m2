@@ -715,4 +715,165 @@ export class LevelService {
       HandleException.exception(exception);
     }
   };
+
+  // Clone a level with all its descendants recursively
+  cloneLevel = async (levelId: number, nameSuffix: string = ' (Copy)') => {
+    try {
+      // 1. Find the original level
+      const originalLevel = await this.levelRepository.findOne({
+        where: { id: levelId }
+      });
+
+      if (!originalLevel) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
+      // 2. Start a transaction
+      const queryRunner = this.levelRepository.manager.connection.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
+      try {
+        // 3. Clone the main level and all its descendants recursively
+        // The cloned level will be a sibling (same parent) of the original
+        // Calculate parent level: if superiorId is 0, parent level doesn't matter (will be 0)
+        // Otherwise, parent level = original level - 1
+        const parentLevel = originalLevel.superiorId === 0 ? 0 : (originalLevel.level || 1) - 1;
+
+        const clonedLevelId = await this.cloneLevelRecursive(
+          originalLevel,
+          originalLevel.superiorId, // Use the same parent as the original
+          nameSuffix,
+          queryRunner,
+          null, // oldToNewIdMap
+          parentLevel // Pass the parent's level
+        );
+
+        // 4. Commit the transaction
+        await queryRunner.commitTransaction();
+
+        // 5. Get the cloned level with all its data
+        const clonedLevel = await this.levelRepository.findOne({
+          where: { id: clonedLevelId }
+        });
+
+        // 6. Get all descendants of the cloned level
+        const allClonedDescendants = await this.findAllChildLevels(clonedLevelId);
+
+        // 7. Send notification
+        const tokens = await this.usersService.getSiteUsersTokens(originalLevel.siteId);
+        await this.firebaseService.sendMultipleMessage(
+          new NotificationDTO(
+            stringConstants.catalogsTitle,
+            stringConstants.catalogsDescription,
+            stringConstants.catalogsNotificationType,
+          ),
+          tokens,
+        );
+
+        return {
+          clonedLevel,
+          totalCloned: allClonedDescendants.length
+        };
+      } catch (error) {
+        // Rollback in case of error
+        await queryRunner.rollbackTransaction();
+        throw error;
+      } finally {
+        // Release the query runner
+        await queryRunner.release();
+      }
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  // Helper method to clone a level and all its children recursively
+  private cloneLevelRecursive = async (
+    originalLevel: LevelEntity,
+    newSuperiorId: number,
+    nameSuffix: string,
+    queryRunner: any,
+    oldToNewIdMap: Map<number, number> | null,
+    parentLevel: number = 0
+  ): Promise<number> => {
+    // Initialize the map on the first call
+    if (!oldToNewIdMap) {
+      oldToNewIdMap = new Map<number, number>();
+    }
+
+    // 1. Create the cloned level (without id, timestamps)
+    const { id, createdAt, updatedAt, deletedAt, ...levelData } = originalLevel;
+    console.log(`Cloning level ${id} - timestamps: ${createdAt}, ${updatedAt}, ${deletedAt}`);
+
+    // 2. Calculate the new level depth based on parent
+    let newLevel = 0;
+    if (newSuperiorId === 0) {
+      newLevel = 0;
+    } else {
+      newLevel = parentLevel + 1;
+    }
+
+    // 3. Generate unique levelMachineId
+    let levelMachineId = null;
+    if (!originalLevel.levelMachineId) {
+      levelMachineId = generateRandomHex(6);
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!isUnique && attempts < maxAttempts) {
+        const existingLevel = await this.levelRepository.findOne({
+          where: {
+            levelMachineId,
+            siteId: originalLevel.siteId
+          }
+        });
+
+        if (!existingLevel) {
+          isUnique = true;
+        } else {
+          levelMachineId = generateRandomHex(6);
+          attempts++;
+        }
+      }
+    }
+
+    // 4. Create the new level
+    const newLevelData = this.levelRepository.create({
+      ...levelData,
+      name: levelData.name + nameSuffix,
+      superiorId: newSuperiorId,
+      level: newLevel,
+      levelMachineId: levelMachineId,
+      createdAt: new Date(),
+    });
+
+    const savedLevel = await queryRunner.manager.save(LevelEntity, newLevelData);
+
+    // Store the mapping from old ID to new ID
+    oldToNewIdMap.set(originalLevel.id, savedLevel.id);
+
+    // 5. Find all direct children of the original level (not just active ones)
+    const children = await this.levelRepository.find({
+      where: { superiorId: originalLevel.id },
+      order: { id: 'ASC' }
+    });
+
+    console.log(`Found ${children.length} children for level ${originalLevel.id}`);
+
+    // 6. Recursively clone all children
+    for (const child of children) {
+      await this.cloneLevelRecursive(
+        child,
+        savedLevel.id, // The new parent is the cloned level
+        nameSuffix,
+        queryRunner,
+        oldToNewIdMap,
+        savedLevel.level // Pass the parent's level for calculating child levels
+      );
+    }
+
+    return savedLevel.id;
+  };
 }
