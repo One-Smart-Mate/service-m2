@@ -67,5 +67,15 @@ export class UpdateLevelDTO {
   @IsString()
   status: string;
 
+  @ApiProperty({
+    description: 'Auto-assign level responsible as mechanic when creating cards',
+    type: 'number',
+    maxLength: 1,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  assignWhileCreate?: number;
+
   updatedAt?: Date;
 }
