@@ -493,14 +493,4 @@ export class CardEntity {
     name: 'app_so',
   })
   appSo: string | null;
-
-  @Column({
-    type: 'tinyint',
-    width: 1,
-    nullable: false,
-    default: () => '0',
-    name: 'assign_when_creating',
-    comment: 'Flag to indicate if the card should be assigned to the level responsible when created'
-  })
-  assignWhenCreating: number;
 }
