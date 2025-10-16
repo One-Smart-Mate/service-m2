@@ -52,6 +52,7 @@ export const stringConstants = {
   cardAssignmentTitle: 'Asignación de tarjeta',
   cardsDescription: 'Se ha agregado una nueva tarjeta de tipo:',
   mechanicAssignmentMessage: 'te ha asignado la tarjeta:',
+  cardResponsibleAssignment: 'Nueva tarjeta asignada en',
   cardsNotificationType: 'SYNC_REMOTE_CARDS',
   //Notifications for CILT
   ciltTitle: 'Notificación de Paro CILT',

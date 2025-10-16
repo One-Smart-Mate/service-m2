@@ -106,4 +106,8 @@ export class CreateCardDTO {
   @IsString()
   @IsOptional()
   customDueDate: string | null;
+
+  @ApiProperty({ required: false, description: 'Whether to notify the level responsible when creating the card', default: false })
+  @IsOptional()
+  notifyResponsible: boolean;
 }

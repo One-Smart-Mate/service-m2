@@ -67,6 +67,9 @@ export class CardEntity {
   @Column({ type: 'varchar', length: 45, nullable: false, name: 'node_name' })
   nodeName: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true, name: 'level_machine_id' })
+  levelMachineId: string | null;
+
   @Column({ type: 'int', nullable: false, name: 'level' })
   level: number;
 

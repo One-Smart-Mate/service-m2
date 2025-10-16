@@ -4,6 +4,7 @@ import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
+import { CloneLevelDto } from './models/dto/clone.level.dto';
 
 @Controller('level')
 @ApiTags('level')
@@ -90,5 +91,14 @@ export class LevelController {
   @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
   async getLevelStats(@Param('siteId') siteId: number) {
     return this.levelService.getLevelStats(+siteId);
+  }
+
+  @Post('/clone')
+  @ApiBody({
+    type: CloneLevelDto,
+    description: 'Clone a level with all its descendants (children, grandchildren, etc.). The cloned level will be a sibling of the original (same parent). All cloned names will have " (Copia)" suffix.'
+  })
+  async cloneLevel(@Body() cloneLevelDto: CloneLevelDto) {
+    return this.levelService.cloneLevel(cloneLevelDto.levelId);
   }
 }
