@@ -390,6 +390,7 @@ export class CardService {
         areaId: area.id,
         areaName: area.name,
         nodeName: node.name,
+        levelMachineId: node.levelMachineId,
         level: node.level,
         superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
         responsableId: node.responsibleId && node.responsibleId,
@@ -487,6 +488,21 @@ export class CardService {
         ),
         tokens,
       );
+
+      // Send specific notification to responsible if requested and notify is enabled
+      if (createCardDTO.notifyResponsible && node.notify === 1 && node.responsibleId) {
+        const responsibleTokens = await this.userService.getUserToken(node.responsibleId);
+        if (responsibleTokens && responsibleTokens.length > 0) {
+          await this.firebaseService.sendMultipleMessage(
+            new NotificationDTO(
+              stringConstants.cardsTitle,
+              `${stringConstants.cardResponsibleAssignment} ${node.name}: ${cardAssignEvidences.cardTypeMethodologyName}`,
+              stringConstants.cardsNotificationType,
+            ),
+            responsibleTokens,
+          );
+        }
+      }
 
       return await this.cardRepository.save(cardAssignEvidences);
     } catch (exception) {
