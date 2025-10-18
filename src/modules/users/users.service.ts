@@ -50,7 +50,7 @@ export class UsersService {
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    const chars = '0123456789ABCDEF';
     const length = 4;
     while (true) {
       const fastPassword = Array.from({ length }, () =>
@@ -520,7 +520,7 @@ export class UsersService {
           site.id,
         );
       } else {
-        if (!/^[a-zA-Z]{4}$/.test(updateUserDTO.fastPassword)) {
+        if (!/^[0-9A-Fa-f]{4}$/.test(updateUserDTO.fastPassword)) {
           throw new ValidationException(
             ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
           );

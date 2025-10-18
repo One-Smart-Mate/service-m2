@@ -3,6 +3,7 @@ export class CreateUsersDTO {
   email: string;
   password: string;
   fastPassword: string;
+  siteId: number;
   createdAt: Date;
   appVersion: string;
   siteCode: string;

@@ -184,6 +184,7 @@ export class FileUploadService {
           email: normalizedEmail,
           password: hashedPassword,
           fastPassword,
+          siteId: siteId,
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
