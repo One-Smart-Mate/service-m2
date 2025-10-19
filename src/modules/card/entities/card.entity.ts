@@ -151,7 +151,7 @@ export class CardEntity {
 
   @Column({
     type: 'char',
-    length: 3,
+    length: 6,
     nullable: false,
     name: 'preclassifier_code',
   })
