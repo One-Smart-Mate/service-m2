@@ -1,9 +1,8 @@
-import { Controller, Get, Post, Body, Param, Put, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, UseGuards } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { SiteAccessGuard } from '../auth/guard/site-access.guard';
-import { SkipSiteAccess } from 'src/common/decorators/skip-site-access.decorator';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -46,12 +45,16 @@ export class CardController {
   @ApiQuery({ name: 'searchText', required: false, description: 'General search text' })
   @ApiQuery({ name: 'cardNumber', required: false, description: 'Card number filter' })
   @ApiQuery({ name: 'location', required: false, description: 'Location filter' })
+  @ApiQuery({ name: 'levelMachineId', required: false, description: 'Level Machine ID filter' })
   @ApiQuery({ name: 'creator', required: false, description: 'Creator name filter' })
   @ApiQuery({ name: 'resolver', required: false, description: 'Resolver/Responsible filter' })
   @ApiQuery({ name: 'dateFilterType', required: false, description: 'Date filter type (creation or due)' })
   @ApiQuery({ name: 'startDate', required: false, description: 'Start date (ISO format)' })
   @ApiQuery({ name: 'endDate', required: false, description: 'End date (ISO format)' })
   @ApiQuery({ name: 'sortOption', required: false, description: 'Sort option' })
+  @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
+  @ApiQuery({ name: 'userId', required: false, description: 'User ID for filtering my cards' })
+  @ApiQuery({ name: 'myCards', required: false, description: 'Filter cards created by or assigned to user', example: 'true' })
   findBySiteIdPaginated(
     @Param('siteId') siteId: number,
     @Query('page') page?: number,
@@ -59,12 +62,16 @@ export class CardController {
     @Query('searchText') searchText?: string,
     @Query('cardNumber') cardNumber?: string,
     @Query('location') location?: string,
+    @Query('levelMachineId') levelMachineId?: string,
     @Query('creator') creator?: string,
     @Query('resolver') resolver?: string,
     @Query('dateFilterType') dateFilterType?: 'creation' | 'due' | '',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('sortOption') sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '',
+    @Query('status') status?: string,
+    @Query('userId') userId?: number,
+    @Query('myCards') myCards?: string,
   ) {
     return this.cardService.findSiteCardsPaginated(
       siteId,
@@ -74,12 +81,16 @@ export class CardController {
         searchText,
         cardNumber,
         location,
+        levelMachineId,
         creator,
         resolver,
         dateFilterType,
         startDate,
         endDate,
         sortOption,
+        status,
+        userId,
+        myCards: myCards === 'true',
       }
     );
   }

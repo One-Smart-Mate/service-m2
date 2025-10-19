@@ -148,12 +148,16 @@ export class CardService {
       searchText?: string;
       cardNumber?: string;
       location?: string;
+      levelMachineId?: string;
       creator?: string;
       resolver?: string;
       dateFilterType?: 'creation' | 'due' | '';
       startDate?: string;
       endDate?: string;
       sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '';
+      status?: string;
+      userId?: number;
+      myCards?: boolean;
     }
   ) => {
     try {
@@ -181,6 +185,12 @@ export class CardService {
       if (filters?.location) {
         queryBuilder.andWhere('card.cardLocation LIKE :location', {
           location: `%${filters.location}%`
+        });
+      }
+
+      if (filters?.levelMachineId) {
+        queryBuilder.andWhere('card.level_machine_id LIKE :levelMachineId', {
+          levelMachineId: `%${filters.levelMachineId}%`
         });
       }
 
@@ -212,6 +222,23 @@ export class CardService {
             endDate: filters.endDate
           });
         }
+      }
+
+      // My Cards filter (created by me OR assigned to me)
+      if (filters?.myCards && filters?.userId) {
+        queryBuilder.andWhere(
+          '(card.creatorId = :userId OR card.mechanicId = :userId)',
+          { userId: filters.userId }
+        );
+      }
+
+      // Apply status filtering
+      if (filters?.status) {
+        const statusArray = filters.status.split(',').map(s => s.trim());
+        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
+      } else {
+        // Default: only show active cards (status A)
+        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
       }
 
       // Apply sorting
