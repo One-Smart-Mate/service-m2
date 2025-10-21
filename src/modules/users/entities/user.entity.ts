@@ -13,7 +13,7 @@ import { UsersPositionsEntity } from './users.positions.entity';
 
 @Index('site_fast_password', ['siteId', 'fastPassword'], { unique: true })
 @Index('user_email_unique_index', ['siteCode', 'email'], { unique: true })
-@Check('chk_fast_password_hex', "fast_password REGEXP '^[0-9A-Fa-f]{1,6}$'")
+@Check('chk_fast_password_alphanumeric', "fast_password REGEXP '^[a-zA-Z0-9]{1,6}$'")
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
@@ -87,8 +87,8 @@ export class UserEntity {
     length: 4,
     nullable: true,
     comment:
-      'Used to identify users quickly; only accepts hexadecimal values',
-  })  
+      'Used to identify users quickly; accepts alphanumeric values (a-z, A-Z, 0-9)',
+  })
   fastPassword?: string;
 
   @Column({

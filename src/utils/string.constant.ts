@@ -35,7 +35,7 @@ export const stringConstants = {
   duplicateLevelMachineId: 'A record with that level machine id already exists',
   invalidHexFormat: 'Invalid hexadecimal format',
   invalidFastPasswordFormat:
-    'Invalid fast password format, it must be 4 letters',
+    'Invalid fast password format, it must be 4 alphanumeric characters (a-z, A-Z, 0-9)',
   resetPasswordEmailSubject: 'Reset Your Password - OSM',
   welcomeEmailSubject: 'Welcome to Our Platform!',
   characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',

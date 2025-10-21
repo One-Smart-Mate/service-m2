@@ -46,14 +46,14 @@ export class UpdateUserPartialDTO {
   password?: string;
 
   @ApiProperty({
-    description: 'Fast password for quick access (4 letters)',
+    description: 'Fast password for quick access (4 alphanumeric characters: a-z, A-Z, 0-9)',
     required: false,
-    example: 'aBcD',
+    example: 'aB3d',
   })
   @IsOptional()
   @IsString()
-  @Matches(/^[a-zA-Z]{4}$/, {
-    message: 'Fast password must be 4 letters',
+  @Matches(/^[a-zA-Z0-9]{4}$/, {
+    message: 'Fast password must be 4 alphanumeric characters (a-z, A-Z, 0-9)',
   })
   fastPassword?: string;
 } 
