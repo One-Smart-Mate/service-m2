@@ -78,7 +78,12 @@ export class CardService {
     }
   }
 
-  findByLevelMachineId = async (siteId: number, levelMachineId: string) => {
+  findByLevelMachineId = async (
+    siteId: number,
+    levelMachineId: string,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
       const level = await this.levelService.findByLeveleMachineId(
         siteId,
@@ -89,7 +94,23 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
 
-      return await this.cardRepository.findBy({ nodeId: level.id });
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.cardRepository.findAndCount({
+        where: { nodeId: level.id },
+        skip,
+        take: limit,
+        order: { siteCardId: 'DESC' },
+      });
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -111,13 +132,18 @@ export class CardService {
     }
   };
 
-  findSiteCards = async (siteId: number) => {
+  findSiteCards = async (siteId: number, page: number = 1, limit: number = 50) => {
     try {
-      const cards = await this.cardRepository.find({
+      const skip = (page - 1) * limit;
+
+      const [cards, total] = await this.cardRepository.findAndCount({
         where: { siteId: siteId },
         order: { siteCardId: 'DESC' },
+        skip,
+        take: limit,
       });
-      if (cards) {
+
+      if (cards.length > 0) {
         const allEvidencesMap = await this.findAllEvidences(siteId);
 
         const cardEvidencesMap = new Map();
@@ -133,7 +159,15 @@ export class CardService {
           card['evidences'] = cardEvidencesMap.get(card.id) || [];
         }
       }
-      return cards;
+
+      return {
+        data: cards,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1694,8 +1728,10 @@ export class CardService {
     }
   };
 
-  async getCardsByLevelId(siteId: number, levelId: number) {
-    const cards = await this.cardRepository
+  async getCardsByLevelId(siteId: number, levelId: number, page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+
+    const [cards, total] = await this.cardRepository
       .createQueryBuilder('card')
       .where('card.siteId = :siteId', { siteId })
       .andWhere('card.nodeId = :levelId', { levelId })
@@ -1705,8 +1741,18 @@ export class CardService {
         statusR: 'R',
       })
       .orderBy('card.siteCardId', 'DESC')
-      .getMany();
-    return cards;
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      data: cards,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    };
   }
 
   findUserCards = async (userId: number) => {

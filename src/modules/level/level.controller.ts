@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { LevelService } from './level.service';
-import { ApiParam, ApiTags, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
@@ -14,18 +14,36 @@ export class LevelController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findActiveLevelsByCompanyId(@Param('siteId') siteId: number) {
-    return this.levelService.findSiteActiveLevels(+siteId);
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  findActiveLevelsByCompanyId(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.levelService.findSiteActiveLevels(+siteId, page, limit);
   }
   @Get('/all/:siteId/location')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  async findActiveLevelsByCompanyIdWithLocation(@Param('siteId') siteId: number) {
-    return await this.levelService.findActiveLevelsWithCardLocation(+siteId);
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  async findActiveLevelsByCompanyIdWithLocation(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return await this.levelService.findActiveLevelsWithCardLocation(+siteId, page, limit);
   }
   @Get('/site/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findLevelsByCompanyId(@Param('siteId') siteId: number) {
-    return this.levelService.findSiteLevels(+siteId);
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  findLevelsByCompanyId(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.levelService.findSiteLevels(+siteId, page, limit);
   }
   @Post('/create')
   create(@Body() createLevelDTO: CreateLevelDto) {
@@ -69,28 +87,42 @@ export class LevelController {
 
   @Get('/tree/:siteId/lazy')
   @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async getLevelTreeLazy(
     @Param('siteId') siteId: number,
     @Query('parentId') parentId?: number,
-    @Query('depth') depth: number = 2
+    @Query('depth') depth: number = 2,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.levelService.getLevelTreeLazy(+siteId, parentId, depth);
+    return this.levelService.getLevelTreeLazy(+siteId, parentId, depth, page, limit);
   }
 
   @Get('/tree/:siteId/children/:parentId')
   @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
   @ApiParam({ name: 'parentId', required: true, example: 1, description: 'Parent Level ID' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async getChildrenLevels(
     @Param('siteId') siteId: number,
-    @Param('parentId') parentId: number
+    @Param('parentId') parentId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.levelService.getChildrenLevels(+siteId, +parentId);
+    return this.levelService.getChildrenLevels(+siteId, +parentId, page, limit);
   }
 
   @Get('/stats/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
-  async getLevelStats(@Param('siteId') siteId: number) {
-    return this.levelService.getLevelStats(+siteId);
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  async getLevelStats(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.levelService.getLevelStats(+siteId, page, limit);
   }
 
   @Post('/clone')
