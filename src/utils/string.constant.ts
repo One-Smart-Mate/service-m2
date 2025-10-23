@@ -103,6 +103,7 @@ export const stringConstants = {
   //status
   activeStatus: 'A',
   inactiveStatus: 'I',
+  cancelledStatus: 'C',
   completedStatus: 'R', // For CILT sequences executions
 
   //Harcoded

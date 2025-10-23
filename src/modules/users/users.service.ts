@@ -135,7 +135,9 @@ export class UsersService {
       user.resetCodeExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await this.userRepository.save(user);
 
-      await this.mailService.sendResetPasswordCode(user, resetCode, translation);
+      if (!email.endsWith('@fakeosm.com')) {
+        await this.mailService.sendResetPasswordCode(user, resetCode, translation);
+      }
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -237,6 +239,19 @@ export class UsersService {
     });
 
     return user.userRoles.map((userRole) => userRole.role.name);
+  };
+
+  findUserRoleIds = async (userId: number): Promise<number[]> => {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['userRoles', 'userRoles.role'],
+    });
+
+    if (!user || !user.userRoles) {
+      return [];
+    }
+
+    return user.userRoles.map((userRole) => userRole.role.id);
   };
 
   findById = async (userId: number) => {
@@ -431,6 +446,7 @@ export class UsersService {
           uploadCardEvidenceWithDataNet:
             createUserDTO.uploadCardEvidenceWithDataNet,
           translation: createUserDTO.translation || stringConstants.LANG_ES,
+          status: createUserDTO.status || stringConstants.activeStatus,
           createdAt: new Date(),
         });
 
@@ -439,7 +455,7 @@ export class UsersService {
         userSite.user = createUser;
 
         if (createUser.phoneNumber && fastPassword) {
-          await this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
+          this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
         }
       } else {
         const oldFastPassword = user.fastPassword;
@@ -448,21 +464,21 @@ export class UsersService {
         userSite.user = user;
 
         if (user.phoneNumber && fastPassword && oldFastPassword !== fastPassword) {
-          await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
+          this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
         }
       }
       const appUrl = process.env.URL_WEB;
 
-      try {
-        await this.mailService.sendWelcomeEmail(
+      if (!userSite.user.email.endsWith('@fakeosm.com')) {
+        this.mailService.sendWelcomeEmail(
           userSite.user,
           appUrl,
           createUserDTO.translation,
-        );
-      } catch (error) {
-        this.logger.logProcess(
-          `[CREATE_USER] Welcome email for ${userSite.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
-        );
+        ).catch((error) => {
+          this.logger.logProcess(
+            `[CREATE_USER] Welcome email for ${userSite.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
+          );
+        });
       }
 
       return await this.userHasSiteRepository.save(userSite);
@@ -550,7 +566,7 @@ export class UsersService {
         await this.sendFastPasswordWhatsAppMessage(updatePayload.phoneNumber, updatePayload.fastPassword, updatePayload.translation);
       }
   
-      if (updateUserDTO.status === stringConstants.inactiveStatus) {
+      if (updateUserDTO.status === stringConstants.inactiveStatus || updateUserDTO.status === stringConstants.cancelledStatus) {
         const tokens = await this.getUserToken(user.id);
         if (tokens?.length > 0) {
           await this.firebaseService.sendMultipleMessage(
@@ -563,7 +579,7 @@ export class UsersService {
           );
         }
       }
-  
+
       return await this.roleService.updateUserRoles(user, roles);
     } catch (exception) {
       this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
@@ -637,9 +653,9 @@ export class UsersService {
           await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updateUserPartialDTO.fastPassword, user.translation);
         }
       }
-  
+
       user.updatedAt = new Date();
-      
+
       return await this.userRepository.save(user);
     } catch (exception) {
       HandleException.exception(exception);
