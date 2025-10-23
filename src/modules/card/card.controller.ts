@@ -25,17 +25,27 @@ export class CardController {
 
   @Get('/all/level-machine/:siteId/:levelMachineId')
   @ApiParam({ name: 'siteId' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   findByLevelMachineId(
     @Param('siteId') siteId: number,
     @Param('levelMachineId') levelMachineId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return this.cardService.findByLevelMachineId(siteId, levelMachineId);
+    return this.cardService.findByLevelMachineId(siteId, levelMachineId, page, limit);
   }
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId' })
-  findBySiteId(@Param('siteId') siteId: number) {
-    return this.cardService.findSiteCards(siteId);
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
+  findBySiteId(
+    @Param('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.cardService.findSiteCards(siteId, page, limit);
   }
 
   @Get('/all/:siteId/paginated')
@@ -385,11 +395,15 @@ export class CardController {
     });
   }
   @Get('by-level/:levelId')
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async getCardsByLevel(
     @Param('levelId') levelId: number,
     @Query('siteId') siteId: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
-    return await this.cardService.getCardsByLevelId(siteId, levelId);
+    return await this.cardService.getCardsByLevelId(siteId, levelId, page, limit);
   }
 
   @Get('/user/:userId')

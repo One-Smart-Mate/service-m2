@@ -74,11 +74,11 @@ export class UpdateUserDTO {
   @ApiProperty({
     description: 'Status',
     required: true,
-    example: 'A or I',
+    example: 'A, I or C',
     minimum: 1,
   })
   @IsString()
-  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus])
+  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus, stringConstants.cancelledStatus])
   status: string;
 
   @ApiProperty({

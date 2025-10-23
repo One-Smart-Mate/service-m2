@@ -4,6 +4,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsEmail,
+  IsIn,
   IsInt,
   IsOptional,
   IsPositive,
@@ -75,4 +76,15 @@ export class CreateUserDTO {
     message: 'Fast password must be 4 alphanumeric characters (a-z, A-Z, 0-9)',
   })
   fastPassword?: string;
+
+  @ApiProperty({
+    description: 'Status',
+    required: false,
+    example: 'A, I or C',
+    default: 'A',
+  })
+  @IsString()
+  @IsOptional()
+  @IsIn([stringConstants.activeStatus, stringConstants.inactiveStatus, stringConstants.cancelledStatus])
+  status?: string;
 }

@@ -45,19 +45,49 @@ export class LevelService {
     }
   };
 
-  findSiteActiveLevels = async (siteId: number) => {
+  findSiteActiveLevels = async (siteId: number, page: number = 1, limit: number = 50) => {
     try {
-      return await this.levelRepository.findBy({
-        siteId: siteId,
-        status: stringConstants.A,
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.levelRepository.findAndCount({
+        where: {
+          siteId: siteId,
+          status: stringConstants.A,
+        },
+        skip,
+        take: limit,
       });
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
-  findSiteLevels = async (siteId: number) => {
+  findSiteLevels = async (siteId: number, page: number = 1, limit: number = 50) => {
     try {
-      return await this.levelRepository.findBy({ siteId: siteId });
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.levelRepository.findAndCount({
+        where: { siteId: siteId },
+        skip,
+        take: limit,
+      });
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -321,15 +351,32 @@ export class LevelService {
     const result = await this.levelRepository.query(query, [superiorId]);
     return result.map((row) => row.id);
   };
-  async findActiveLevelsWithCardLocation(siteId: number) {
+  async findActiveLevelsWithCardLocation(siteId: number, page: number = 1, limit: number = 50) {
     try {
-      const levels = await this.findSiteActiveLevels(siteId);
+      const result = await this.findSiteActiveLevels(siteId, page, limit);
+
+      // Get all active levels to build complete location paths
+      const allLevels = await this.levelRepository.findBy({
+        siteId: siteId,
+        status: stringConstants.A,
+      });
+
       const levelMap = new Map<number, any>();
-      levels.forEach(level => levelMap.set(level.id, level));
-      return levels.map(level => ({
+      allLevels.forEach(level => levelMap.set(level.id, level));
+
+      const dataWithLocation = result.data.map(level => ({
         ...level,
         levelLocation: this.buildLevelLocation(level.id, levelMap),
       }));
+
+      return {
+        data: dataWithLocation,
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+        hasMore: result.hasMore,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -577,15 +624,28 @@ export class LevelService {
   };
 
   // Get level tree with lazy loading - only loads specified depth
-  getLevelTreeLazy = async (siteId: number, parentId?: number, depth: number = 2) => {
+  getLevelTreeLazy = async (siteId: number, parentId?: number, depth: number = 2, page: number = 1, limit: number = 50) => {
     try {
-      // If no parentId, get root levels
+      const skip = (page - 1) * limit;
+
+      // Count total root levels
+      const totalCount = await this.levelRepository.count({
+        where: {
+          siteId: siteId,
+          status: stringConstants.A,
+          ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
+        },
+      });
+
+      // If no parentId, get root levels with pagination
       const rootLevels = await this.levelRepository.find({
         where: {
           siteId: siteId,
           status: stringConstants.A,
           ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
         },
+        skip,
+        take: limit,
       });
 
       // Recursively load children up to specified depth
@@ -623,9 +683,14 @@ export class LevelService {
 
       const treeData = await loadChildrenRecursive(rootLevels, depth - 1);
 
-      // Return the tree data with metadata for compatibility
+      // Return the tree data with metadata and pagination
       return {
         data: treeData,
+        total: totalCount,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount / limit),
+        hasMore: page * limit < totalCount,
         parentId: parentId || null,
         depth: depth
       };
@@ -635,14 +700,18 @@ export class LevelService {
   };
 
   // Get only direct children of a level
-  getChildrenLevels = async (siteId: number, parentId: number) => {
+  getChildrenLevels = async (siteId: number, parentId: number, page: number = 1, limit: number = 50) => {
     try {
-      const children = await this.levelRepository.find({
+      const skip = (page - 1) * limit;
+
+      const [children, total] = await this.levelRepository.findAndCount({
         where: {
           siteId: siteId,
           superiorId: parentId,
           status: stringConstants.A
-        }
+        },
+        skip,
+        take: limit,
       });
 
       // For each child, check if it has children
@@ -658,17 +727,29 @@ export class LevelService {
         };
       }));
 
-      return childrenWithMeta;
+      return {
+        data: childrenWithMeta,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
   // Get statistics about levels
-  getLevelStats = async (siteId: number) => {
+  getLevelStats = async (siteId: number, page: number = 1, limit: number = 50) => {
     try {
-      const totalLevels = await this.levelRepository.count({
-        where: { siteId: siteId }
+      const skip = (page - 1) * limit;
+
+      // Get detailed level data with pagination
+      const [levels, totalLevels] = await this.levelRepository.findAndCount({
+        where: { siteId: siteId },
+        skip,
+        take: limit,
       });
 
       const activeLevels = await this.levelRepository.count({
@@ -704,12 +785,20 @@ export class LevelService {
       const maxDepth = maxDepthResult[0]?.maxDepth || 0;
 
       return {
-        totalLevels,
-        activeLevels,
-        inactiveLevels: totalLevels - activeLevels,
-        rootLevels,
-        maxDepth,
-        performanceWarning: totalLevels > 1000
+        data: levels,
+        total: totalLevels,
+        page,
+        limit,
+        totalPages: Math.ceil(totalLevels / limit),
+        hasMore: page * limit < totalLevels,
+        stats: {
+          totalLevels,
+          activeLevels,
+          inactiveLevels: totalLevels - activeLevels,
+          rootLevels,
+          maxDepth,
+          performanceWarning: totalLevels > 1000
+        }
       };
     } catch (exception) {
       HandleException.exception(exception);
