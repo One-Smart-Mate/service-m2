@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, IsIn } from 'class-validator';
 
 export class CardReportGroupedDTO {
   @ApiProperty({ description: 'Site ID', example: 1 })
@@ -31,6 +31,17 @@ export class CardReportGroupedDTO {
   @IsString()
   @IsNotEmpty()
   dateEnd: string;
+
+  @ApiProperty({
+    description: 'Status filter: A (Active), R (Resolved), or AR (Both)',
+    example: 'AR',
+    required: false,
+    enum: ['A', 'R', 'AR']
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['A', 'R', 'AR'])
+  statusFilter?: string;
 }
 
 export class CardReportDetailsDTO {

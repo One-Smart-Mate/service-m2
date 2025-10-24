@@ -47,6 +47,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 import { IncidentModule } from './modules/incident/incident.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { ChartsModule } from './modules/charts/charts.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     OplTypesModule,
     IncidentModule,
     CatalogModule,
+    ChartsModule,
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,

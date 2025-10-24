@@ -1994,6 +1994,21 @@ export class CardService {
   // Card Report Methods (based on PHP demo)
   getCardReportGrouped = async (dto: CardReportGroupedDTO) => {
     try {
+      // Build status filter condition (matching PHP demo lines 133-136)
+      const statusFilter = dto.statusFilter || 'AR';
+      let statusCondition = '';
+      const params: any[] = [];
+
+      if (statusFilter === 'A') {
+        statusCondition = 'AND cards.status = ?';
+        params.push('A');
+      } else if (statusFilter === 'R') {
+        statusCondition = 'AND cards.status = ?';
+        params.push('R');
+      } else { // 'AR'
+        statusCondition = "AND cards.status IN ('A', 'R')";
+      }
+
       const sql = `
         WITH RECURSIVE
         tree AS (
@@ -2006,6 +2021,7 @@ export class CardService {
           FROM cards
           WHERE site_id = ?
             AND DATE(card_creation_date) BETWEEN ? AND ?
+            ${statusCondition}
           GROUP BY node_id
         ),
         target_nodes AS (
@@ -2032,15 +2048,18 @@ export class CardService {
         ORDER BY total_cards DESC
       `;
 
-      const result = await this.dataSource.query(sql, [
+      const queryParams = [
         dto.rootNode,
         dto.siteId,
         dto.dateStart,
         dto.dateEnd,
+        ...params, // status params
         dto.targetLevel,
         dto.groupingLevel,
         dto.groupingLevel,
-      ]);
+      ];
+
+      const result = await this.dataSource.query(sql, queryParams);
 
       // Convert buffer values to numbers
       return result.map((row: any) => ({
