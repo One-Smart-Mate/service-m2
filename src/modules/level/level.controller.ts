@@ -16,12 +16,22 @@ export class LevelController {
   @ApiParam({ name: 'siteId', required: true, example: 1 })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
-  findActiveLevelsByCompanyId(
+  async findActiveLevelsByCompanyId(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.levelService.findSiteActiveLevels(+siteId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.findSiteActiveLevels(+siteId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
   @Get('/all/:siteId/location')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
@@ -29,21 +39,41 @@ export class LevelController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async findActiveLevelsByCompanyIdWithLocation(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return await this.levelService.findActiveLevelsWithCardLocation(+siteId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.findActiveLevelsWithCardLocation(+siteId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
   @Get('/site/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
-  findLevelsByCompanyId(
+  async findLevelsByCompanyId(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.levelService.findSiteLevels(+siteId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.findSiteLevels(+siteId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
   @Post('/create')
   create(@Body() createLevelDTO: CreateLevelDto) {
@@ -93,10 +123,20 @@ export class LevelController {
     @Param('siteId') siteId: number,
     @Query('parentId') parentId?: number,
     @Query('depth') depth: number = 2,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.levelService.getLevelTreeLazy(+siteId, parentId, depth, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.getLevelTreeLazy(+siteId, parentId, depth, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Get('/tree/:siteId/children/:parentId')
@@ -107,10 +147,20 @@ export class LevelController {
   async getChildrenLevels(
     @Param('siteId') siteId: number,
     @Param('parentId') parentId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.levelService.getChildrenLevels(+siteId, +parentId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.getChildrenLevels(+siteId, +parentId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Get('/stats/:siteId')
@@ -119,10 +169,20 @@ export class LevelController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async getLevelStats(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.levelService.getLevelStats(+siteId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.levelService.getLevelStats(+siteId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Post('/clone')

@@ -27,25 +27,45 @@ export class CardController {
   @ApiParam({ name: 'siteId' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
-  findByLevelMachineId(
+  async findByLevelMachineId(
     @Param('siteId') siteId: number,
     @Param('levelMachineId') levelMachineId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.cardService.findByLevelMachineId(siteId, levelMachineId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.cardService.findByLevelMachineId(siteId, levelMachineId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId' })
   @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)', example: 1 })
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
-  findBySiteId(
+  async findBySiteId(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return this.cardService.findSiteCards(siteId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.cardService.findSiteCards(siteId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Get('/all/:siteId/paginated')
@@ -400,10 +420,20 @@ export class CardController {
   async getCardsByLevel(
     @Param('levelId') levelId: number,
     @Query('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
-    return await this.cardService.getCardsByLevelId(siteId, levelId, page, limit);
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const result = await this.cardService.getCardsByLevelId(siteId, levelId, pageNum, limitNum);
+
+    // Legacy support: if no pagination params, return only the array
+    if (!page && !limit) {
+      return result.data;
+    }
+
+    // New format: return full pagination object
+    return result;
   }
 
   @Get('/user/:userId')
