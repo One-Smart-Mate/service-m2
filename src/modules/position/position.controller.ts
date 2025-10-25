@@ -30,8 +30,37 @@ export class PositionController {
 
   @Get('/site/:siteId')
   @ApiParam({ name: 'siteId', required: true, example: 1 })
-  findBySiteId(@Param('siteId') siteId: number) {
-    return this.positionService.findBySiteId(+siteId);
+  async findBySiteId(@Param('siteId') siteId: number) {
+    try {
+      const positions = await this.positionService.findBySiteId(+siteId);
+
+      if (!Array.isArray(positions)) {
+        return [];
+      }
+
+      // Get user IDs for each position
+      const positionsWithUsers = await Promise.all(
+        positions.map(async (position) => {
+          try {
+            const userPositions = await this.usersService.findUsersByPositionId(position.id);
+            const userIds = Array.isArray(userPositions) ? userPositions.map(user => user.id) : [];
+            return {
+              ...position,
+              userIds
+            };
+          } catch (error) {
+            return {
+              ...position,
+              userIds: []
+            };
+          }
+        })
+      );
+
+      return positionsWithUsers;
+    } catch (error) {
+      return [];
+    }
   }
 
   @Get('/site/:siteId/level/:levelId')
