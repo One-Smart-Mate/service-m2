@@ -49,6 +49,7 @@ export class PositionController {
               userIds
             };
           } catch (error) {
+            console.error('Error fetching users for position:', error);
             return {
               ...position,
               userIds: []
@@ -59,6 +60,7 @@ export class PositionController {
 
       return positionsWithUsers;
     } catch (error) {
+      console.error('Error fetching positions with users:', error);
       return [];
     }
   }

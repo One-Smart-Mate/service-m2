@@ -40,6 +40,7 @@ import {
   CardReportDetailsDTO,
   CardsByMachineDTO,
   CardsByComponentsDTO,
+  CardReportStackedDTO,
 } from './models/dto/card.report.dto';
 
 @Injectable()
@@ -2225,6 +2226,160 @@ export class CardService {
       }
 
       return cards;
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
+  getCardReportStacked = async (dto: CardReportStackedDTO) => {
+    try {
+      // Build status filter condition (matching PHP demo)
+      const statusFilter = dto.statusFilter || 'AR';
+      let statusCondition = '';
+      const params: any[] = [];
+
+      if (statusFilter === 'A') {
+        statusCondition = 'AND c.status = ?';
+        params.push('A');
+      } else if (statusFilter === 'R') {
+        statusCondition = 'AND c.status = ?';
+        params.push('R');
+      } else { // 'AR' - both active and resolved
+        statusCondition = "AND c.status IN ('A', 'R')";
+      }
+
+      // Complex SQL query based on the PHP graficaHorizontalApilada.php
+      const sql = `
+        WITH RECURSIVE
+        tree AS (
+          SELECT * FROM levels WHERE id = ?
+          UNION ALL
+          SELECT l.* FROM levels l JOIN tree t ON l.superior_id = t.id
+        ),
+        l3 AS ( SELECT id, level_name FROM tree WHERE level = ? ),
+        l4 AS ( SELECT id, level_name, superior_id FROM tree WHERE level = ? ),
+        l6 AS ( SELECT id, level_name FROM tree WHERE level = ? ),
+        l4_map AS (
+          SELECT c.id AS l4_id, c.level_name AS l4_name, p.id AS l3_id, p.level_name AS l3_name
+          FROM l4 c
+          JOIN levels p ON p.id = c.superior_id AND p.level = ?
+        ),
+        l6_up AS (
+          SELECT s.id AS l6_id, s.level_name AS l6_name, l.id AS curr_id, l.level, l.superior_id
+          FROM l6 s
+          JOIN levels l ON l.id = s.id
+          UNION ALL
+          SELECT u.l6_id, u.l6_name, p.id, p.level, p.superior_id
+          FROM l6_up u
+          JOIN levels p ON p.id = u.superior_id
+          WHERE u.level > ?
+        ),
+        l6_map AS (
+          SELECT u.l6_id, u.l6_name,
+                 MAX(CASE WHEN u.level = ? THEN u.curr_id END) AS l4_id
+          FROM l6_up u
+          GROUP BY u.l6_id, u.l6_name
+        ),
+        struct_pairs AS (
+          SELECT m.l3_id, m.l3_name, m.l4_id, m.l4_name, lm.l6_id, lm.l6_name
+          FROM l4_map m
+          JOIN l6_map lm ON lm.l4_id = m.l4_id
+        ),
+        struct_pairs_all AS (
+          SELECT * FROM struct_pairs
+          UNION ALL
+          SELECT l4_map.l3_id, l4_map.l3_name, l4_map.l4_id, l4_map.l4_name, -1 AS l6_id, 'Sin L6' AS l6_name
+          FROM l4_map
+        ),
+        cards_filtered AS (
+          SELECT c.node_id
+          FROM cards c
+          JOIN tree t ON t.id = c.node_id
+          WHERE c.site_id = ?
+            AND DATE(c.card_creation_date) BETWEEN ? AND ?
+            ${statusCondition}
+        ),
+        up_chain AS (
+          SELECT cf.node_id AS start_id, l.id AS curr_id, l.level, l.level_name, l.superior_id
+          FROM cards_filtered cf
+          JOIN levels l ON l.id = cf.node_id
+          UNION ALL
+          SELECT uc.start_id, p.id, p.level, p.level_name, p.superior_id
+          FROM up_chain uc
+          JOIN levels p ON p.id = uc.superior_id
+          WHERE uc.level > ?
+        ),
+        picked AS (
+          SELECT
+            start_id,
+            MAX(CASE WHEN level = ? THEN curr_id    END) AS l3_id,
+            MAX(CASE WHEN level = ? THEN level_name END) AS l3_name,
+            MAX(CASE WHEN level = ? THEN curr_id    END) AS l4_id,
+            MAX(CASE WHEN level = ? THEN level_name END) AS l4_name,
+            MAX(CASE WHEN level = ? THEN curr_id    END) AS l6_id
+          FROM up_chain
+          GROUP BY start_id
+        ),
+        cards_per_start AS (
+          SELECT cf.node_id AS start_id, COUNT(*) AS total
+          FROM cards_filtered cf
+          GROUP BY cf.node_id
+        ),
+        totals_real AS (
+          SELECT
+            p.l3_id, p.l3_name,
+            p.l4_id, p.l4_name,
+            COALESCE(p.l6_id,-1) AS l6_id,
+            CASE WHEN p.l6_id IS NULL THEN 'Sin L6' ELSE lm.l6_name END AS l6_name,
+            SUM(cps.total) AS total_cards
+          FROM picked p
+          JOIN cards_per_start cps ON cps.start_id = p.start_id
+          LEFT JOIN l6_map lm ON lm.l6_id = p.l6_id
+          GROUP BY p.l3_id, p.l3_name, p.l4_id, p.l4_name, COALESCE(p.l6_id,-1), CASE WHEN p.l6_id IS NULL THEN 'Sin L6' ELSE lm.l6_name END
+        )
+        SELECT
+          s.l3_id, s.l3_name,
+          s.l4_id, s.l4_name,
+          s.l6_id, s.l6_name,
+          COALESCE(tr.total_cards, 0) AS total_cards
+        FROM struct_pairs_all s
+        LEFT JOIN totals_real tr
+          ON tr.l3_id = s.l3_id AND tr.l4_id = s.l4_id AND tr.l6_id = s.l6_id
+        ORDER BY s.l3_name, s.l4_name, s.l6_name
+      `;
+
+      const queryParams = [
+        dto.rootNode,       // tree root
+        dto.g1Level,        // l3 level
+        dto.g2Level,        // l4 level
+        dto.targetLevel,    // l6 level
+        dto.g1Level,        // l4_map join
+        dto.g2Level,        // l6_up WHERE condition
+        dto.g2Level,        // l6_map CASE
+        dto.siteId,         // cards_filtered site_id
+        dto.dateStart,      // cards_filtered date start
+        dto.dateEnd,        // cards_filtered date end
+        ...params,          // status params
+        dto.g1Level,        // up_chain WHERE condition
+        dto.g1Level,        // picked l3_id
+        dto.g1Level,        // picked l3_name
+        dto.g2Level,        // picked l4_id
+        dto.g2Level,        // picked l4_name
+        dto.targetLevel,    // picked l6_id
+      ];
+
+      const result = await this.dataSource.query(sql, queryParams);
+
+      // Convert buffer values to numbers
+      return result.map((row: any) => ({
+        l3_id: Number(row.l3_id),
+        l3_name: row.l3_name,
+        l4_id: Number(row.l4_id),
+        l4_name: row.l4_name,
+        l6_id: Number(row.l6_id),
+        l6_name: row.l6_name,
+        total_cards: Number(row.total_cards),
+      }));
     } catch (exception) {
       HandleException.exception(exception);
     }

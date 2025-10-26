@@ -14,6 +14,7 @@ import {
   CardReportDetailsDTO,
   CardsByMachineDTO,
   CardsByComponentsDTO,
+  CardReportStackedDTO,
 } from './models/dto/card.report.dto';
 
 @Controller('card')
@@ -511,5 +512,11 @@ export class CardController {
   @ApiBody({ type: CardsByComponentsDTO })
   getCardsByComponents(@Body() dto: CardsByComponentsDTO) {
     return this.cardService.getCardsByComponents(dto);
+  }
+
+  @Post('/report/stacked')
+  @ApiBody({ type: CardReportStackedDTO })
+  getCardReportStacked(@Body() dto: CardReportStackedDTO) {
+    return this.cardService.getCardReportStacked(dto);
   }
 }
