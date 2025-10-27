@@ -41,6 +41,7 @@ import {
   CardsByMachineDTO,
   CardsByComponentsDTO,
   CardReportStackedDTO,
+  CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
 
 @Injectable()
@@ -2382,6 +2383,80 @@ export class CardService {
       }));
     } catch (exception) {
       HandleException.exception(exception);
+    }
+  };
+
+  /**
+   * Get time-series data for card creation by position
+   * Based on equipos.php demo - returns daily card counts grouped by position
+   */
+  getCardTimeSeries = async (dto: CardTimeSeriesDTO) => {
+    try {
+      // Build position filter condition
+      let positionCondition = '';
+      const params: any[] = [dto.siteId, dto.dateStart, dto.dateEnd];
+
+      if (dto.positionIds && dto.positionIds.length > 0) {
+        positionCondition = `AND p.id IN (${dto.positionIds.map(() => '?').join(',')})`;
+        params.push(...dto.positionIds);
+      }
+
+      // Build tag origin filter
+      let tagOriginCondition = '';
+      if (dto.tagOrigin) {
+        tagOriginCondition = 'AND c.tag_origin = ?';
+        params.push(dto.tagOrigin);
+      }
+
+      // Query based on equipos.php - gets card count by date and position
+      // Uses a CTE to get the latest position for each user
+      const sql = `
+        WITH up_latest AS (
+          SELECT up.*
+          FROM users_positions up
+          JOIN (
+            SELECT user_id, MAX(created_at) AS max_created
+            FROM users_positions
+            WHERE deleted_at IS NULL
+            GROUP BY user_id
+          ) m ON m.user_id = up.user_id AND m.max_created = up.created_at
+          WHERE up.deleted_at IS NULL
+        )
+        SELECT
+          DATE(c.card_creation_date) AS fecha,
+          COALESCE(p.name, 'Sin equipo') AS equipo,
+          p.id AS position_id,
+          COUNT(*) AS total,
+          SUM(CASE WHEN c.status = 'A' THEN 1 ELSE 0 END) AS abiertas,
+          SUM(CASE WHEN c.status = 'R' THEN 1 ELSE 0 END) AS resueltas
+        FROM cards c
+        JOIN users u ON u.id = c.creator_id
+        LEFT JOIN up_latest upl ON upl.user_id = u.id
+        LEFT JOIN positions p ON p.id = upl.position_id AND p.deleted_at IS NULL
+        WHERE c.deleted_at IS NULL
+          AND c.site_id = ?
+          AND DATE(c.card_creation_date) >= ?
+          AND DATE(c.card_creation_date) <= ?
+          ${positionCondition}
+          ${tagOriginCondition}
+        GROUP BY fecha, equipo, position_id
+        ORDER BY fecha, equipo
+      `;
+
+      const result = await this.dataSource.query(sql, params);
+
+      // Transform result to ensure proper types
+      return result.map((row: any) => ({
+        fecha: row.fecha,
+        equipo: row.equipo,
+        position_id: row.position_id ? Number(row.position_id) : null,
+        total: Number(row.total),
+        abiertas: Number(row.abiertas),
+        resueltas: Number(row.resueltas),
+      }));
+    } catch (error) {
+      console.error('[CardService] Error in getCardTimeSeries:', error);
+      HandleException.exception(error);
     }
   };
 }

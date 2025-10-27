@@ -15,6 +15,7 @@ import {
   CardsByMachineDTO,
   CardsByComponentsDTO,
   CardReportStackedDTO,
+  CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
 
 @Controller('card')
@@ -518,5 +519,11 @@ export class CardController {
   @ApiBody({ type: CardReportStackedDTO })
   getCardReportStacked(@Body() dto: CardReportStackedDTO) {
     return this.cardService.getCardReportStacked(dto);
+  }
+
+  @Post('/report/time-series')
+  @ApiBody({ type: CardTimeSeriesDTO })
+  getCardTimeSeries(@Body() dto: CardTimeSeriesDTO) {
+    return this.cardService.getCardTimeSeries(dto);
   }
 }

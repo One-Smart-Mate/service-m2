@@ -171,3 +171,39 @@ export class CardReportStackedDTO {
   @IsIn(['A', 'R', 'AR'])
   statusFilter?: string;
 }
+
+export class CardTimeSeriesDTO {
+  @ApiProperty({ description: 'Site ID', example: 1 })
+  @IsInt()
+  @IsNotEmpty()
+  siteId: number;
+
+  @ApiProperty({ description: 'Start date', example: '2024-01-01' })
+  @IsString()
+  @IsNotEmpty()
+  dateStart: string;
+
+  @ApiProperty({ description: 'End date', example: '2024-01-31' })
+  @IsString()
+  @IsNotEmpty()
+  dateEnd: string;
+
+  @ApiProperty({
+    description: 'Position IDs to filter by (optional)',
+    example: [35, 36, 37],
+    type: [Number],
+    required: false
+  })
+  @IsOptional()
+  @IsInt({ each: true })
+  positionIds?: number[];
+
+  @ApiProperty({
+    description: 'Tag origin filter (optional, e.g., "AM")',
+    example: 'AM',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  tagOrigin?: string;
+}
