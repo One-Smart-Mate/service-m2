@@ -47,7 +47,7 @@ export class PositionService {
 
   findBySiteId = async (siteId: number) => {
     try {
-      return await this.positionRepository.find({ 
+      return await this.positionRepository.find({
         where: { siteId },
         order: { order: 'ASC' }
       });
