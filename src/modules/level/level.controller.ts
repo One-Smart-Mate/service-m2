@@ -22,7 +22,7 @@ export class LevelController {
     @Query('limit') limit?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const limitNum = limit ? parseInt(limit, 10) : 700;
     const result = await this.levelService.findSiteActiveLevels(+siteId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
