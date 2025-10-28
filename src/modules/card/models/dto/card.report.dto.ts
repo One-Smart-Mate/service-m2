@@ -123,3 +123,87 @@ export class CardsByComponentsDTO {
   @IsNotEmpty()
   dateEnd: string;
 }
+
+export class CardReportStackedDTO {
+  @ApiProperty({ description: 'Site ID', example: 1 })
+  @IsInt()
+  @IsNotEmpty()
+  siteId: number;
+
+  @ApiProperty({ description: 'Root node ID', example: 792 })
+  @IsInt()
+  @IsNotEmpty()
+  rootNode: number;
+
+  @ApiProperty({ description: 'First grouping level (G1)', example: 2 })
+  @IsInt()
+  @IsNotEmpty()
+  g1Level: number;
+
+  @ApiProperty({ description: 'Second grouping level (G2)', example: 3 })
+  @IsInt()
+  @IsNotEmpty()
+  g2Level: number;
+
+  @ApiProperty({ description: 'Target level (for stacking)', example: 5 })
+  @IsInt()
+  @IsNotEmpty()
+  targetLevel: number;
+
+  @ApiProperty({ description: 'Start date', example: '2024-01-01' })
+  @IsString()
+  @IsNotEmpty()
+  dateStart: string;
+
+  @ApiProperty({ description: 'End date', example: '2025-10-31' })
+  @IsString()
+  @IsNotEmpty()
+  dateEnd: string;
+
+  @ApiProperty({
+    description: 'Status filter: A (Active), R (Resolved), or AR (Both)',
+    example: 'AR',
+    required: false,
+    enum: ['A', 'R', 'AR']
+  })
+  @IsOptional()
+  @IsString()
+  @IsIn(['A', 'R', 'AR'])
+  statusFilter?: string;
+}
+
+export class CardTimeSeriesDTO {
+  @ApiProperty({ description: 'Site ID', example: 1 })
+  @IsInt()
+  @IsNotEmpty()
+  siteId: number;
+
+  @ApiProperty({ description: 'Start date', example: '2024-01-01' })
+  @IsString()
+  @IsNotEmpty()
+  dateStart: string;
+
+  @ApiProperty({ description: 'End date', example: '2024-01-31' })
+  @IsString()
+  @IsNotEmpty()
+  dateEnd: string;
+
+  @ApiProperty({
+    description: 'Position IDs to filter by (optional)',
+    example: [35, 36, 37],
+    type: [Number],
+    required: false
+  })
+  @IsOptional()
+  @IsInt({ each: true })
+  positionIds?: number[];
+
+  @ApiProperty({
+    description: 'Tag origin filter (optional, e.g., "AM")',
+    example: 'AM',
+    required: false
+  })
+  @IsOptional()
+  @IsString()
+  tagOrigin?: string;
+}
