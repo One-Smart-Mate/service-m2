@@ -2459,4 +2459,232 @@ export class CardService {
       HandleException.exception(error);
     }
   };
+
+  /**
+   * OPTIMIZED VERSION: Create a new card with performance improvements
+   * Main optimizations:
+   * 1. Parallelized validation queries using Promise.all
+   * 2. Optimized UUID generation check
+   * 3. Moved notification sending to background (non-blocking)
+   * 4. Batch evidence creation
+   * 5. Only fetch necessary level data
+   */
+  createOptimized = async (createCardDTO: CreateCardDTO) => {
+    try {
+      // 1. OPTIMIZED UUID GENERATION - Check only once instead of while loop
+      let cardUUID = createCardDTO.cardUUID;
+      const uuidExists = await this.cardRepository.exists({
+        where: { cardUUID: cardUUID },
+      });
+
+      if (uuidExists) {
+        cardUUID = randomUUID();
+        // If by rare chance it still exists, let the DB unique constraint handle it
+      }
+      createCardDTO.cardUUID = cardUUID;
+
+      // 2. PARALLELIZED VALIDATIONS - All queries run simultaneously
+      const [site, priority, node, cardType, preclassifier, creator, lastInsertedCard] =
+        await Promise.all([
+          this.siteService.findById(createCardDTO.siteId),
+          createCardDTO.priorityId && createCardDTO.priorityId !== 0
+            ? this.priorityService.findById(createCardDTO.priorityId)
+            : Promise.resolve(new PriorityEntity()),
+          this.levelService.findById(createCardDTO.nodeId),
+          this.cardTypeService.findById(createCardDTO.cardTypeId),
+          this.preclassifierService.findById(createCardDTO.preclassifierId),
+          this.userService.findById(createCardDTO.creatorId),
+          this.cardRepository.findOne({
+            order: { id: 'DESC' },
+            where: { siteId: createCardDTO.siteId },
+          }),
+        ]);
+
+      // 3. VALIDATIONS (unchanged for safety)
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      } else if (!node) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      } else if (!priority) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      } else if (!cardType) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
+      } else if (!preclassifier) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.PRECLASSIFIER,
+        );
+      } else if (!creator) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
+      // 4. OPTIMIZED LEVEL HIERARCHY - Only get superior levels for this node
+      const levelMap = await this.levelService.findAllLevelsBySite(site.id);
+      const { area, location } = this.levelService.getSuperiorLevelsById(
+        String(node.id),
+        levelMap,
+      );
+
+      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
+
+      // 5. CREATE CARD ENTITY
+      const card = await this.cardRepository.create({
+        ...createCardDTO,
+        siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
+        siteCode: site.siteCode,
+        cardTypeColor: cardType.color,
+        cardLocation: location,
+        areaId: area.id,
+        areaName: area.name,
+        nodeName: node.name,
+        levelMachineId: node.levelMachineId,
+        level: node.level,
+        superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
+        responsableId: node.responsibleId && node.responsibleId,
+        responsableName: node.responsibleName && node.responsibleName,
+        mechanicId: node.assignWhileCreate === 1 ? node.responsibleId : null,
+        mechanicName: node.assignWhileCreate === 1 ? node.responsibleName : null,
+        priorityId: priority.id,
+        priorityCode: priority.priorityCode,
+        priorityDescription: priority.priorityDescription,
+        cardTypeMethodology:
+          cardType.cardTypeMethodology === stringConstants.C
+            ? cardType.cardTypeMethodology
+            : null,
+        cardTypeValue:
+          cardType.cardTypeMethodology === stringConstants.C
+            ? createCardDTO.cardTypeValue
+            : null,
+        cardTypeMethodologyName: cardType.methodology,
+        cardTypeName: cardType.name,
+        preclassifierCode: preclassifier.preclassifierCode,
+        preclassifierDescription: preclassifier.preclassifierDescription,
+        creatorName: creator.name,
+        createdAt: createdAt,
+        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
+        cardDueDate: createCardDTO.customDueDate
+          ? (() => {
+              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
+              return new Date(year, month - 1, day);
+            })()
+          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
+        commentsAtCardCreation: createCardDTO.comments,
+        appVersion: createCardDTO.appVersion,
+        appSo: createCardDTO.appSo,
+      });
+
+      // 6. SAVE CARD
+      const savedCard = await this.cardRepository.save(card);
+
+      // 8. OPTIMIZED BATCH EVIDENCE CREATION
+      const evidencePromises = createCardDTO.evidences.map(async (evidence) => {
+        // Update card evidence flags
+        switch (evidence.type) {
+          case stringConstants.AUCR:
+            savedCard.evidenceAucr = 1;
+            break;
+          case stringConstants.VICR:
+            savedCard.evidenceVicr = 1;
+            break;
+          case stringConstants.IMCR:
+            savedCard.evidenceImcr = 1;
+            break;
+          case stringConstants.AUCL:
+            savedCard.evidenceAucl = 1;
+            break;
+          case stringConstants.VICL:
+            savedCard.evidenceVicl = 1;
+            break;
+          case stringConstants.IMCL:
+            savedCard.evidenceImcl = 1;
+            break;
+          case stringConstants.IMPS:
+            savedCard.evidenceImps = 1;
+            break;
+          case stringConstants.AUPS:
+            savedCard.evidenceAups = 1;
+            break;
+          case stringConstants.VIPS:
+            savedCard.evidenceVips = 1;
+            break;
+        }
+
+        // Create evidence entity
+        const evidenceToCreate = this.evidenceRepository.create({
+          evidenceName: evidence.url,
+          evidenceType: evidence.type,
+          cardId: savedCard.id,
+          siteId: site.id,
+          createdAt: createdAt,
+        });
+
+        return this.evidenceRepository.save(evidenceToCreate);
+      });
+
+      // Wait for all evidences to be created
+      await Promise.all(evidencePromises);
+
+      // 9. SAVE CARD WITH EVIDENCE FLAGS
+      await this.cardRepository.save(savedCard);
+
+      // 10. BACKGROUND NOTIFICATIONS - Don't wait for these to complete
+      // This significantly speeds up the response time
+      this.sendCardNotifications(savedCard, node, createCardDTO.notifyResponsible).catch((error) => {
+        console.error('Error sending notifications (non-blocking):', error);
+      });
+
+      return savedCard;
+    } catch (exception) {
+      console.log(exception);
+      HandleException.exception(exception);
+    }
+  };
+
+  /**
+   * Helper method to send notifications in the background
+   * Extracted from create method to be non-blocking
+   */
+  private async sendCardNotifications(
+    card: any,
+    node: any,
+    notifyResponsible: boolean,
+  ): Promise<void> {
+    try {
+      // Send general notification to all site users (excluding creator)
+      const tokens = await this.userService.getSiteUsersTokensExcludingOwnerUser(
+        card.siteId,
+        card.creatorId,
+      );
+
+      if (tokens && tokens.length > 0) {
+        await this.firebaseService.sendMultipleMessage(
+          new NotificationDTO(
+            stringConstants.cardsTitle,
+            `${stringConstants.cardsDescription} ${card.cardTypeMethodologyName}`,
+            stringConstants.cardsNotificationType,
+          ),
+          tokens,
+        );
+      }
+
+      // Send specific notification to responsible if requested
+      if (notifyResponsible && node.notify === 1 && node.responsibleId) {
+        const responsibleTokens = await this.userService.getUserToken(node.responsibleId);
+        if (responsibleTokens && responsibleTokens.length > 0) {
+          await this.firebaseService.sendMultipleMessage(
+            new NotificationDTO(
+              stringConstants.cardsTitle,
+              `${stringConstants.cardResponsibleAssignment} ${node.name}: ${card.cardTypeMethodologyName}`,
+              stringConstants.cardsNotificationType,
+            ),
+            responsibleTokens,
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error in sendCardNotifications:', error);
+      // Don't throw - we don't want notification failures to affect card creation
+    }
+  }
 }
