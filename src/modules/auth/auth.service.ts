@@ -108,6 +108,10 @@ export class AuthService {
         throw new UnauthorizedException();
       }
 
+      if (user.status === stringConstants.inactiveStatus || user.status === stringConstants.cancelledStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
       const now = new Date();
 
       if (data.platform === stringConstants.OS_WEB) {

@@ -275,7 +275,7 @@ export class UsersService {
     }
   };
 
-  getSiteUsersTokens = async (siteId: number) => {
+  getSiteUsersTokens = async (siteId: number, excludeWeb: boolean = false) => {
     try {
       const users = await this.userRepository.find({
         where: { userHasSites: { site: { id: siteId } } },
@@ -285,7 +285,7 @@ export class UsersService {
       const tokens = users.flatMap(user => [
         user.androidToken ? { token: user.androidToken, type: stringConstants.OS_ANDROID } : null,
         user.iosToken ? { token: user.iosToken, type: stringConstants.OS_IOS } : null,
-        user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
+        !excludeWeb && user.webToken ? { token: user.webToken, type: stringConstants.OS_WEB } : null
       ].filter(item => item !== null));
 
       return tokens;
