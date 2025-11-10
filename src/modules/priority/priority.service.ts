@@ -75,6 +75,7 @@ export class PriorityService {
 
       const tokens = await this.userService.getSiteUsersTokens(
         createPriorityDTO.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
@@ -136,6 +137,7 @@ export class PriorityService {
 
       const tokens = await this.userService.getSiteUsersTokens(
         foundPriority.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(

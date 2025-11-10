@@ -133,6 +133,7 @@ export class LevelService {
 
       const tokens = await this.usersService.getSiteUsersTokens(
         createLevelDTO.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
@@ -247,7 +248,7 @@ export class LevelService {
       level.status = updateLevelDTO.status;
       level.responsibleId = updateLevelDTO.responsibleId;
 
-      const tokens = await this.usersService.getSiteUsersTokens(level.siteId);
+      const tokens = await this.usersService.getSiteUsersTokens(level.siteId, true); // Exclude web tokens - web always loads data online
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
           stringConstants.catalogsTitle,
@@ -562,7 +563,7 @@ export class LevelService {
         await this.updateCardsForLevel(affectedLevelId, levelMap);
       }
 
-      const tokens = await this.usersService.getSiteUsersTokens(levelToMove.siteId);
+      const tokens = await this.usersService.getSiteUsersTokens(levelToMove.siteId, true); // Exclude web tokens - web always loads data online
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
           stringConstants.catalogsTitle,
@@ -850,7 +851,7 @@ export class LevelService {
         const allClonedDescendants = await this.findAllChildLevels(clonedLevelId);
 
         // 7. Send notification
-        const tokens = await this.usersService.getSiteUsersTokens(originalLevel.siteId);
+        const tokens = await this.usersService.getSiteUsersTokens(originalLevel.siteId, true); // Exclude web tokens - web always loads data online
         await this.firebaseService.sendMultipleMessage(
           new NotificationDTO(
             stringConstants.catalogsTitle,

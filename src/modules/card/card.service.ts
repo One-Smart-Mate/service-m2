@@ -96,14 +96,37 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
 
+      // Get site to retrieve app_history_days
+      const site = await this.siteService.findById(siteId);
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
       const skip = (page - 1) * limit;
 
-      const [data, total] = await this.cardRepository.findAndCount({
-        where: { nodeId: level.id },
-        skip,
-        take: limit,
-        order: { siteCardId: 'DESC' },
-      });
+      // Build query with status and date filtering
+      const queryBuilder = this.cardRepository.createQueryBuilder('card')
+        .where('card.nodeId = :nodeId', { nodeId: level.id });
+
+      // Apply status filtering logic:
+      // - Always include status 'A'
+      // - For other statuses (C, R, etc), filter by app_history_days
+      const historyDays = site.appHistoryDays || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - historyDays);
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+      queryBuilder.andWhere(
+        '(card.status = :statusA OR (card.status != :statusA AND card.cardCreationDate >= :cutoffDate))',
+        { statusA: 'A', cutoffDate: cutoffDateString }
+      );
+
+      queryBuilder
+        .orderBy('card.siteCardId', 'DESC')
+        .skip(skip)
+        .take(limit);
+
+      const [data, total] = await queryBuilder.getManyAndCount();
 
       return {
         data,
@@ -136,14 +159,37 @@ export class CardService {
 
   findSiteCards = async (siteId: number, page: number = 1, limit: number = 50) => {
     try {
+      // Get site to retrieve app_history_days
+      const site = await this.siteService.findById(siteId);
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
       const skip = (page - 1) * limit;
 
-      const [cards, total] = await this.cardRepository.findAndCount({
-        where: { siteId: siteId },
-        order: { siteCardId: 'DESC' },
-        skip,
-        take: limit,
-      });
+      // Build query with status and date filtering
+      const queryBuilder = this.cardRepository.createQueryBuilder('card')
+        .where('card.siteId = :siteId', { siteId });
+
+      // Apply status filtering logic:
+      // - Always include status 'A'
+      // - For other statuses (C, R, etc), filter by app_history_days
+      const historyDays = site.appHistoryDays || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - historyDays);
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+      queryBuilder.andWhere(
+        '(card.status = :statusA OR (card.status != :statusA AND card.cardCreationDate >= :cutoffDate))',
+        { statusA: 'A', cutoffDate: cutoffDateString }
+      );
+
+      queryBuilder
+        .orderBy('card.siteCardId', 'DESC')
+        .skip(skip)
+        .take(limit);
+
+      const [cards, total] = await queryBuilder.getManyAndCount();
 
       if (cards.length > 0) {
         const allEvidencesMap = await this.findAllEvidences(siteId);
@@ -197,8 +243,53 @@ export class CardService {
     }
   ) => {
     try {
+      // Get site to retrieve app_history_days
+      const site = await this.siteService.findById(siteId);
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
         .where('card.siteId = :siteId', { siteId });
+
+      // Apply base status filtering logic with app_history_days:
+      // - Always include status 'A'
+      // - For other statuses (C, R, etc), filter by app_history_days
+      // BUT: if user explicitly provides status filter, respect it while still applying date filter for non-A statuses
+      const historyDays = site.appHistoryDays || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - historyDays);
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+      if (filters?.status) {
+        // User provided specific status filter - apply it with date filtering for non-A statuses
+        const statusArray = filters.status.split(',').map(s => s.trim());
+        const hasStatusA = statusArray.includes('A');
+        const otherStatuses = statusArray.filter(s => s !== 'A');
+
+        if (hasStatusA && otherStatuses.length > 0) {
+          // Mixed: include all A + other statuses filtered by date
+          queryBuilder.andWhere(
+            '(card.status = :statusA OR (card.status IN (:...otherStatuses) AND card.cardCreationDate >= :cutoffDate))',
+            { statusA: 'A', otherStatuses, cutoffDate: cutoffDateString }
+          );
+        } else if (hasStatusA) {
+          // Only A
+          queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
+        } else {
+          // Only non-A statuses with date filter
+          queryBuilder.andWhere(
+            '(card.status IN (:...otherStatuses) AND card.cardCreationDate >= :cutoffDate)',
+            { otherStatuses, cutoffDate: cutoffDateString }
+          );
+        }
+      } else {
+        // No status filter provided - apply default logic: all A + all other statuses with date filter
+        queryBuilder.andWhere(
+          '(card.status = :statusA OR (card.status != :statusA AND card.cardCreationDate >= :cutoffDate))',
+          { statusA: 'A', cutoffDate: cutoffDateString }
+        );
+      }
 
       // Apply filters
       if (filters?.searchText) {
@@ -266,15 +357,6 @@ export class CardService {
           '(card.creatorId = :userId OR card.mechanicId = :userId)',
           { userId: filters.userId }
         );
-      }
-
-      // Apply status filtering
-      if (filters?.status) {
-        const statusArray = filters.status.split(',').map(s => s.trim());
-        queryBuilder.andWhere('card.status IN (:...statuses)', { statuses: statusArray });
-      } else {
-        // Default: only show active cards (status A)
-        queryBuilder.andWhere('card.status = :statusA', { statusA: 'A' });
       }
 
       // Apply sorting
