@@ -371,21 +371,37 @@ export class UsersService {
 
   findSiteUsers = async (siteId: number) => {
     try {
-      const users = await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } } },
-        relations: { userRoles: { role: true }, userHasSites: { site: true } },
-      });
+      // Optimized query using QueryBuilder with selective joins
+      const users = await this.userRepository
+        .createQueryBuilder('user')
+        .innerJoin('user.userHasSites', 'userHasSite')
+        .innerJoin('userHasSite.site', 'site')
+        .leftJoin('user.userRoles', 'userRole')
+        .leftJoin('userRole.role', 'role')
+        .leftJoin('user.userHasSites', 'allUserHasSites')
+        .leftJoin('allUserHasSites.site', 'allSites')
+        .where('userHasSite.site.id = :siteId', { siteId })
+        .select([
+          'user.id',
+          'user.name',
+          'user.email',
+          'role.name',
+          'allSites.id',
+          'allSites.name',
+          'allSites.logo',
+        ])
+        .getMany();
 
       const transformedUsers = users.map((user) => ({
         id: user.id,
         name: user.name,
         email: user.email,
-        roles: user.userRoles.map((userRole) => userRole.role.name).join(','),
-        sites: user.userHasSites.map((userHasSite) => ({
+        roles: user.userRoles?.map((userRole) => userRole.role.name).join(',') || '',
+        sites: user.userHasSites?.map((userHasSite) => ({
           id: userHasSite.site.id,
           name: userHasSite.site.name,
           logo: userHasSite.site.logo,
-        })),
+        })) || [],
       }));
 
       return transformedUsers;
