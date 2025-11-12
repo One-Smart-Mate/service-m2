@@ -2165,16 +2165,28 @@ export class CardService {
           SELECT l.*
           FROM levels l
           JOIN tree t ON l.superior_id = t.id
+        ),
+        card_preclassifiers AS (
+          SELECT
+            c.node_id,
+            c.superior_id,
+            GROUP_CONCAT(DISTINCT CONCAT(COALESCE(c.preclassifier_code, ''), '|', COALESCE(c.preclassifier_description, '')) SEPARATOR ';') AS preclassifiers
+          FROM cards c
+          WHERE c.site_id = ?
+            AND DATE(c.card_creation_date) BETWEEN ? AND ?
+          GROUP BY c.node_id, c.superior_id
         )
         SELECT
           maq.id AS machine_id,
           maq.level_name AS maquina,
           comp.id AS comp_id,
           comp.level_name AS comp_name,
+          cp.preclassifiers,
           COUNT(c.id) AS n_cards
         FROM cards c
         JOIN levels maq ON maq.id = c.superior_id
         JOIN levels comp ON comp.id = c.node_id
+        LEFT JOIN card_preclassifiers cp ON cp.node_id = c.node_id AND cp.superior_id = c.superior_id
         WHERE c.site_id = ?
           AND DATE(c.card_creation_date) BETWEEN ? AND ?
           AND (
@@ -2186,12 +2198,15 @@ export class CardService {
             OR c.node_id = ?
           )
           AND comp.level = ?
-        GROUP BY maq.id, comp.id
+        GROUP BY maq.id, comp.id, cp.preclassifiers
         ORDER BY n_cards DESC
       `;
 
       const result = await this.dataSource.query(sql, [
         dto.rootId,
+        dto.siteId,
+        dto.dateStart,
+        dto.dateEnd,
         dto.siteId,
         dto.dateStart,
         dto.dateEnd,
@@ -2206,6 +2221,7 @@ export class CardService {
         maquina: row.maquina,
         comp_id: Number(row.comp_id),
         comp_name: row.comp_name,
+        preclassifiers: row.preclassifiers,
         n_cards: Number(row.n_cards),
       }));
     } catch (exception) {
@@ -2220,6 +2236,9 @@ export class CardService {
           c.id, c.site_code, c.site_card_id, c.card_UUID,
           c.card_creation_date, c.status, c.cardType_name,
           c.preclassifier_code, c.preclassifier_description,
+          c.comments_at_card_creation,
+          c.comments_at_card_provisional_solution,
+          c.comments_at_card_definitive_solution,
           comp.level_name AS componente,
           maq.level_name AS maquina
         FROM cards c
@@ -2273,7 +2292,10 @@ export class CardService {
         SELECT
           c.id, c.site_code, c.site_card_id, c.card_UUID,
           c.card_creation_date, c.status, c.cardType_name,
-          c.preclassifier_code, c.preclassifier_description
+          c.preclassifier_code, c.preclassifier_description,
+          c.comments_at_card_creation,
+          c.comments_at_card_provisional_solution,
+          c.comments_at_card_definitive_solution
         FROM cards c
         WHERE c.node_id IN (${placeholders})
           AND c.site_id = ?
