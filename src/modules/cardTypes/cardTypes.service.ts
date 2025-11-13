@@ -79,6 +79,7 @@ export class CardTypesService {
 
       const tokens = await this.usersService.getSiteUsersTokens(
         createCardTypesDTO.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
@@ -160,6 +161,7 @@ export class CardTypesService {
   
       const tokens = await this.usersService.getSiteUsersTokens(
         currentCardType.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
