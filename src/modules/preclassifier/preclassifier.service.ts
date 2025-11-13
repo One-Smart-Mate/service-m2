@@ -69,6 +69,7 @@ export class PreclassifierService {
 
       const tokens = await this.userService.getSiteUsersTokens(
         createPreclassifierDTO.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(
@@ -107,6 +108,7 @@ export class PreclassifierService {
 
       const tokens = await this.userService.getSiteUsersTokens(
         preclassifier.siteId,
+        true, // Exclude web tokens - web always loads data online
       );
       await this.firebaseService.sendMultipleMessage(
         new NotificationDTO(

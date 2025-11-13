@@ -144,8 +144,9 @@ export class CardController {
 
   @Post('/create')
   create(@Body() createCardDTO: CreateCardDTO) {
-    return this.cardService.create(createCardDTO);
+    return this.cardService.createOptimized(createCardDTO);
   }
+  
   @Put('/update/definitive-solution')
   updateDefinitiveSolution(
     @Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO,
