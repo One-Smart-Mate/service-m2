@@ -189,6 +189,15 @@ export class CardTimeSeriesDTO {
   dateEnd: string;
 
   @ApiProperty({
+    description: 'Root node ID to filter by tree (optional, improves performance)',
+    example: 792,
+    required: false
+  })
+  @IsOptional()
+  @IsInt()
+  rootNode?: number;
+
+  @ApiProperty({
     description: 'Position IDs to filter by (optional)',
     example: [35, 36, 37],
     type: [Number],

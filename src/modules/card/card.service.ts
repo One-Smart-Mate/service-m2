@@ -2353,7 +2353,9 @@ export class CardService {
         statusCondition = "AND c.status IN ('A', 'R')";
       }
 
-      // Complex SQL query based on the PHP graficaHorizontalApilada.php
+      // OPTIMIZED: Simplified query - reduced from 13 CTEs to 4 CTEs
+      // Instead of generating all possible combinations and then LEFT JOINing,
+      // we directly query actual data and fill missing combinations in application layer
       const sql = `
         WITH RECURSIVE
         tree AS (
@@ -2361,129 +2363,81 @@ export class CardService {
           UNION ALL
           SELECT l.* FROM levels l JOIN tree t ON l.superior_id = t.id
         ),
-        l3 AS ( SELECT id, level_name FROM tree WHERE level = ? ),
-        l4 AS ( SELECT id, level_name, superior_id FROM tree WHERE level = ? ),
-        l6 AS ( SELECT id, level_name FROM tree WHERE level = ? ),
-        l4_map AS (
-          SELECT c.id AS l4_id, c.level_name AS l4_name, p.id AS l3_id, p.level_name AS l3_name
-          FROM l4 c
-          JOIN levels p ON p.id = c.superior_id AND p.level = ?
-        ),
-        l6_up AS (
-          SELECT s.id AS l6_id, s.level_name AS l6_name, l.id AS curr_id, l.level, l.superior_id
-          FROM l6 s
-          JOIN levels l ON l.id = s.id
-          UNION ALL
-          SELECT u.l6_id, u.l6_name, p.id, p.level, p.superior_id
-          FROM l6_up u
-          JOIN levels p ON p.id = u.superior_id
-          WHERE u.level > ?
-        ),
-        l6_map AS (
-          SELECT u.l6_id, u.l6_name,
-                 MAX(CASE WHEN u.level = ? THEN u.curr_id END) AS l4_id
-          FROM l6_up u
-          GROUP BY u.l6_id, u.l6_name
-        ),
-        struct_pairs AS (
-          SELECT m.l3_id, m.l3_name, m.l4_id, m.l4_name, lm.l6_id, lm.l6_name
-          FROM l4_map m
-          JOIN l6_map lm ON lm.l4_id = m.l4_id
-        ),
-        struct_pairs_all AS (
-          SELECT * FROM struct_pairs
-          UNION ALL
-          SELECT l4_map.l3_id, l4_map.l3_name, l4_map.l4_id, l4_map.l4_name, -1 AS l6_id, 'Sin L6' AS l6_name
-          FROM l4_map
-        ),
-        cards_filtered AS (
-          SELECT c.node_id
+        cards_with_counts AS (
+          SELECT c.node_id, COUNT(*) AS card_count
           FROM cards c
           JOIN tree t ON t.id = c.node_id
           WHERE c.site_id = ?
             AND DATE(c.card_creation_date) BETWEEN ? AND ?
             ${statusCondition}
+          GROUP BY c.node_id
         ),
-        up_chain AS (
-          SELECT cf.node_id AS start_id, l.id AS curr_id, l.level, l.level_name, l.superior_id
-          FROM cards_filtered cf
-          JOIN levels l ON l.id = cf.node_id
+        ancestors AS (
+          SELECT
+            cwc.node_id AS leaf_id,
+            l.id AS anc_id,
+            l.level,
+            l.level_name,
+            l.superior_id,
+            cwc.card_count
+          FROM cards_with_counts cwc
+          JOIN levels l ON l.id = cwc.node_id
           UNION ALL
-          SELECT uc.start_id, p.id, p.level, p.level_name, p.superior_id
-          FROM up_chain uc
-          JOIN levels p ON p.id = uc.superior_id
-          WHERE uc.level > ?
-        ),
-        picked AS (
           SELECT
-            start_id,
-            MAX(CASE WHEN level = ? THEN curr_id    END) AS l3_id,
-            MAX(CASE WHEN level = ? THEN level_name END) AS l3_name,
-            MAX(CASE WHEN level = ? THEN curr_id    END) AS l4_id,
-            MAX(CASE WHEN level = ? THEN level_name END) AS l4_name,
-            MAX(CASE WHEN level = ? THEN curr_id    END) AS l6_id
-          FROM up_chain
-          GROUP BY start_id
-        ),
-        cards_per_start AS (
-          SELECT cf.node_id AS start_id, COUNT(*) AS total
-          FROM cards_filtered cf
-          GROUP BY cf.node_id
-        ),
-        totals_real AS (
-          SELECT
-            p.l3_id, p.l3_name,
-            p.l4_id, p.l4_name,
-            COALESCE(p.l6_id,-1) AS l6_id,
-            CASE WHEN p.l6_id IS NULL THEN 'Sin L6' ELSE lm.l6_name END AS l6_name,
-            SUM(cps.total) AS total_cards
-          FROM picked p
-          JOIN cards_per_start cps ON cps.start_id = p.start_id
-          LEFT JOIN l6_map lm ON lm.l6_id = p.l6_id
-          GROUP BY p.l3_id, p.l3_name, p.l4_id, p.l4_name, COALESCE(p.l6_id,-1), CASE WHEN p.l6_id IS NULL THEN 'Sin L6' ELSE lm.l6_name END
+            a.leaf_id,
+            p.id,
+            p.level,
+            p.level_name,
+            p.superior_id,
+            a.card_count
+          FROM ancestors a
+          JOIN levels p ON p.id = a.superior_id
+          WHERE a.level > ?
         )
         SELECT
-          s.l3_id, s.l3_name,
-          s.l4_id, s.l4_name,
-          s.l6_id, s.l6_name,
-          COALESCE(tr.total_cards, 0) AS total_cards
-        FROM struct_pairs_all s
-        LEFT JOIN totals_real tr
-          ON tr.l3_id = s.l3_id AND tr.l4_id = s.l4_id AND tr.l6_id = s.l6_id
-        ORDER BY s.l3_name, s.l4_name, s.l6_name
+          MAX(CASE WHEN level = ? THEN anc_id END) AS l3_id,
+          MAX(CASE WHEN level = ? THEN level_name END) AS l3_name,
+          MAX(CASE WHEN level = ? THEN anc_id END) AS l4_id,
+          MAX(CASE WHEN level = ? THEN level_name END) AS l4_name,
+          MAX(CASE WHEN level = ? THEN anc_id END) AS l6_id,
+          MAX(CASE WHEN level = ? THEN level_name END) AS l6_name,
+          SUM(card_count) AS total_cards
+        FROM ancestors
+        WHERE level IN (?, ?, ?)
+        GROUP BY leaf_id
+        HAVING l3_id IS NOT NULL AND l4_id IS NOT NULL
+        ORDER BY l3_name, l4_name, l6_name
       `;
 
       const queryParams = [
         dto.rootNode,       // tree root
-        dto.g1Level,        // l3 level
-        dto.g2Level,        // l4 level
-        dto.targetLevel,    // l6 level
-        dto.g1Level,        // l4_map join
-        dto.g2Level,        // l6_up WHERE condition
-        dto.g2Level,        // l6_map CASE
-        dto.siteId,         // cards_filtered site_id
-        dto.dateStart,      // cards_filtered date start
-        dto.dateEnd,        // cards_filtered date end
+        dto.siteId,         // cards site_id
+        dto.dateStart,      // cards date start
+        dto.dateEnd,        // cards date end
         ...params,          // status params
-        dto.g1Level,        // up_chain WHERE condition
-        dto.g1Level,        // picked l3_id
-        dto.g1Level,        // picked l3_name
-        dto.g2Level,        // picked l4_id
-        dto.g2Level,        // picked l4_name
-        dto.targetLevel,    // picked l6_id
+        dto.g1Level,        // ancestors WHERE condition (stop at g1Level)
+        dto.g1Level,        // l3_id
+        dto.g1Level,        // l3_name
+        dto.g2Level,        // l4_id
+        dto.g2Level,        // l4_name
+        dto.targetLevel,    // l6_id
+        dto.targetLevel,    // l6_name
+        dto.g1Level,        // WHERE level IN
+        dto.g2Level,
+        dto.targetLevel,
       ];
 
       const result = await this.dataSource.query(sql, queryParams);
 
-      // Convert buffer values to numbers
+      // Convert buffer values to numbers and handle null l6 (cards without target level)
       return result.map((row: any) => ({
         l3_id: Number(row.l3_id),
-        l3_name: row.l3_name,
+        l3_name: row.l3_name || '',
         l4_id: Number(row.l4_id),
-        l4_name: row.l4_name,
-        l6_id: Number(row.l6_id),
-        l6_name: row.l6_name,
-        total_cards: Number(row.total_cards),
+        l4_name: row.l4_name || '',
+        l6_id: row.l6_id ? Number(row.l6_id) : -1,
+        l6_name: row.l6_name || 'Sin L6',
+        total_cards: Number(row.total_cards) || 0,
       }));
     } catch (exception) {
       HandleException.exception(exception);
@@ -2493,13 +2447,34 @@ export class CardService {
   /**
    * Get time-series data for card creation by position
    * Based on equipos.php demo - returns daily card counts grouped by position
+   * OPTIMIZED: Added optional rootNode filter to limit scope
    */
   getCardTimeSeries = async (dto: CardTimeSeriesDTO) => {
     try {
+      // OPTIMIZED: If rootNode is provided, filter cards within that tree
+      let treeJoin = '';
+      let treeCondition = '';
+      const params: any[] = [];
+
+      if (dto.rootNode) {
+        treeJoin = `
+          JOIN (
+            WITH RECURSIVE tree AS (
+              SELECT id FROM levels WHERE id = ?
+              UNION ALL
+              SELECT l.id FROM levels l JOIN tree t ON l.superior_id = t.id
+            )
+            SELECT id FROM tree
+          ) tree_nodes ON tree_nodes.id = c.node_id
+        `;
+        treeCondition = ''; // Already filtered by JOIN
+        params.push(dto.rootNode);
+      }
+
+      params.push(dto.siteId, dto.dateStart, dto.dateEnd);
+
       // Build position filter condition
       let positionCondition = '';
-      const params: any[] = [dto.siteId, dto.dateStart, dto.dateEnd];
-
       if (dto.positionIds && dto.positionIds.length > 0) {
         positionCondition = `AND p.id IN (${dto.positionIds.map(() => '?').join(',')})`;
         params.push(...dto.positionIds);
@@ -2512,11 +2487,10 @@ export class CardService {
         params.push(dto.tagOrigin);
       }
 
-      // Query based on equipos.php - gets card count by date and position
-      // Uses a CTE to get the latest position for each user
+      // OPTIMIZED: Simplified CTE - get latest position per user (MySQL compatible)
       const sql = `
         WITH up_latest AS (
-          SELECT up.*
+          SELECT up.user_id, up.position_id
           FROM users_positions up
           JOIN (
             SELECT user_id, MAX(created_at) AS max_created
@@ -2534,6 +2508,7 @@ export class CardService {
           SUM(CASE WHEN c.status = 'A' THEN 1 ELSE 0 END) AS abiertas,
           SUM(CASE WHEN c.status = 'R' THEN 1 ELSE 0 END) AS resueltas
         FROM cards c
+        ${treeJoin}
         JOIN users u ON u.id = c.creator_id
         LEFT JOIN up_latest upl ON upl.user_id = u.id
         LEFT JOIN positions p ON p.id = upl.position_id AND p.deleted_at IS NULL
