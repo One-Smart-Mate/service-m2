@@ -416,7 +416,7 @@ export class CardService {
       const hasMore = page < totalPages;
 
       return {
-        data: cards,
+        cards,
         total,
         page,
         limit,
@@ -2453,7 +2453,6 @@ export class CardService {
     try {
       // OPTIMIZED: If rootNode is provided, filter cards within that tree
       let treeJoin = '';
-      let treeCondition = '';
       const params: any[] = [];
 
       if (dto.rootNode) {
@@ -2467,7 +2466,6 @@ export class CardService {
             SELECT id FROM tree
           ) tree_nodes ON tree_nodes.id = c.node_id
         `;
-        treeCondition = ''; // Already filtered by JOIN
         params.push(dto.rootNode);
       }
 
