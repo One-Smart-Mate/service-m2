@@ -2764,4 +2764,42 @@ export class CardService {
       // Don't throw - we don't want notification failures to affect card creation
     }
   }
+
+  /**
+   * Count cards for a site
+   * - Counts all active cards (status 'A')
+   * - For other statuses, only counts cards within app_history_days
+   */
+  countSiteCards = async (siteId: number) => {
+    try {
+      // Get site to retrieve app_history_days
+      const site = await this.siteService.findById(siteId);
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
+      // Build query with status and date filtering
+      const queryBuilder = this.cardRepository.createQueryBuilder('card')
+        .where('card.siteId = :siteId', { siteId });
+
+      // Apply status filtering logic:
+      // - Always include status 'A'
+      // - For other statuses (C, R, etc), filter by app_history_days
+      const historyDays = site.appHistoryDays || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - historyDays);
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+      queryBuilder.andWhere(
+        '(card.status = :statusA OR (card.status != :statusA AND card.cardCreationDate >= :cutoffDate))',
+        { statusA: 'A', cutoffDate: cutoffDateString }
+      );
+
+      const total = await queryBuilder.getCount();
+
+      return { total };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
 }

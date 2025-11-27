@@ -137,6 +137,12 @@ export class CardController {
     return this.cardService.findResponsibleCards(responsibleId);
   }
 
+  @Get('/count/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  countCards(@Param('siteId') siteId: number) {
+    return this.cardService.countSiteCards(siteId);
+  }
+
   @Get('/:cardId')
   findByIDAndGetEvidences(@Param('cardId') cardId: number) {
     return this.cardService.findCardByIDAndGetEvidences(cardId);
