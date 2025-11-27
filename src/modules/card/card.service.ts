@@ -2770,8 +2770,11 @@ export class CardService {
    * - Counts all active cards (status 'A')
    * - For other statuses, only counts cards within app_history_days
    */
-  countSiteCards = async (siteId: number) => {
+  countSiteCards = async (siteId: number, userId: number) => {
     try {
+      // Validate user has access to the site
+      await this.validateSiteAccess(siteId, userId);
+
       // Get site to retrieve app_history_days
       const site = await this.siteService.findById(siteId);
       if (!site) {
