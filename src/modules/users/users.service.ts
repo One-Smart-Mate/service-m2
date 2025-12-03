@@ -1,7 +1,7 @@
-import { In, Not, Repository } from 'typeorm';
+import { In, Not, Repository, DataSource } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { CreateUserDTO } from './models/create.user.dto';
 import {
@@ -47,6 +47,8 @@ export class UsersService {
     private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
     private readonly logger: CustomLoggerService,
     private readonly whatsappService: WhatsappService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -940,5 +942,60 @@ export class UsersService {
 
   sendFastPasswordWhatsApp = async (phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> => {
     await this.sendFastPasswordWhatsAppMessage(phoneNumber, fastPassword, language);
+  };
+
+  private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
+    const authUser = await this.findByIdWithSites(userId);
+    if (!authUser || !authUser.userHasSites?.length) {
+      throw new UnauthorizedException();
+    }
+
+    const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+    if (!hasAccessToSite) {
+      throw new UnauthorizedException();
+    }
+  }
+
+  /**
+   * Get user preferences including card count for a site
+   * - Counts all active cards (status 'A')
+   * - For other statuses, only counts cards within app_history_days
+   */
+  preferences = async (siteId: number, userId: number) => {
+    try {
+      // Validate user has access to the site
+      await this.validateSiteAccess(siteId, userId);
+
+      // Get site to retrieve app_history_days
+      const site = await this.siteService.findById(siteId);
+      if (!site) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+
+      // Build query with status and date filtering using DataSource
+      const queryBuilder = this.dataSource.createQueryBuilder()
+        .select('COUNT(*)', 'total')
+        .from('cards', 'card')
+        .where('card.site_id = :siteId', { siteId });
+
+      // Apply status filtering logic:
+      // - Always include status 'A'
+      // - For other statuses (C, R, etc), filter by app_history_days
+      const historyDays = site.appHistoryDays || 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - historyDays);
+      const cutoffDateString = cutoffDate.toISOString().split('T')[0];
+
+      queryBuilder.andWhere(
+        '(card.status = :statusA OR (card.status != :statusA AND card.card_creation_date >= :cutoffDate))',
+        { statusA: 'A', cutoffDate: cutoffDateString }
+      );
+
+      const result = await queryBuilder.getRawOne();
+
+      return { total: Number(result.total) };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
   };
 }
