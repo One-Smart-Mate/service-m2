@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
@@ -135,6 +135,12 @@ export class CardController {
   @ApiParam({ name: 'responsibleId' })
   findByResponsibleId(@Param('responsibleId') responsibleId: number) {
     return this.cardService.findResponsibleCards(responsibleId);
+  }
+
+  @Get('/count/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  countCards(@Param('siteId') siteId: number, @Request() req) {
+    return this.cardService.countSiteCards(siteId, req.user.id);
   }
 
   @Get('/:cardId')
