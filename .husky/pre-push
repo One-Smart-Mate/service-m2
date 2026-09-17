@@ -1,2 +1,9 @@
 #!/usr/bin/env sh
-. "$(dirname "$0")/h"
+
+echo "🔨 Type-checking service..."
+if ! npx --no-install tsc --noEmit --incremental false --pretty false; then
+  echo "❌ Type-check failed, aborting push."
+  exit 1
+fi
+
+echo "✅ Pre-push checks passed."

@@ -19,7 +19,9 @@ export class CatalogService {
         throw new UnauthorizedException();
       }
 
-      const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+      const hasAccessToSite = authUser.userHasSites.some(
+        (userSite) => Number(userSite.site.id) === Number(siteId),
+      );
       if (!hasAccessToSite) {
         throw new UnauthorizedException();
       }
@@ -207,7 +209,6 @@ export class CatalogService {
       HandleException.exception(exception);
     }
   };
-
   getCatalogsPaginated = async (siteId: number, userId: number, page: number = 1, limit: number = 200) => {
     try {
       const authUser = await this.usersSevice.findByIdWithSites(userId);
@@ -215,7 +216,9 @@ export class CatalogService {
         throw new UnauthorizedException();
       }
 
-      const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+      const hasAccessToSite = authUser.userHasSites.some(
+        (userSite) => Number(userSite.site.id) === Number(siteId),
+      );
       if (!hasAccessToSite) {
         throw new UnauthorizedException();
       }

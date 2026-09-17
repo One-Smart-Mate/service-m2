@@ -1,22 +1,14 @@
 #!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
 echo "🔍 Running lint..."
-npm run lint
-lint_exit_code=$?
-
-if [ $lint_exit_code -ne 0 ]; then
+if ! npm run lint; then
   echo "❌ Lint failed, aborting commit."
   exit 1
 fi
 
 echo "✅ Lint passed. Running tests..."
-npm test -- --bail --passWithNoTests
-test_exit_code=$?
-
-if [ $test_exit_code -ne 0 ]; then
+if ! npm test -- --bail --passWithNoTests; then
   echo "❌ Tests failed, aborting commit."
   exit 1
 fi
 
-echo "🎉 All checks passed! Commit successful."
+echo "🎉 Pre-commit checks passed."
