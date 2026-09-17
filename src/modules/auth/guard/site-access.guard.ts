@@ -67,7 +67,7 @@ export class SiteAccessGuard implements CanActivate {
   ): Promise<void> {
     // Check if user has role with id 1 (super admin role)
     const userRoleIds = await this.usersService.findUserRoleIds(userId);
-    const hasRole1 = userRoleIds.includes(1);
+    const hasRole1 = userRoleIds.some((roleId) => Number(roleId) === 1);
 
     if (hasRole1) {
       // User has role id 1, skip site validation and allow access to any site
@@ -85,7 +85,7 @@ export class SiteAccessGuard implements CanActivate {
     }
 
     const hasAccessToSite = authUser.userHasSites.some(
-      (userSite) => userSite.site.id === siteId,
+      (userSite) => Number(userSite.site.id) === Number(siteId),
     );
     if (!hasAccessToSite) {
       throw new UnauthorizedException(

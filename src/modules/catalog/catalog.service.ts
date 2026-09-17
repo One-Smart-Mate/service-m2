@@ -19,7 +19,9 @@ export class CatalogService {
         throw new UnauthorizedException();
       }
 
-      const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
+      const hasAccessToSite = authUser.userHasSites.some(
+        (userSite) => Number(userSite.site.id) === Number(siteId),
+      );
       if (!hasAccessToSite) {
         throw new UnauthorizedException();
       }

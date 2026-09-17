@@ -1,7 +1,5 @@
 #!/bin/sh
-npx --no -- commitlint --edit "$1"
-
-if [ $? -ne 0 ]; then
+if ! npx --no-install commitlint --edit "$1"; then
   echo ""
   echo "⚠️  Valid commits are required for a clean and meaningful project history."
   echo "X.Y.Z where: fix = patch, feat = minor, breaking change = major, patch means z, minor means y, major means x"
@@ -12,3 +10,5 @@ if [ $? -ne 0 ]; then
   echo "     chore: update dependencies"
   exit 1
 fi
+
+echo "✅ Commit message is valid."
