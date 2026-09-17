@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Request } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
@@ -136,5 +136,15 @@ export class UsersController {
   @ApiResponse({ status: 404, description: 'Site not found' })
   async findUsersBySiteWithRoles(@Param('siteId') siteId: number) {
     return this.usersService.findUsersBySiteWithRoles(siteId);
+  }
+
+  @Get('/preferences/:siteId')
+  @ApiOperation({ summary: 'Get user preferences including card count for a site' })
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  @ApiResponse({ status: 200, description: 'Preferences retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - User does not have access to the site' })
+  @ApiResponse({ status: 404, description: 'Site not found' })
+  preferences(@Param('siteId') siteId: number, @Request() req) {
+    return this.usersService.preferences(siteId, req.user.id);
   }
 }
