@@ -4,14 +4,12 @@ import { NotificationDTO } from './models/firebase.request.dto';
 
 describe('FirebaseService sensitive data', () => {
   const send = jest.fn().mockResolvedValue('message-id');
-  const firebaseApp = {
-    messaging: () => ({ send }),
-  };
+  const messaging = { send };
   const logger = {
     logFirebase: jest.fn(),
     logException: jest.fn(),
   } as unknown as CustomLoggerService;
-  const service = new FirebaseService(firebaseApp as any, logger);
+  const service = new FirebaseService(messaging as any, logger);
   const notification = new NotificationDTO('Title', 'Body', 'TYPE');
 
   beforeEach(() => {

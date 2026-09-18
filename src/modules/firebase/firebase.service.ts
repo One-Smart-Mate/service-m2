@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { app } from 'firebase-admin';
+import { Messaging } from 'firebase-admin/messaging';
 import { NotificationDTO } from './models/firebase.request.dto';
 import { stringConstants } from 'src/utils/string.constant';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
@@ -7,7 +7,7 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
 @Injectable()
 export class FirebaseService {
   constructor(
-    @Inject('FIREBASE_APP') private readonly firebaseApp: app.App,
+    @Inject('FIREBASE_MESSAGING') private readonly messaging: Messaging,
     private readonly logger: CustomLoggerService,
   ) {}
 
@@ -29,8 +29,7 @@ export class FirebaseService {
         token: userToken,
       };
       this.logger.logFirebase('Sending single notification');
-      const messaging = this.firebaseApp.messaging();
-      await messaging.send(message);
+      await this.messaging.send(message);
       this.logger.logFirebase('Notification sent successfully');
       return Promise.resolve(true);
     } catch (error) {
@@ -48,7 +47,6 @@ export class FirebaseService {
         `Starting batch notification to ${registrationTokens.length} tokens`,
       );
 
-      const messaging = this.firebaseApp.messaging();
       const results: { token: string; success: boolean; error?: any }[] = [];
 
       for (const [index, tokenObj] of registrationTokens.entries()) {
@@ -84,7 +82,7 @@ export class FirebaseService {
         }
 
         try {
-          const response = await messaging.send(message);
+          const response = await this.messaging.send(message);
           this.logger.logFirebase(
             `Notification sent to recipient ${index + 1} (${tokenObj.type}) | MessageId: ${response}`,
           );

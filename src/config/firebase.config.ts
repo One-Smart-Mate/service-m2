@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
-import * as admin from 'firebase-admin';
+import { App, cert, initializeApp, ServiceAccount } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 export const firebaseProvider = {
   provide: 'FIREBASE_APP',
@@ -17,12 +18,18 @@ export const firebaseProvider = {
       auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER,
       client_x509_cert_url: process.env.FIREBASE_CLIENT,
       universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN,
-    } as admin.ServiceAccount;
+    } as ServiceAccount;
 
-    return admin.initializeApp({
-      credential: admin.credential.cert(firebaseConfig),
-      databaseURL: `https://${firebaseConfig.projectId}.firebaseio.com`,  
+    return initializeApp({
+      credential: cert(firebaseConfig),
+      databaseURL: `https://${firebaseConfig.projectId}.firebaseio.com`,
       storageBucket: `${firebaseConfig.projectId}.appspot.com`,
     });
   },
+};
+
+export const firebaseMessagingProvider = {
+  provide: 'FIREBASE_MESSAGING',
+  inject: ['FIREBASE_APP'],
+  useFactory: (firebaseApp: App) => getMessaging(firebaseApp),
 };
