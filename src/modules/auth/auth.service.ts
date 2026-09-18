@@ -19,6 +19,12 @@ import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
 import { PhoneNumberDTO } from './models/dto/phone-number.dto';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import {
+  AuthTokenPayload,
+  FAST_SESSION,
+  FAST_SESSION_EXPIRES_IN,
+  PRIMARY_SESSION,
+} from './models/auth-token.payload';
 
 @Injectable()
 export class AuthService {
@@ -61,12 +67,13 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload = {
+      const payload: AuthTokenPayload = {
         id: user.id,
         name: user.name,
         email: user.email,
         platform: data.platform,
         timezone: data.timezone,
+        sessionType: PRIMARY_SESSION,
       };
 
       const access_token = await this.jwtService.signAsync(payload);
@@ -127,15 +134,19 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload = {
+      const payload: AuthTokenPayload = {
         id: user.id,
         name: user.name,
         email: user.email,
         platform: data.platform,
         timezone: data.timezone,
+        sessionType: FAST_SESSION,
+        actorId: userId,
       };
 
-      const access_token = await this.jwtService.signAsync(payload);
+      const access_token = await this.jwtService.signAsync(payload, {
+        expiresIn: FAST_SESSION_EXPIRES_IN,
+      });
 
       const companyName = await this.siteService.getCompanyName(
         user.userHasSites[0].site.companyId,
@@ -182,55 +193,68 @@ export class AuthService {
     }
   };
 
-  refreshToken = async (data: RefreshTokenDTO) => {
+  refreshToken = async (data: RefreshTokenDTO, authenticatedUserId: number) => {
     try {
-      let payload;
+      let payload: AuthTokenPayload;
       try {
-        payload = await this.jwtService.verifyAsync(data.token);
-      } catch (error) {
-        if (error.name === 'TokenExpiredError') {
-          payload = this.jwtService.decode(data.token) as any;
-          if (!payload || !payload.id) {
-            throw new UnauthorizedException('Invalid token');
-          }
-        } else {  
-          throw new UnauthorizedException('Invalid token');
-        }
-      }
-        const user = await this.usersSevice.findOneByEmail(payload.email);
-        if (!user) {
-          throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
-        }
-
-        if (user.status === stringConstants.inactiveStatus) {
-          throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
-        }
-
-        const roles = await this.usersSevice.getUserRoles(user.id);
-
-        const newPayload = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          platform: payload.platform || stringConstants.OS_WEB,
-          timezone: payload.timezone || 'UTC',
-        };
-
-        const access_token = await this.jwtService.signAsync(newPayload);
-
-        const companyName = await this.siteService.getCompanyName(
-          user.userHasSites[0].site.companyId,
+        payload = await this.jwtService.verifyAsync<AuthTokenPayload>(
+          data.token,
         );
+      } catch {
+        throw new UnauthorizedException('Invalid or expired token');
+      }
 
-        const site = user.userHasSites[0].site;
-        const dueDate = new Date(site.dueDate);
-        const today = new Date();
-        const diffTime = dueDate.getTime() - today.getTime();
-        const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (!payload?.id || Number(payload.id) !== Number(authenticatedUserId)) {
+        throw new UnauthorizedException(
+          'Token does not belong to the active session',
+        );
+      }
 
-        return new UserResponse(user, access_token, roles, companyName, app_history);
+      if (payload.sessionType === FAST_SESSION) {
+        throw new UnauthorizedException('Fast sessions cannot be refreshed');
+      }
+
+      const user = await this.usersSevice.findByIdWithSites(payload.id);
+      if (!user) {
+        throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
+      }
+
+      if (
+        user.status === stringConstants.inactiveStatus ||
+        user.status === stringConstants.cancelledStatus
+      ) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
+      if (!user.userHasSites?.length) {
+        throw new UnauthorizedException('User has no site access');
+      }
+
+      const roles = await this.usersSevice.getUserRoles(user.id);
+
+      const newPayload: AuthTokenPayload = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        platform: payload.platform || stringConstants.OS_WEB,
+        timezone: payload.timezone || 'UTC',
+        sessionType: PRIMARY_SESSION,
+      };
+
+      const access_token = await this.jwtService.signAsync(newPayload);
+
+      const companyName = await this.siteService.getCompanyName(
+        user.userHasSites[0].site.companyId,
+      );
+
+      const site = user.userHasSites[0].site;
+      const dueDate = new Date(site.dueDate);
+      const today = new Date();
+      const diffTime = dueDate.getTime() - today.getTime();
+      const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return new UserResponse(user, access_token, roles, companyName, app_history);
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };

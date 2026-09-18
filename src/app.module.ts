@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import typeOrmConfig from './config/type.orm.config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -51,6 +51,7 @@ import { ChartsModule } from './modules/charts/charts.module';
 import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
 import { RolesGuard } from './modules/auth/guard/roles.guard';
 import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-owner.guard';
+import { createJwtOptions } from './config/jwt.config';
 
 @Module({
   imports: [
@@ -97,10 +98,11 @@ import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-own
     IncidentModule,
     CatalogModule,
     ChartsModule,
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN },
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: createJwtOptions,
     }),
   ],
   controllers: [AppController],
