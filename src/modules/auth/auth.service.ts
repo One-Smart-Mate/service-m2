@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginDTO } from './models/dto/login.dto';
 import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
@@ -18,7 +15,10 @@ import { FastLoginDTO } from './models/dto/fast-login.dto';
 import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
 import { PhoneNumberDTO } from './models/dto/phone-number.dto';
-import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import {
+  NotFoundCustomException,
+  NotFoundCustomExceptionType,
+} from 'src/common/exceptions/types/notFound.exception';
 import {
   AuthTokenPayload,
   FAST_SESSION,
@@ -56,13 +56,17 @@ export class AuthService {
       }
 
       const now = new Date();
-      
+
       if (data.platform === stringConstants.OS_WEB) {
         user.lastLoginWeb = now;
-      } else if ([stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(data.platform)) {
+      } else if (
+        [stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(
+          data.platform,
+        )
+      ) {
         user.lastLoginApp = now;
       }
-      
+
       await this.usersSevice.updateLastLogin(user);
 
       const roles = await this.usersSevice.getUserRoles(user.id);
@@ -88,16 +92,24 @@ export class AuthService {
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      return new UserResponse(user, access_token, roles, companyName, app_history);
+      return new UserResponse(
+        user,
+        access_token,
+        roles,
+        companyName,
+        app_history,
+      );
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
   };
 
-  loginWithFastPassword = async (data: FastLoginDTO, userId: number): Promise<UserResponse> => {
+  loginWithFastPassword = async (
+    data: FastLoginDTO,
+    userId: number,
+  ): Promise<UserResponse> => {
     try {
-
       const authUser = await this.usersSevice.findByIdWithSites(userId);
       if (!authUser || !authUser.userHasSites?.length) {
         throw new UnauthorizedException();
@@ -114,7 +126,10 @@ export class AuthService {
         throw new UnauthorizedException();
       }
 
-      if (user.status === stringConstants.inactiveStatus || user.status === stringConstants.cancelledStatus) {
+      if (
+        user.status === stringConstants.inactiveStatus ||
+        user.status === stringConstants.cancelledStatus
+      ) {
         throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
       }
 
@@ -158,29 +173,42 @@ export class AuthService {
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      return new UserResponse(user, access_token, roles, companyName, app_history);
+      return new UserResponse(
+        user,
+        access_token,
+        roles,
+        companyName,
+        app_history,
+      );
     } catch (exception) {
       console.log(exception);
       HandleException.exception(exception);
     }
   };
 
-  updateLastLogin = async (data: UpdateLastLoginDTO) => {
+  updateLastLogin = async (
+    data: UpdateLastLoginDTO,
+    authenticatedUserId: number,
+  ) => {
     try {
-      const user = await this.usersSevice.findById(data.userId);
+      const user = await this.usersSevice.findById(authenticatedUserId);
 
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
       const loginDate = new Date(data.date);
-      
+
       if (data.platform === stringConstants.OS_WEB) {
         user.lastLoginWeb = loginDate;
-      } else if ([stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(data.platform)) {
+      } else if (
+        [stringConstants.OS_ANDROID, stringConstants.OS_IOS, 'app'].includes(
+          data.platform,
+        )
+      ) {
         user.lastLoginApp = loginDate;
       }
-      
+
       await this.usersSevice.updateLastLogin(user);
 
       return {
@@ -253,7 +281,13 @@ export class AuthService {
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      return new UserResponse(user, access_token, roles, companyName, app_history);
+      return new UserResponse(
+        user,
+        access_token,
+        roles,
+        companyName,
+        app_history,
+      );
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -261,7 +295,9 @@ export class AuthService {
 
   sendFastPasswordByPhone = async (data: PhoneNumberDTO) => {
     try {
-      const user = await this.usersSevice.findOneByPhoneNumber(data.phoneNumber);
+      const user = await this.usersSevice.findOneByPhoneNumber(
+        data.phoneNumber,
+      );
 
       if (
         user &&
@@ -285,5 +321,4 @@ export class AuthService {
       HandleException.exception(exception);
     }
   };
-
 }

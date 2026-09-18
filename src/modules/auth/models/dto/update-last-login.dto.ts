@@ -1,14 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsNumber, IsOptional, IsString, Matches, IsISO8601 } from 'class-validator';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Matches,
+  IsISO8601,
+} from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class UpdateLastLoginDTO {
   @ApiProperty({
-    description: 'User ID',
+    description:
+      'Deprecated. The user is obtained from the authenticated session.',
     example: 123,
+    required: false,
+    deprecated: true,
   })
+  @IsOptional()
   @IsNumber()
-  userId: number;
+  userId?: number;
 
   @ApiProperty({
     description: 'Date of the login',
@@ -25,7 +36,8 @@ export class UpdateLastLoginDTO {
   @IsOptional()
   @IsString()
   @Matches(/^([A-Z][a-zA-Z]*\/[A-Za-z_\/\-]+|UTC|GMT[+-]?\d{1,2}(:\d{2})?)$/, {
-    message: 'timezone must be a valid IANA timezone format (e.g., America/Mexico_City, UTC, GMT+5)',
+    message:
+      'timezone must be a valid IANA timezone format (e.g., America/Mexico_City, UTC, GMT+5)',
   })
   timezone: string;
 
@@ -50,4 +62,4 @@ export class UpdateLastLoginDTO {
     'app',
   ])
   platform: string = stringConstants.OS_WEB;
-} 
+}

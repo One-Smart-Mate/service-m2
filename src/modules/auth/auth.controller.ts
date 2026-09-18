@@ -45,8 +45,11 @@ export class AuthController {
 
   @Post('update-last-login')
   @ApiBody({ type: UpdateLastLoginDTO })
-  updateLastLogin(@Body() updateLastLoginDto: UpdateLastLoginDTO) {
-    return this.authService.updateLastLogin(updateLastLoginDto);
+  updateLastLogin(
+    @Body() updateLastLoginDto: UpdateLastLoginDTO,
+    @Request() req,
+  ) {
+    return this.authService.updateLastLogin(updateLastLoginDto, req.user.id);
   }
 
   @Post('refresh-token')

@@ -12,7 +12,9 @@ describe('AuthService token refresh', () => {
   } as unknown as JwtService;
   const usersService = {
     findByIdWithSites: jest.fn(),
+    findById: jest.fn(),
     getUserRoles: jest.fn(),
+    updateLastLogin: jest.fn(),
     findOneByPhoneNumber: jest.fn(),
     sendFastPasswordWhatsApp: jest.fn(),
   } as unknown as UsersService;
@@ -103,6 +105,34 @@ describe('AuthService token refresh', () => {
       }),
     );
     expect(response.token).toBe('new-token');
+  });
+
+  it('updates last login only for the authenticated user', async () => {
+    const user = {
+      id: 7,
+      email: 'authenticated@example.com',
+    } as any;
+    jest.mocked(usersService.findById).mockResolvedValue(user);
+    jest.mocked(usersService.updateLastLogin).mockResolvedValue({} as any);
+
+    const response = await service.updateLastLogin(
+      {
+        userId: 999,
+        date: new Date('2026-09-18T10:00:00.000Z'),
+        platform: 'ANDROID',
+        timezone: 'America/Mexico_City',
+      },
+      7,
+    );
+
+    expect(usersService.findById).toHaveBeenCalledWith(7);
+    expect(usersService.findById).not.toHaveBeenCalledWith(999);
+    expect(usersService.updateLastLogin).toHaveBeenCalledWith(user);
+    expect(response).toEqual({
+      userId: 7,
+      platform: 'ANDROID',
+      lastLoginDate: new Date('2026-09-18T10:00:00.000Z'),
+    });
   });
 
   it('does not reveal whether a phone number belongs to a user', async () => {

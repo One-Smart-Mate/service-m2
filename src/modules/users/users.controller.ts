@@ -1,5 +1,22 @@
-import { Body, Controller, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Put,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBody,
+  ApiParam,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
 import { plainToClass } from 'class-transformer';
@@ -27,6 +44,7 @@ import {
   AUTH_THROTTLE,
   getAuthThrottleTracker,
 } from 'src/common/auth/auth-throttle';
+import { FAST_SESSION } from '../auth/models/auth-token.payload';
 
 @Controller('users')
 @ApiTags('users')
@@ -144,7 +162,9 @@ export class UsersController {
     source: 'body',
     requestKey: 'id',
   })
-  @ApiOperation({ summary: 'Update user partially (name, email, password, fastPassword)' })
+  @ApiOperation({
+    summary: 'Update user partially (name, email, password, fastPassword)',
+  })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   updatePartial(@Body() updateUserPartialDTO: UpdateUserPartialDTO) {
     return this.usersService.updateUserPartial(updateUserPartialDTO);
@@ -187,10 +207,15 @@ export class UsersController {
     );
     return users;
   }
-  @Public()
   @Post('/logout')
-  logout(@Body() logoutDTO: LogoutDTO) {
-    return this.usersService.logout(logoutDTO.userId, logoutDTO.osName);
+  logout(@Body() logoutDTO: LogoutDTO, @Request() req) {
+    if (req.user.sessionType === FAST_SESSION) {
+      throw new ForbiddenException(
+        'Fast sessions cannot close the primary session',
+      );
+    }
+
+    return this.usersService.logout(req.user.id, logoutDTO.osName);
   }
   @Get('/:userId/positions')
   @SelfOrRoles({
@@ -227,10 +252,18 @@ export class UsersController {
   }
 
   @Get('/preferences/:siteId')
-  @ApiOperation({ summary: 'Get user preferences including card count for a site' })
+  @ApiOperation({
+    summary: 'Get user preferences including card count for a site',
+  })
   @ApiParam({ name: 'siteId', description: 'Site ID' })
-  @ApiResponse({ status: 200, description: 'Preferences retrieved successfully' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - User does not have access to the site' })
+  @ApiResponse({
+    status: 200,
+    description: 'Preferences retrieved successfully',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - User does not have access to the site',
+  })
   @ApiResponse({ status: 404, description: 'Site not found' })
   preferences(@Param('siteId') siteId: number, @Request() req) {
     return this.usersService.preferences(siteId, req.user.id);
