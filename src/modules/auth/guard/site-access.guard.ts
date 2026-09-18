@@ -15,13 +15,21 @@ import {
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import {
   SITE_RESOURCE_ACCESS_KEY,
+  SiteResourceAccessMetadata,
   SiteResourceAccessOptions,
   SiteResourceType,
 } from 'src/common/decorators/site-resource-access.decorator';
 import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { CiltFrequenciesEntity } from 'src/modules/ciltFrequencies/entities/ciltFrequencies.entity';
+import { CiltMstrEntity } from 'src/modules/ciltMstr/entities/ciltMstr.entity';
+import { CiltMstrPositionLevelsEntity } from 'src/modules/ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
+import { CiltSecuencesScheduleEntity } from 'src/modules/ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
+import { CiltTypesEntity } from 'src/modules/ciltTypes/entities/ciltTypes.entity';
 import { LevelEntity } from 'src/modules/level/entities/level.entity';
+import { PositionEntity } from 'src/modules/position/entities/position.entity';
 import { PreclassifierEntity } from 'src/modules/preclassifier/entities/preclassifier.entity';
 import { PriorityEntity } from 'src/modules/priority/entities/priority.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
@@ -40,7 +48,14 @@ const SITE_OWNED_RESOURCE_ENTITIES: Partial<
   Record<SiteResourceType, EntityTarget<SiteOwnedResource>>
 > = {
   cardType: CardTypesEntity,
+  ciltFrequency: CiltFrequenciesEntity,
+  ciltMaster: CiltMstrEntity,
+  ciltPositionLevel: CiltMstrPositionLevelsEntity,
+  ciltSchedule: CiltSecuencesScheduleEntity,
+  ciltSequence: CiltSequencesEntity,
+  ciltType: CiltTypesEntity,
   level: LevelEntity,
+  position: PositionEntity,
   preclassifier: PreclassifierEntity,
   priority: PriorityEntity,
 };
@@ -78,24 +93,39 @@ export class SiteAccessGuard implements CanActivate {
     }
 
     const siteIds = this.extractSiteIds(request);
-    const resourceAccess =
-      this.reflector.getAllAndOverride<SiteResourceAccessOptions>(
+    const resourceAccessMetadata =
+      this.reflector.getAllAndOverride<SiteResourceAccessMetadata>(
         SITE_RESOURCE_ACCESS_KEY,
         [context.getHandler(), context.getClass()],
       );
 
-    if (resourceAccess) {
-      const resourceSiteIds = await this.resolveResourceSiteIds(
-        request,
-        resourceAccess,
-      );
-      if (resourceSiteIds.length === 0) {
-        if (await this.hasGlobalSiteAccess(user.id)) {
-          return true;
+    if (resourceAccessMetadata) {
+      const resourceAccesses = Array.isArray(resourceAccessMetadata)
+        ? resourceAccessMetadata
+        : [resourceAccessMetadata];
+
+      for (const resourceAccess of resourceAccesses) {
+        const resourceId =
+          request[resourceAccess.source]?.[resourceAccess.requestKey];
+        if (
+          resourceAccess.required === false &&
+          (resourceId === undefined || resourceId === null || resourceId === '')
+        ) {
+          continue;
         }
-        throw new ForbiddenException('Resource has no accessible site');
+
+        const resourceSiteIds = await this.resolveResourceSiteIds(
+          request,
+          resourceAccess,
+        );
+        if (resourceSiteIds.length === 0) {
+          if (await this.hasGlobalSiteAccess(user.id)) {
+            continue;
+          }
+          throw new ForbiddenException('Resource has no accessible site');
+        }
+        siteIds.push(...resourceSiteIds);
       }
-      siteIds.push(...resourceSiteIds);
     }
 
     if (siteIds.length === 0) {

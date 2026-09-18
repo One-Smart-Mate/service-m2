@@ -6,6 +6,14 @@ import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
 import { FindByUserDTO } from './models/dto/find-by-user.dto';
 import { FindBySiteDTO } from './models/dto/find-by-site.dto';
 import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
+import {
+  PLATFORM_ADMIN_ROLE,
+  SITE_ADMIN_ROLES,
+} from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
+import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @ApiTags('Cilt Master')
 @ApiBearerAuth()
@@ -14,6 +22,7 @@ export class CiltMstrController {
   constructor(private readonly ciltMstrService: CiltMstrService) {}
 
   @Get("/all")
+  @RequireRoles(PLATFORM_ADMIN_ROLE)
   @ApiOperation({ summary: 'Get all CILTs' })
   async findAll() {
     return await this.ciltMstrService.findAll();
@@ -27,6 +36,17 @@ export class CiltMstrController {
   }
 
   @Post('user')
+  @SelfOrRoles({
+    source: 'body',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'userId',
+  })
   @ApiOperation({ summary: 'DEPRECATED' })
   @ApiBody({ type: FindByUserDTO })
   async findByUserId(@Body() findByUserDto: FindByUserDTO, @Request() req: any) {
@@ -39,6 +59,17 @@ export class CiltMstrController {
   }
   
   @Get('user-read-only/:userId/:date')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   @ApiOperation({ summary: 'DEPRECATED' })
   @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
   @ApiParam({ name: 'date', type: 'string', description: 'Date in format YYYY-MM-DD' })
@@ -56,6 +87,7 @@ export class CiltMstrController {
   }
 
   @Post('site')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   @ApiOperation({ summary: 'Get all CILTs and generate executions for all users in a site for a specific date' })
   @ApiBody({ type: FindBySiteDTO })
   async findCiltsBySiteId(@Body() findBySiteDto: FindBySiteDTO) {
@@ -66,6 +98,12 @@ export class CiltMstrController {
   }
 
   @Get('details/:ciltMstrId')
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'ciltMstrId',
+  })
   @ApiOperation({ summary: 'Get detailed information of a CILT including its sequences and executions' })
   @ApiParam({ name: 'ciltMstrId', type: 'number', description: 'CILT Master ID' })
   async findCiltDetailsById(@Param('ciltMstrId') ciltMstrId: number) {
@@ -73,6 +111,12 @@ export class CiltMstrController {
   }
 
   @Get(':id')
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Get a CILT by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT ID' })
   async findById(@Param('id') id: number) {
@@ -80,6 +124,8 @@ export class CiltMstrController {
   }
 
   @Post("/create")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Create a new CILT' })
   @ApiBody({ type: CreateCiltMstrDTO })
   async create(@Body() createCiltDto: CreateCiltMstrDTO) {
@@ -87,6 +133,13 @@ export class CiltMstrController {
   }
 
   @Put("/update")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Update a CILT' })
   @ApiBody({ type: UpdateCiltMstrDTO })
   async update(@Body() updateCiltDto: UpdateCiltMstrDTO) {
@@ -94,6 +147,13 @@ export class CiltMstrController {
   }
 
   @Put("/update-order")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'ciltMstrId',
+  })
   @ApiOperation({ summary: 'Update CILT order' })
   @ApiBody({ type: UpdateCiltOrderDTO })
   async updateOrder(@Body() updateOrderDto: UpdateCiltOrderDTO) {
@@ -101,6 +161,13 @@ export class CiltMstrController {
   }
 
   @Post('/clone/:id')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Clone a CILT master with its sequences' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
   async cloneCiltMaster(@Param('id') id: number) {
@@ -108,6 +175,13 @@ export class CiltMstrController {
   }
 
   @Delete('/delete/:id')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'ciltMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Delete a CILT master' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to delete' })
   async delete(@Param('id') id: number) {

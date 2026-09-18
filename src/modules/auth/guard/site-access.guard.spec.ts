@@ -9,11 +9,12 @@ import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import {
   SITE_RESOURCE_ACCESS_KEY,
-  SiteResourceAccessOptions,
+  SiteResourceAccessMetadata,
 } from 'src/common/decorators/site-resource-access.decorator';
 import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { LevelEntity } from 'src/modules/level/entities/level.entity';
 import { UsersService } from 'src/modules/users/users.service';
 import { DataSource, Repository } from 'typeorm';
 import {
@@ -27,7 +28,7 @@ describe('SiteAccessGuard', () => {
     isPublic: false,
     skipSiteAccess: false,
     requireSiteAccess: false,
-    siteResourceAccess: undefined as SiteResourceAccessOptions | undefined,
+    siteResourceAccess: undefined as SiteResourceAccessMetadata | undefined,
   };
   const reflector = {
     getAllAndOverride: jest.fn((key: string) => {
@@ -51,10 +52,14 @@ describe('SiteAccessGuard', () => {
   const cardTypeRepository = {
     findOne: jest.fn(),
   } as unknown as Repository<CardTypesEntity>;
+  const levelRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<LevelEntity>;
   const dataSource = {
     getRepository: jest.fn((entity) => {
       if (entity === CardEntity) return cardRepository;
       if (entity === CardTypesEntity) return cardTypeRepository;
+      if (entity === LevelEntity) return levelRepository;
       return chartRepository;
     }),
   } as unknown as DataSource;
@@ -278,6 +283,73 @@ describe('SiteAccessGuard', () => {
       select: { siteId: true },
       where: { id: 8 },
     });
+  });
+
+  it('validates every resource relationship declared by a handler', async () => {
+    metadata.siteResourceAccess = [
+      {
+        resource: 'cardType',
+        lookup: 'id',
+        source: 'body',
+        requestKey: 'cardTypeId',
+      },
+      {
+        resource: 'level',
+        lookup: 'id',
+        source: 'body',
+        requestKey: 'levelId',
+      },
+    ];
+    jest
+      .mocked(cardTypeRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CardTypesEntity);
+    jest
+      .mocked(levelRepository.findOne)
+      .mockResolvedValue({ siteId: 3 } as LevelEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      body: { cardTypeId: 8, levelId: 9 },
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('skips an omitted optional resource relationship', async () => {
+    metadata.siteResourceAccess = [
+      {
+        resource: 'cardType',
+        lookup: 'id',
+        source: 'body',
+        requestKey: 'cardTypeId',
+      },
+      {
+        resource: 'level',
+        lookup: 'id',
+        source: 'body',
+        requestKey: 'levelId',
+        required: false,
+      },
+    ];
+    jest
+      .mocked(cardTypeRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CardTypesEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      body: { cardTypeId: 8 },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(levelRepository.findOne).not.toHaveBeenCalled();
   });
 
   it('returns not found when the protected resource does not exist', async () => {

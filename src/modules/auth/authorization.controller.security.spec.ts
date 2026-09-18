@@ -13,6 +13,13 @@ import {
 } from 'src/common/decorators/site-resource-access.decorator';
 import { CardController } from '../card/card.controller';
 import { CardTypesController } from '../cardTypes/cardTypes.controller';
+import { CiltFrequenciesController } from '../ciltFrequencies/ciltFrequencies.controller';
+import { CiltMstrController } from '../ciltMstr/ciltMstr.controller';
+import { CiltMstrPositionLevelsController } from '../ciltMstrPositionLevels/ciltMstrPositionLevels.controller';
+import { CiltSequencesController } from '../ciltSequences/ciltSequences.controller';
+import { CiltSequencesFrequenciesController } from '../ciltSequencesFrequenciesOLD/ciltSequencesFrequencies.controller';
+import { CiltSecuencesScheduleController } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.controller';
+import { CiltTypesController } from '../ciltTypes/ciltTypes.controller';
 import { CompanyController } from '../company/company.controller';
 import { FileUploadController } from '../file-upload/file-upload.controller';
 import { IncidentController } from '../incident/incident.controller';
@@ -33,6 +40,7 @@ describe('Administrative authorization metadata', () => {
     IncidentController,
     MailController,
     WhatsappController,
+    CiltSequencesFrequenciesController,
   ])('limits %p to the platform administrator', (controller) => {
     expect(Reflect.getMetadata(REQUIRED_ROLES_KEY, controller)).toEqual([
       PLATFORM_ADMIN_ROLE,
@@ -59,6 +67,22 @@ describe('Administrative authorization metadata', () => {
     [LevelController.prototype.update, [...SITE_ADMIN_ROLES]],
     [LevelController.prototype.moveLevel, [...SITE_ADMIN_ROLES]],
     [LevelController.prototype.cloneLevel, [...SITE_ADMIN_ROLES]],
+    [CiltFrequenciesController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltFrequenciesController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltMstrController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltMstrController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltMstrController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [CiltSequencesController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltSequencesController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltSequencesController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [CiltSecuencesScheduleController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltSecuencesScheduleController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltSecuencesScheduleController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [CiltMstrPositionLevelsController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [CiltMstrPositionLevelsController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [CiltMstrPositionLevelsController.prototype.delete, [...SITE_ADMIN_ROLES]],
   ])(
     'sets the expected roles on an administrative handler',
     (handler, roles) => {

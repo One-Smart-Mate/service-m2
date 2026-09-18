@@ -6,7 +6,14 @@ export type SiteResourceType =
   | 'card'
   | 'cardType'
   | 'chart'
+  | 'ciltFrequency'
+  | 'ciltMaster'
+  | 'ciltPositionLevel'
+  | 'ciltSchedule'
+  | 'ciltSequence'
+  | 'ciltType'
   | 'level'
+  | 'position'
   | 'preclassifier'
   | 'priority'
   | 'site'
@@ -19,7 +26,17 @@ export interface SiteResourceAccessOptions {
   lookup: SiteResourceLookup;
   source: SiteResourceRequestSource;
   requestKey: string;
+  required?: boolean;
 }
 
-export const SiteResourceAccess = (options: SiteResourceAccessOptions) =>
-  SetMetadata(SITE_RESOURCE_ACCESS_KEY, options);
+export type SiteResourceAccessMetadata =
+  | SiteResourceAccessOptions
+  | readonly SiteResourceAccessOptions[];
+
+export const SiteResourceAccess = (
+  ...options: [SiteResourceAccessOptions, ...SiteResourceAccessOptions[]]
+) =>
+  SetMetadata(
+    SITE_RESOURCE_ACCESS_KEY,
+    options.length === 1 ? options[0] : options,
+  );
