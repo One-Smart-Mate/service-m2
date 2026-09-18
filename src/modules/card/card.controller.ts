@@ -16,6 +16,7 @@ import {
   CardReportStackedDTO,
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('card')
 @UseGuards(AuthGuard)
@@ -126,6 +127,12 @@ export class CardController {
     );
   }
   @Get('/uuid/:uuid')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'uuid',
+    source: 'params',
+    requestKey: 'uuid',
+  })
   @ApiParam({ name: 'uuid' })
   findByCardUUID(@Param('uuid') uuid: string) {
     return this.cardService.findCardByUUID(uuid);
@@ -143,6 +150,12 @@ export class CardController {
   }
 
   @Get('/:cardId')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'cardId',
+  })
   findByIDAndGetEvidences(@Param('cardId') cardId: number) {
     return this.cardService.findCardByIDAndGetEvidences(cardId);
   }
@@ -153,6 +166,12 @@ export class CardController {
   }
   
   @Put('/update/definitive-solution')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateDefinitiveSolution(
     @Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO,
   ) {
@@ -161,6 +180,12 @@ export class CardController {
     );
   }
   @Put('/update/provisional-solution')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateProvisionalSolution(
     @Body() updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
   ) {
@@ -364,21 +389,45 @@ export class CardController {
   }
 
   @Get('/notes/:cardId')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'cardId',
+  })
   findCardNotes(@Param('cardId') cardId: number) {
     return this.cardService.findCardNotes(cardId);
   }
 
   @Get('/notes/uuid/:cardUUID')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'uuid',
+    source: 'params',
+    requestKey: 'cardUUID',
+  })
   findCardNotesByUUID(@Param('cardUUID') cardUUID: string) {
     return this.cardService.findCardNotesByUUID(cardUUID);
   }
 
   @Post('/update/priority')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateCardPriority(@Body() updateCardPriorityDTO: UpdateCardPriorityDTO) {
     return this.cardService.updateCardPriority(updateCardPriorityDTO);
   }
 
   @Post('/update/mechanic')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateCardResponsible(
     @Body() updateCardResponsibleDTO: UpdateCardMechanicDTO,
   ) {
@@ -386,6 +435,12 @@ export class CardController {
   }
 
   @Post('/update/custom-due-date')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateCardCustomDueDate(
     @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }
   ) {
@@ -451,6 +506,12 @@ export class CardController {
   }
 
   @Post('/discard')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   @ApiBody({ type: DiscardCardDto })
   discardCard(@Body() dto: DiscardCardDto) {
     return this.cardService.discardCard(dto);

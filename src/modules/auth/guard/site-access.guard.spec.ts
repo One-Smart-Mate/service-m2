@@ -2,11 +2,19 @@ import {
   BadRequestException,
   ExecutionContext,
   ForbiddenException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
+import {
+  SITE_RESOURCE_ACCESS_KEY,
+  SiteResourceAccessOptions,
+} from 'src/common/decorators/site-resource-access.decorator';
+import { CardEntity } from 'src/modules/card/entities/card.entity';
+import { Chart } from 'src/modules/charts/entities/chart.entity';
 import { UsersService } from 'src/modules/users/users.service';
+import { DataSource, Repository } from 'typeorm';
 import {
   REQUIRE_SITE_ACCESS_KEY,
   SiteAccessGuard,
@@ -18,12 +26,14 @@ describe('SiteAccessGuard', () => {
     isPublic: false,
     skipSiteAccess: false,
     requireSiteAccess: false,
+    siteResourceAccess: undefined as SiteResourceAccessOptions | undefined,
   };
   const reflector = {
     getAllAndOverride: jest.fn((key: string) => {
       if (key === IS_PUBLIC_KEY) return metadata.isPublic;
       if (key === SKIP_SITE_ACCESS_KEY) return metadata.skipSiteAccess;
       if (key === REQUIRE_SITE_ACCESS_KEY) return metadata.requireSiteAccess;
+      if (key === SITE_RESOURCE_ACCESS_KEY) return metadata.siteResourceAccess;
       return undefined;
     }),
   } as unknown as Reflector;
@@ -31,7 +41,18 @@ describe('SiteAccessGuard', () => {
     getUserRoles: jest.fn(),
     findByIdWithSites: jest.fn(),
   } as unknown as UsersService;
-  const guard = new SiteAccessGuard(reflector, usersService);
+  const cardRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<CardEntity>;
+  const chartRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<Chart>;
+  const dataSource = {
+    getRepository: jest.fn((entity) =>
+      entity === CardEntity ? cardRepository : chartRepository,
+    ),
+  } as unknown as DataSource;
+  const guard = new SiteAccessGuard(reflector, usersService, dataSource);
 
   const createContext = (request: Record<string, unknown>) =>
     ({
@@ -44,6 +65,7 @@ describe('SiteAccessGuard', () => {
     metadata.isPublic = false;
     metadata.skipSiteAccess = false;
     metadata.requireSiteAccess = false;
+    metadata.siteResourceAccess = undefined;
     jest.clearAllMocks();
   });
 
@@ -151,5 +173,97 @@ describe('SiteAccessGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(usersService.findByIdWithSites).not.toHaveBeenCalled();
+  });
+
+  it('resolves the card site from a cardId before authorizing access', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'card',
+      lookup: 'id',
+      source: 'params',
+      requestKey: 'cardId',
+    };
+    jest
+      .mocked(cardRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CardEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['mechanic']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      params: { cardId: '45' },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(cardRepository.findOne).toHaveBeenCalledWith({
+      select: { siteId: true },
+      where: { id: 45 },
+    });
+  });
+
+  it('resolves a card site from its UUID', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'card',
+      lookup: 'uuid',
+      source: 'params',
+      requestKey: 'cardUUID',
+    };
+    jest
+      .mocked(cardRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CardEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['IH_sis_admin']);
+    const context = createContext({
+      user: { id: 10 },
+      params: { cardUUID: 'card-uuid' },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(cardRepository.findOne).toHaveBeenCalledWith({
+      select: { siteId: true },
+      where: { cardUUID: 'card-uuid' },
+    });
+  });
+
+  it('rejects a resource from a site not assigned to the user', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'chart',
+      lookup: 'id',
+      source: 'params',
+      requestKey: 'chartId',
+    };
+    jest
+      .mocked(chartRepository.findOne)
+      .mockResolvedValue({ siteId: 3 } as Chart);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      params: { chartId: '7' },
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('returns not found when the protected resource does not exist', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'card',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'cardId',
+    };
+    jest.mocked(cardRepository.findOne).mockResolvedValue(null);
+    const context = createContext({
+      user: { id: 10 },
+      body: { cardId: 999 },
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(usersService.getUserRoles).not.toHaveBeenCalled();
   });
 });

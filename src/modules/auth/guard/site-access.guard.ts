@@ -4,11 +4,19 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
+import {
+  SITE_RESOURCE_ACCESS_KEY,
+  SiteResourceAccessOptions,
+} from 'src/common/decorators/site-resource-access.decorator';
+import { CardEntity } from 'src/modules/card/entities/card.entity';
+import { Chart } from 'src/modules/charts/entities/chart.entity';
 import { UsersService } from 'src/modules/users/users.service';
+import { DataSource } from 'typeorm';
 
 export const SKIP_SITE_ACCESS_KEY = 'skipSiteAccess';
 export const REQUIRE_SITE_ACCESS_KEY = 'requireSiteAccess';
@@ -19,6 +27,7 @@ export class SiteAccessGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
     private usersService: UsersService,
+    private dataSource: DataSource,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -46,6 +55,15 @@ export class SiteAccessGuard implements CanActivate {
     }
 
     const siteIds = this.extractSiteIds(request);
+    const resourceAccess =
+      this.reflector.getAllAndOverride<SiteResourceAccessOptions>(
+        SITE_RESOURCE_ACCESS_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
+    if (resourceAccess) {
+      siteIds.push(await this.resolveResourceSiteId(request, resourceAccess));
+    }
 
     if (siteIds.length === 0) {
       const requireSiteAccess = this.reflector.getAllAndOverride<boolean>(
@@ -114,6 +132,59 @@ export class SiteAccessGuard implements CanActivate {
 
       return siteId;
     });
+  }
+
+  private async resolveResourceSiteId(
+    request: any,
+    options: SiteResourceAccessOptions,
+  ): Promise<number> {
+    const resourceId = request[options.source]?.[options.requestKey];
+
+    if (resourceId === undefined || resourceId === null || resourceId === '') {
+      throw new BadRequestException(
+        `${options.requestKey} is required for site authorization`,
+      );
+    }
+
+    let resource: Pick<CardEntity, 'siteId'> | Pick<Chart, 'siteId'> | null;
+
+    if (options.resource === 'card') {
+      const repository = this.dataSource.getRepository(CardEntity);
+      const where =
+        options.lookup === 'uuid'
+          ? { cardUUID: String(resourceId) }
+          : { id: this.parseResourceId(resourceId, options.requestKey) };
+
+      resource = await repository.findOne({
+        select: { siteId: true },
+        where,
+      });
+    } else {
+      if (options.lookup !== 'id') {
+        throw new BadRequestException('Unsupported chart lookup');
+      }
+
+      resource = await this.dataSource.getRepository(Chart).findOne({
+        select: { siteId: true },
+        where: { id: this.parseResourceId(resourceId, options.requestKey) },
+      });
+    }
+
+    if (!resource) {
+      throw new NotFoundException('Resource not found');
+    }
+
+    return Number(resource.siteId);
+  }
+
+  private parseResourceId(value: unknown, key: string): number {
+    const id = typeof value === 'number' ? value : Number(String(value).trim());
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      throw new BadRequestException(`Invalid ${key}`);
+    }
+
+    return id;
   }
 
   private async validateSiteAccess(
