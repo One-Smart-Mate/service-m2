@@ -83,6 +83,20 @@ export class CiltSequencesController {
       requestKey: 'ciltTypeId',
       required: false,
     },
+    {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'referenceOplSopId',
+      required: false,
+    },
+    {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'remediationOplSopId',
+      required: false,
+    },
   )
   @ApiOperation({ summary: 'Create a new CILT sequence' })
   @ApiBody({ type: CreateCiltSequenceDTO })
@@ -118,6 +132,20 @@ export class CiltSequencesController {
       lookup: 'id',
       source: 'body',
       requestKey: 'ciltTypeId',
+      required: false,
+    },
+    {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'referenceOplSopId',
+      required: false,
+    },
+    {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'remediationOplSopId',
       required: false,
     },
   )

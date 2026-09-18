@@ -15,6 +15,8 @@ import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
 import { LevelEntity } from 'src/modules/level/entities/level.entity';
+import { OplDetailsEntity } from 'src/modules/oplDetails/entities/oplDetails.entity';
+import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
 import { UsersService } from 'src/modules/users/users.service';
 import { DataSource, Repository } from 'typeorm';
 import {
@@ -55,11 +57,19 @@ describe('SiteAccessGuard', () => {
   const levelRepository = {
     findOne: jest.fn(),
   } as unknown as Repository<LevelEntity>;
+  const oplMasterRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<OplMstr>;
+  const oplDetailRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<OplDetailsEntity>;
   const dataSource = {
     getRepository: jest.fn((entity) => {
       if (entity === CardEntity) return cardRepository;
       if (entity === CardTypesEntity) return cardTypeRepository;
       if (entity === LevelEntity) return levelRepository;
+      if (entity === OplMstr) return oplMasterRepository;
+      if (entity === OplDetailsEntity) return oplDetailRepository;
       return chartRepository;
     }),
   } as unknown as DataSource;
@@ -350,6 +360,56 @@ describe('SiteAccessGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(levelRepository.findOne).not.toHaveBeenCalled();
+  });
+
+  it('reserves a global tenant resource for IH_sis_admin', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'params',
+      requestKey: 'id',
+    };
+    jest
+      .mocked(oplMasterRepository.findOne)
+      .mockResolvedValue({ siteId: null } as OplMstr);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    const context = createContext({
+      user: { id: 10 },
+      params: { id: 7 },
+    });
+
+    await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
+  it('resolves a legacy OPL detail tenant from its parent OPL', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'oplDetail',
+      lookup: 'id',
+      source: 'params',
+      requestKey: 'id',
+    };
+    jest
+      .mocked(oplDetailRepository.findOne)
+      .mockResolvedValue({ siteId: null, oplId: 4 } as OplDetailsEntity);
+    jest
+      .mocked(oplMasterRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as OplMstr);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      params: { id: 7 },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(oplMasterRepository.findOne).toHaveBeenCalledWith({
+      select: { siteId: true },
+      where: { id: 4 },
+    });
   });
 
   it('returns not found when the protected resource does not exist', async () => {

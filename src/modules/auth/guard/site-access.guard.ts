@@ -29,6 +29,10 @@ import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequ
 import { CiltSecuencesScheduleEntity } from 'src/modules/ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
 import { CiltTypesEntity } from 'src/modules/ciltTypes/entities/ciltTypes.entity';
 import { LevelEntity } from 'src/modules/level/entities/level.entity';
+import { OplDetailsEntity } from 'src/modules/oplDetails/entities/oplDetails.entity';
+import { OplLevelsEntity } from 'src/modules/oplLevels/entities/oplLevels.entity';
+import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
+import { OplTypes } from 'src/modules/oplTypes/entities/oplTypes.entity';
 import { PositionEntity } from 'src/modules/position/entities/position.entity';
 import { PreclassifierEntity } from 'src/modules/preclassifier/entities/preclassifier.entity';
 import { PriorityEntity } from 'src/modules/priority/entities/priority.entity';
@@ -55,6 +59,8 @@ const SITE_OWNED_RESOURCE_ENTITIES: Partial<
   ciltSequence: CiltSequencesEntity,
   ciltType: CiltTypesEntity,
   level: LevelEntity,
+  oplMaster: OplMstr,
+  oplType: OplTypes,
   position: PositionEntity,
   preclassifier: PreclassifierEntity,
   priority: PriorityEntity,
@@ -243,6 +249,43 @@ export class SiteAccessGuard implements CanActivate {
       }
 
       return [Number(resource.siteId)];
+    }
+
+    if (
+      options.resource === 'oplDetail' ||
+      options.resource === 'oplLevel'
+    ) {
+      if (options.lookup !== 'id') {
+        throw new BadRequestException('Unsupported resource lookup');
+      }
+
+      const id = this.parseResourceId(resourceId, options.requestKey);
+      const resource =
+        options.resource === 'oplDetail'
+          ? await this.dataSource.getRepository(OplDetailsEntity).findOne({
+              select: { siteId: true, oplId: true },
+              where: { id },
+            })
+          : await this.dataSource.getRepository(OplLevelsEntity).findOne({
+              select: { siteId: true, oplId: true },
+              where: { id },
+            });
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
+      if (resource.siteId !== null) {
+        return [Number(resource.siteId)];
+      }
+
+      const parent = await this.dataSource.getRepository(OplMstr).findOne({
+        select: { siteId: true },
+        where: { id: Number(resource.oplId) },
+      });
+
+      return parent?.siteId === null || parent?.siteId === undefined
+        ? []
+        : [Number(parent.siteId)];
     }
 
     const siteOwnedResourceEntity =

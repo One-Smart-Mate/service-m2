@@ -10,12 +10,15 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
+import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 
 @Injectable()
 export class OplDetailsService {
   constructor(
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
+    @InjectRepository(OplMstr)
+    private readonly oplMstrRepository: Repository<OplMstr>,
   ) {}
 
   findAll = async () => {
@@ -57,6 +60,14 @@ export class OplDetailsService {
 
   create = async (createOplDetailsDto: CreateOplDetailsDTO) => {
     try {
+      const opl = await this.oplMstrRepository.findOneBy({
+        id: createOplDetailsDto.oplId,
+      });
+      if (!opl) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+      createOplDetailsDto.siteId = opl.siteId;
+
       // Buscar detalles existentes del mismo OPL
       const existingDetails = await this.oplDetailsRepository.find({
         where: { oplId: createOplDetailsDto.oplId },
@@ -82,6 +93,18 @@ export class OplDetailsService {
       });
       if (!detail) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
+      }
+
+      if (updateOplDetailsDto.oplId) {
+        const opl = await this.oplMstrRepository.findOneBy({
+          id: updateOplDetailsDto.oplId,
+        });
+        if (!opl) {
+          throw new NotFoundCustomException(
+            NotFoundCustomExceptionType.OPL_MSTR,
+          );
+        }
+        detail.siteId = opl.siteId;
       }
 
       Object.assign(detail, updateOplDetailsDto);
@@ -139,4 +162,4 @@ export class OplDetailsService {
       HandleException.exception(exception);
     }
   };
-} 
+}

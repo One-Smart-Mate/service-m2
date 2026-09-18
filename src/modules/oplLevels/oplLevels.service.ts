@@ -7,6 +7,7 @@ import { HandleException } from 'src/common/exceptions/handler/handle.exception'
 import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
 import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
 import { OplDetailsEntity } from 'src/modules/oplDetails/entities/oplDetails.entity';
+import { LevelEntity } from 'src/modules/level/entities/level.entity';
 
 @Injectable()
 export class OplLevelsService {
@@ -17,11 +18,25 @@ export class OplLevelsService {
     private readonly oplMstrRepository: Repository<OplMstr>,
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
+    @InjectRepository(LevelEntity)
+    private readonly levelRepository: Repository<LevelEntity>,
   ) {}
 
   async create(createOplLevelsDTO: CreateOplLevelsDTO) {
     try {
+      const [opl, level] = await Promise.all([
+        this.oplMstrRepository.findOneBy({ id: createOplLevelsDTO.oplId }),
+        this.levelRepository.findOneBy({ id: createOplLevelsDTO.levelId }),
+      ]);
+      if (!opl) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+      if (!level) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
       const oplLevels = this.oplLevelsRepository.create({
+        siteId: opl.siteId ?? level.siteId,
         oplId: createOplLevelsDTO.oplId,
         levelId: createOplLevelsDTO.levelId,
       });
@@ -117,4 +132,4 @@ export class OplLevelsService {
       HandleException.exception(exception);
     }
   }
-} 
+}

@@ -25,6 +25,10 @@ import { FileUploadController } from '../file-upload/file-upload.controller';
 import { IncidentController } from '../incident/incident.controller';
 import { MailController } from '../mail/mail.controller';
 import { NotificationsController } from '../notifications/notifications.controller';
+import { OplDetailsController } from '../oplDetails/oplDetails.controller';
+import { OplLevelsController } from '../oplLevels/oplLevels.controller';
+import { OplMstrController } from '../oplMstr/oplMstr.controller';
+import { OplTypesController } from '../oplTypes/oplTypes.controller';
 import { LevelController } from '../level/level.controller';
 import { PreclassifierController } from '../preclassifier/preclassifier.controller';
 import { PriorityController } from '../priority/priority.controller';
@@ -57,6 +61,9 @@ describe('Administrative authorization metadata', () => {
     [UsersController.prototype.create, [...SITE_ADMIN_ROLES]],
     [UsersController.prototype.update, [...SITE_ADMIN_ROLES]],
     [FileUploadController.prototype.uploadFile, [...SITE_ADMIN_ROLES]],
+    [OplTypesController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
+    [OplMstrController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
+    [OplDetailsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [CardTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
     [CardTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
     [PreclassifierController.prototype.create, [...SITE_ADMIN_ROLES]],
@@ -83,6 +90,17 @@ describe('Administrative authorization metadata', () => {
     [CiltMstrPositionLevelsController.prototype.create, [...SITE_ADMIN_ROLES]],
     [CiltMstrPositionLevelsController.prototype.update, [...SITE_ADMIN_ROLES]],
     [CiltMstrPositionLevelsController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [OplTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [OplTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [OplTypesController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [OplMstrController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [OplMstrController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [OplMstrController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [OplDetailsController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [OplDetailsController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [OplDetailsController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [OplLevelsController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [OplLevelsController.prototype.remove, [...SITE_ADMIN_ROLES]],
   ])(
     'sets the expected roles on an administrative handler',
     (handler, roles) => {
@@ -135,6 +153,20 @@ describe('Administrative authorization metadata', () => {
         lookup: 'id',
         source: 'params',
         requestKey: 'responsibleId',
+      },
+    },
+    {
+      handler: OplMstrController.prototype.findByCreatorId,
+      selfAccess: {
+        source: 'params',
+        requestKey: 'creatorId',
+        roles: SITE_ADMIN_ROLES,
+      },
+      resourceAccess: {
+        resource: 'user',
+        lookup: 'id',
+        source: 'params',
+        requestKey: 'creatorId',
       },
     },
   ];
