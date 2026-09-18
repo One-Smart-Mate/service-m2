@@ -4,6 +4,7 @@ import { IaService } from './ia.service';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
+import { createDatabaseTlsOptions } from 'src/config/transport-security.config';
 
 @Module({
   imports: [
@@ -25,9 +26,7 @@ import { ConfigModule } from '@nestjs/config';
           multipleStatements: false,
         },
         logging: false,
-        ssl: {
-          rejectUnauthorized: false,
-        },
+        ssl: createDatabaseTlsOptions('DB_IA'),
       }),
     }),
   ],

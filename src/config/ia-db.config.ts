@@ -1,4 +1,5 @@
 import { DataSource } from 'typeorm';
+import { createDatabaseTlsOptions } from './transport-security.config';
 
 export const iaDataSource = new DataSource({
   type: 'mysql',
@@ -9,8 +10,6 @@ export const iaDataSource = new DataSource({
   database: process.env.DB_NAME_IA,
   entities: [],
   synchronize: false,
-  logging: true,
-  ssl: {
-    rejectUnauthorized: false
-  }
-}); 
+  logging: false,
+  ssl: createDatabaseTlsOptions('DB_IA'),
+});
