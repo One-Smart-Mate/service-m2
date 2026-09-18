@@ -24,11 +24,13 @@ export class CreateCardTypesDTO {
   siteCode?: string;
 
   @ApiProperty({
-    description: 'Card type methodology',
-    example: 'Mantenimiento - M',
+    description: 'Card type methodology code',
+    example: 'M',
+    maxLength: 5,
     required: true,
   })
   @IsString()
+  @MaxLength(5)
   cardTypeMethodology: string;
 
   @ApiProperty({
