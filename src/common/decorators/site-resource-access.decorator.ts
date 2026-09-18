@@ -7,6 +7,8 @@ export type SiteResourceType =
   | 'cardType'
   | 'chart'
   | 'ciltFrequency'
+  | 'ciltEvidence'
+  | 'ciltExecution'
   | 'ciltMaster'
   | 'ciltPositionLevel'
   | 'ciltSchedule'

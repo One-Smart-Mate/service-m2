@@ -50,6 +50,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { ChartsModule } from './modules/charts/charts.module';
 import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
 import { RolesGuard } from './modules/auth/guard/roles.guard';
+import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-owner.guard';
 
 @Module({
   imports: [
@@ -125,6 +126,10 @@ import { RolesGuard } from './modules/auth/guard/roles.guard';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CiltExecutionOwnerGuard,
     },
     {
       provide: APP_FILTER,

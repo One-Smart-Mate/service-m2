@@ -14,6 +14,8 @@ import {
 import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { CiltSequencesExecutionsEvidencesEntity } from 'src/modules/CiltSequencesExecutionsEvidences/entities/ciltSequencesExecutionsEvidences.entity';
 import { LevelEntity } from 'src/modules/level/entities/level.entity';
 import { OplDetailsEntity } from 'src/modules/oplDetails/entities/oplDetails.entity';
 import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
@@ -63,6 +65,12 @@ describe('SiteAccessGuard', () => {
   const oplDetailRepository = {
     findOne: jest.fn(),
   } as unknown as Repository<OplDetailsEntity>;
+  const ciltExecutionRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<CiltSequencesExecutionsEntity>;
+  const ciltEvidenceRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<CiltSequencesExecutionsEvidencesEntity>;
   const dataSource = {
     getRepository: jest.fn((entity) => {
       if (entity === CardEntity) return cardRepository;
@@ -70,6 +78,10 @@ describe('SiteAccessGuard', () => {
       if (entity === LevelEntity) return levelRepository;
       if (entity === OplMstr) return oplMasterRepository;
       if (entity === OplDetailsEntity) return oplDetailRepository;
+      if (entity === CiltSequencesExecutionsEntity)
+        return ciltExecutionRepository;
+      if (entity === CiltSequencesExecutionsEvidencesEntity)
+        return ciltEvidenceRepository;
       return chartRepository;
     }),
   } as unknown as DataSource;
@@ -407,6 +419,36 @@ describe('SiteAccessGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(oplMasterRepository.findOne).toHaveBeenCalledWith({
+      select: { siteId: true },
+      where: { id: 4 },
+    });
+  });
+
+  it('resolves a legacy CILT evidence tenant from its execution', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'ciltEvidence',
+      lookup: 'id',
+      source: 'params',
+      requestKey: 'id',
+    };
+    jest.mocked(ciltEvidenceRepository.findOne).mockResolvedValue({
+      siteId: null,
+      ciltSequencesExecutionsId: 4,
+    } as CiltSequencesExecutionsEvidencesEntity);
+    jest
+      .mocked(ciltExecutionRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CiltSequencesExecutionsEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['operator']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      params: { id: 7 },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(ciltExecutionRepository.findOne).toHaveBeenCalledWith({
       select: { siteId: true },
       where: { id: 4 },
     });

@@ -4,6 +4,10 @@ import {
 } from 'src/common/auth/roles.constants';
 import { REQUIRED_ROLES_KEY } from 'src/common/decorators/roles.decorator';
 import {
+  CILT_EXECUTION_OWNER_KEY,
+  CiltExecutionOwnerOptions,
+} from 'src/common/decorators/cilt-execution-owner.decorator';
+import {
   SELF_OR_ROLES_KEY,
   SelfOrRolesOptions,
 } from 'src/common/decorators/self-or-roles.decorator';
@@ -15,6 +19,7 @@ import { CardController } from '../card/card.controller';
 import { CardTypesController } from '../cardTypes/cardTypes.controller';
 import { AmDiscardReasonController } from '../amDiscardReason/am-discard-reason.controller';
 import { CiltFrequenciesController } from '../ciltFrequencies/ciltFrequencies.controller';
+import { CiltSequencesExecutionsController } from '../CiltSequencesExecutions/ciltSequencesExecutions.controller';
 import { CiltMstrController } from '../ciltMstr/ciltMstr.controller';
 import { CiltMstrPositionLevelsController } from '../ciltMstrPositionLevels/ciltMstrPositionLevels.controller';
 import { CiltSequencesController } from '../ciltSequences/ciltSequences.controller';
@@ -68,6 +73,7 @@ describe('Administrative authorization metadata', () => {
     [OplMstrController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [OplDetailsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [PositionController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
+    [CiltSequencesExecutionsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [CardTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
     [CardTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
     [PreclassifierController.prototype.create, [...SITE_ADMIN_ROLES]],
@@ -112,6 +118,7 @@ describe('Administrative authorization metadata', () => {
     [AmDiscardReasonController.prototype.update, [...SITE_ADMIN_ROLES]],
     [AmDiscardReasonController.prototype.delete, [...SITE_ADMIN_ROLES]],
     [ExportController.prototype.exportXLS, [...SITE_ADMIN_ROLES]],
+    [CiltSequencesExecutionsController.prototype.softDelete, [...SITE_ADMIN_ROLES]],
   ])(
     'sets the expected roles on an administrative handler',
     (handler, roles) => {
@@ -194,6 +201,20 @@ describe('Administrative authorization metadata', () => {
         requestKey: 'userId',
       },
     },
+    {
+      handler: CiltSequencesExecutionsController.prototype.findAllByUserIdAndDate,
+      selfAccess: {
+        source: 'params',
+        requestKey: 'userId',
+        roles: SITE_ADMIN_ROLES,
+      },
+      resourceAccess: {
+        resource: 'user',
+        lookup: 'id',
+        source: 'params',
+        requestKey: 'userId',
+      },
+    },
   ];
 
   it.each(selfScopedHandlers)(
@@ -204,6 +225,53 @@ describe('Administrative authorization metadata', () => {
       );
       expect(Reflect.getMetadata(SITE_RESOURCE_ACCESS_KEY, handler)).toEqual(
         resourceAccess,
+      );
+    },
+  );
+
+  const executionOwnerHandlers: Array<{
+    handler: object;
+    access: CiltExecutionOwnerOptions;
+  }> = [
+    {
+      handler: CiltSequencesExecutionsController.prototype.create,
+      access: {
+        resource: 'newExecution',
+        source: 'body',
+        requestKey: 'userId',
+      },
+    },
+    {
+      handler: CiltSequencesExecutionsController.prototype.start,
+      access: {
+        resource: 'execution',
+        source: 'body',
+        requestKey: 'id',
+      },
+    },
+    {
+      handler: CiltSequencesExecutionsController.prototype.stop,
+      access: {
+        resource: 'execution',
+        source: 'body',
+        requestKey: 'id',
+      },
+    },
+    {
+      handler: CiltSequencesExecutionsController.prototype.deleteEvidence,
+      access: {
+        resource: 'evidence',
+        source: 'params',
+        requestKey: 'id',
+      },
+    },
+  ];
+
+  it.each(executionOwnerHandlers)(
+    'protects execution mutations by owner or site administrator',
+    ({ handler, access }) => {
+      expect(Reflect.getMetadata(CILT_EXECUTION_OWNER_KEY, handler)).toEqual(
+        access,
       );
     },
   );

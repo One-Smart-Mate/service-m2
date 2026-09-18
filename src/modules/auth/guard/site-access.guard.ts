@@ -24,6 +24,8 @@ import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
 import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
 import { CiltFrequenciesEntity } from 'src/modules/ciltFrequencies/entities/ciltFrequencies.entity';
+import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
+import { CiltSequencesExecutionsEvidencesEntity } from 'src/modules/CiltSequencesExecutionsEvidences/entities/ciltSequencesExecutionsEvidences.entity';
 import { CiltMstrEntity } from 'src/modules/ciltMstr/entities/ciltMstr.entity';
 import { CiltMstrPositionLevelsEntity } from 'src/modules/ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
@@ -54,6 +56,7 @@ const SITE_OWNED_RESOURCE_ENTITIES: Partial<
 > = {
   cardType: CardTypesEntity,
   ciltFrequency: CiltFrequenciesEntity,
+  ciltExecution: CiltSequencesExecutionsEntity,
   ciltMaster: CiltMstrEntity,
   ciltPositionLevel: CiltMstrPositionLevelsEntity,
   ciltSchedule: CiltSecuencesScheduleEntity,
@@ -288,6 +291,38 @@ export class SiteAccessGuard implements CanActivate {
       return parent?.siteId === null || parent?.siteId === undefined
         ? []
         : [Number(parent.siteId)];
+    }
+
+    if (options.resource === 'ciltEvidence') {
+      if (options.lookup !== 'id') {
+        throw new BadRequestException('Unsupported resource lookup');
+      }
+
+      const evidence = await this.dataSource
+        .getRepository(CiltSequencesExecutionsEvidencesEntity)
+        .findOne({
+          select: { siteId: true, ciltSequencesExecutionsId: true },
+          where: {
+            id: this.parseResourceId(resourceId, options.requestKey),
+          },
+        });
+      if (!evidence) {
+        throw new NotFoundException('Resource not found');
+      }
+      if (evidence.siteId !== null) {
+        return [Number(evidence.siteId)];
+      }
+
+      const execution = await this.dataSource
+        .getRepository(CiltSequencesExecutionsEntity)
+        .findOne({
+          select: { siteId: true },
+          where: { id: Number(evidence.ciltSequencesExecutionsId) },
+        });
+
+      return execution?.siteId === null || execution?.siteId === undefined
+        ? []
+        : [Number(execution.siteId)];
     }
 
     const siteOwnedResourceEntity =
