@@ -1,13 +1,18 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import { UsersService } from 'src/modules/users/users.service';
 
 export const SKIP_SITE_ACCESS_KEY = 'skipSiteAccess';
+export const REQUIRE_SITE_ACCESS_KEY = 'requireSiteAccess';
+const GLOBAL_SITE_ACCESS_ROLE = 'ih_sis_admin';
 
 @Injectable()
 export class SiteAccessGuard implements CanActivate {
@@ -17,7 +22,14 @@ export class SiteAccessGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Check if route should skip site access validation
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) {
+      return true;
+    }
+
     const skipSiteAccess = this.reflector.getAllAndOverride<boolean>(
       SKIP_SITE_ACCESS_KEY,
       [context.getHandler(), context.getClass()],
@@ -33,48 +45,85 @@ export class SiteAccessGuard implements CanActivate {
       throw new UnauthorizedException('User not authenticated');
     }
 
-    // Extract siteId from params, query, or body
-    const siteId = this.extractSiteId(request);
+    const siteIds = this.extractSiteIds(request);
 
-    if (!siteId) {
-      // If no siteId found, skip validation (some endpoints don't need it)
+    if (siteIds.length === 0) {
+      const requireSiteAccess = this.reflector.getAllAndOverride<boolean>(
+        REQUIRE_SITE_ACCESS_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+      if (requireSiteAccess) {
+        if (await this.hasGlobalSiteAccess(user.id)) {
+          return true;
+        }
+        throw new BadRequestException('siteId is required');
+      }
       return true;
     }
 
-    // Validate user has access to this site
-    await this.validateSiteAccess(Number(siteId), user.id);
+    await this.validateSiteAccess(siteIds, user.id);
 
     return true;
   }
 
-  private extractSiteId(request: any): number | null {
-    // Try to get siteId from different sources
-    if (request.params?.siteId) {
-      return Number(request.params.siteId);
-    }
-    if (request.query?.siteId) {
-      return Number(request.query.siteId);
-    }
-    if (request.body?.siteId) {
-      return Number(request.body.siteId);
-    }
-    return null;
+  private extractSiteIds(request: any): number[] {
+    const rawSiteIds: unknown[] = [];
+
+    this.collectSiteIds(request.params, rawSiteIds);
+    this.collectSiteIds(request.query, rawSiteIds);
+    this.collectSiteIds(request.body, rawSiteIds);
+
+    return [
+      ...new Set(rawSiteIds.flatMap((value) => this.parseSiteIds(value))),
+    ];
   }
 
-  private async validateSiteAccess(
-    siteId: number,
-    userId: number,
-  ): Promise<void> {
-    // Check if user has role with id 1 (super admin role)
-    const userRoleIds = await this.usersService.findUserRoleIds(userId);
-    const hasRole1 = userRoleIds.some((roleId) => Number(roleId) === 1);
-
-    if (hasRole1) {
-      // User has role id 1, skip site validation and allow access to any site
+  private collectSiteIds(value: unknown, siteIds: unknown[], depth = 0): void {
+    if (!value || typeof value !== 'object' || depth > 5) {
       return;
     }
 
-    // User doesn't have role id 1, validate site access
+    for (const [key, nestedValue] of Object.entries(value)) {
+      const normalizedKey = key.replace(/[_-]/g, '').toLowerCase();
+
+      if (
+        normalizedKey === 'siteid' ||
+        normalizedKey === 'siteids' ||
+        normalizedKey === 'sitesids'
+      ) {
+        siteIds.push(nestedValue);
+        continue;
+      }
+
+      this.collectSiteIds(nestedValue, siteIds, depth + 1);
+    }
+  }
+
+  private parseSiteIds(value: unknown): number[] {
+    const values = Array.isArray(value) ? value : [value];
+
+    return values.map((rawValue) => {
+      const siteId =
+        typeof rawValue === 'number'
+          ? rawValue
+          : Number(String(rawValue).trim());
+
+      if (!Number.isSafeInteger(siteId) || siteId <= 0) {
+        throw new BadRequestException('Invalid siteId');
+      }
+
+      return siteId;
+    });
+  }
+
+  private async validateSiteAccess(
+    siteIds: number[],
+    userId: number,
+  ): Promise<void> {
+    if (await this.hasGlobalSiteAccess(userId)) {
+      return;
+    }
+
     const authUser = await this.usersService.findByIdWithSites(userId);
     if (!authUser) {
       throw new UnauthorizedException('User not found');
@@ -84,13 +133,23 @@ export class SiteAccessGuard implements CanActivate {
       throw new UnauthorizedException('User has no site access');
     }
 
-    const hasAccessToSite = authUser.userHasSites.some(
-      (userSite) => Number(userSite.site.id) === Number(siteId),
+    const allowedSiteIds = new Set(
+      authUser.userHasSites.map((userSite) => Number(userSite.site.id)),
     );
-    if (!hasAccessToSite) {
-      throw new UnauthorizedException(
-        `User does not have access to site ${siteId}`,
-      );
+    const hasAccessToAllSites = siteIds.every((siteId) =>
+      allowedSiteIds.has(siteId),
+    );
+
+    if (!hasAccessToAllSites) {
+      throw new ForbiddenException('Site access denied');
     }
+  }
+
+  private async hasGlobalSiteAccess(userId: number): Promise<boolean> {
+    const userRoles = await this.usersService.getUserRoles(userId);
+
+    return userRoles.some(
+      (role) => role?.trim().toLowerCase() === GLOBAL_SITE_ACCESS_ROLE,
+    );
   }
 }

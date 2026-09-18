@@ -244,6 +244,10 @@ export class UsersService {
       relations: ['userRoles', 'userRoles.role'],
     });
 
+    if (!user || !user.userRoles) {
+      return [];
+    }
+
     return user.userRoles.map((userRole) => userRole.role.name);
   };
 

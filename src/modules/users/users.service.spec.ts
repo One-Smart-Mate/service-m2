@@ -38,4 +38,12 @@ describe('UsersService', () => {
       });
     });
   });
+
+  describe('getUserRoles', () => {
+    it('returns no roles when the JWT user no longer exists', async () => {
+      jest.mocked(userRepository.findOne).mockResolvedValue(null);
+
+      await expect(service.getUserRoles(10)).resolves.toEqual([]);
+    });
+  });
 });

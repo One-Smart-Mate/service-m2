@@ -2,10 +2,10 @@ import { Controller, Get, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/
 import { ChartsService } from './charts.service';
 import { ApiTags, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { SiteAccessGuard } from '../auth/guard/site-access.guard';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
 
 @Controller('charts')
-@UseGuards(AuthGuard, SiteAccessGuard)
+@UseGuards(AuthGuard)
 @ApiTags('charts')
 @ApiBearerAuth()
 export class ChartsController {
@@ -16,7 +16,8 @@ export class ChartsController {
    * Get all active charts, optionally filtered by site
    */
   @Get()
-  @ApiQuery({ name: 'siteId', required: false, description: 'Filter charts by site ID' })
+  @RequireSiteAccess()
+  @ApiQuery({ name: 'siteId', required: true, description: 'Filter charts by site ID' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status (default: A)' })
   async findAll(@Query('siteId') siteId?: string) {
     const charts = await this.chartsService.findAll(siteId ? parseInt(siteId) : undefined);

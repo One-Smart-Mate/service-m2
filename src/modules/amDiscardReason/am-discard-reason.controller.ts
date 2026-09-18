@@ -21,6 +21,7 @@ import {
   ApiTags,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
 
 @ApiTags('AM Discard Reasons')
 @ApiBearerAuth()
@@ -43,12 +44,13 @@ export class AmDiscardReasonController {
   }
 
   @Get()
+  @RequireSiteAccess()
   @ApiOperation({
-    summary: 'Get all discard reasons, optionally filtered by site',
+    summary: 'Get all discard reasons for a site',
   })
   @ApiQuery({
     name: 'siteId',
-    required: false,
+    required: true,
     type: 'number',
     description: 'Site ID to filter reasons',
   })
@@ -91,4 +93,4 @@ export class AmDiscardReasonController {
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.amDiscardReasonsService.delete(id);
   }
-} 
+}

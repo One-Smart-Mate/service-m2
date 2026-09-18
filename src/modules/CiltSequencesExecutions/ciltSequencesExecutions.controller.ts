@@ -8,6 +8,7 @@ import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesEx
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { ChartFiltersDTO } from './models/dto/chart.filters.dto';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
 import { 
   ExecutionChartResponseDTO, 
   ComplianceByPersonChartResponseDTO, 
@@ -154,10 +155,11 @@ export class CiltSequencesExecutionsController {
   }
 
   @Get('charts/execution')
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Get data for execution chart (programmed vs executed)' })
   @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: true, description: 'Site ID' })
   @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
   @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
   @ApiResponse({ type: [ExecutionChartResponseDTO] })
@@ -166,10 +168,11 @@ export class CiltSequencesExecutionsController {
   }
 
   @Get('charts/compliance')
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Get data for compliance chart by person' })
   @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: true, description: 'Site ID' })
   @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
   @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
   @ApiResponse({ type: [ComplianceByPersonChartResponseDTO] })
@@ -178,10 +181,11 @@ export class CiltSequencesExecutionsController {
   }
 
   @Get('charts/time')
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Get data for time chart (standard vs real)' })
   @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: true, description: 'Site ID' })
   @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
   @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
   @ApiResponse({ type: [TimeChartResponseDTO] })
@@ -190,14 +194,15 @@ export class CiltSequencesExecutionsController {
   }
 
   @Get('charts/anomalies')
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Get data for anomalies chart (TAGs)' })
   @ApiQuery({ name: 'startDate', type: 'string', description: 'Start date (YYYY-MM-DD)' })
   @ApiQuery({ name: 'endDate', type: 'string', description: 'End date (YYYY-MM-DD)' })
-  @ApiQuery({ name: 'siteId', type: 'number', required: false, description: 'Site ID' })
+  @ApiQuery({ name: 'siteId', type: 'number', required: true, description: 'Site ID' })
   @ApiQuery({ name: 'positionId', type: 'number', required: false, description: 'Position ID' })
   @ApiQuery({ name: 'levelId', type: 'number', required: false, description: 'Level ID' })
   @ApiResponse({ type: [AnomaliesChartResponseDTO] })
   getAnomaliesChart(@Query() filters: ChartFiltersDTO) {
     return this.ciltSequencesExecutionsService.getAnomaliesChart(filters);
   }
-} 
+}

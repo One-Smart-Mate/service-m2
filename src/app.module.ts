@@ -48,6 +48,7 @@ import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 import { IncidentModule } from './modules/incident/incident.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { ChartsModule } from './modules/charts/charts.module';
+import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
 
 @Module({
   imports: [
@@ -115,6 +116,10 @@ import { ChartsModule } from './modules/charts/charts.module';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SiteAccessGuard,
     },
     {
       provide: APP_FILTER,

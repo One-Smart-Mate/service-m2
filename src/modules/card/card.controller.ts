@@ -2,7 +2,6 @@ import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request } fr
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { SiteAccessGuard } from '../auth/guard/site-access.guard';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -19,7 +18,7 @@ import {
 } from './models/dto/card.report.dto';
 
 @Controller('card')
-@UseGuards(AuthGuard, SiteAccessGuard)
+@UseGuards(AuthGuard)
 @ApiTags('card')
 @ApiBearerAuth()
 export class CardController {
