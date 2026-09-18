@@ -207,6 +207,10 @@ export class UsersService {
   };
 
   findOneByEmail = (email: string) => {
+    if (typeof email !== 'string' || email.trim().length === 0) {
+      throw new BadRequestException('Email is required');
+    }
+
     return this.userRepository.findOne({
       where: { email: email },
       relations: { userHasSites: { site: true } },

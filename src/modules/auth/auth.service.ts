@@ -5,7 +5,6 @@ import {
 import { LoginDTO } from './models/dto/login.dto';
 import * as bcryptjs from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { ResestPasswordDTO } from './models/dto/reset.password.dto';
 import { UsersService } from '../users/users.service';
 import { UserResponse } from '../users/models/user.response';
 import {
@@ -151,23 +150,6 @@ export class AuthService {
       return new UserResponse(user, access_token, roles, companyName, app_history);
     } catch (exception) {
       console.log(exception);
-      HandleException.exception(exception);
-    }
-  };
-
-  resetPassword = async (data: ResestPasswordDTO, email: string) => {
-    try {
-      const user = await this.usersSevice.findOneByEmail(email);
-      user.password = await bcryptjs.hash(data.newPassword, 10);
-      this.usersSevice.update(user);
-
-      const payload = { email: user.email };
-      const access_token = await this.jwtService.signAsync(payload);
-
-      return {
-        access_token,
-      };
-    } catch (exception) {
       HandleException.exception(exception);
     }
   };
