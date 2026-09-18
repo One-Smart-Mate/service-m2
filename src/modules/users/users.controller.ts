@@ -15,6 +15,13 @@ import { SendCodeEmailDto } from './models/send.code.email.dto';
 import { UserWithPositionsResponseDTO } from './models/user.with.positions.response.dto';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { Public } from '../../common/decorators/public.decorator';
+import {
+  PLATFORM_ADMIN_ROLE,
+  SITE_ADMIN_ROLES,
+} from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('users')
 @ApiTags('users')
@@ -31,6 +38,7 @@ export class UsersController {
     });
   }
   @Get('/all')
+  @RequireRoles(PLATFORM_ADMIN_ROLE)
   findAll() {
     return this.usersService.findAllUsers();
   }
@@ -42,6 +50,7 @@ export class UsersController {
   }
 
   @Post('/create')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   create(@Body() createUserDTO: CreateUserDTO) {
     return this.usersService.create(createUserDTO);
   }
@@ -64,16 +73,45 @@ export class UsersController {
   }
 
   @Get('/user/:userId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   findOneById(@Param('userId') userId: number) {
     return this.usersService.findOneById(userId);
   }
 
   @Put('/update')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   update(@Body() updateUserDTO: UpdateUserDTO) {
     return this.usersService.updateUser(updateUserDTO);
   }
 
   @Put('/update-partial')
+  @SelfOrRoles({
+    source: 'body',
+    requestKey: 'id',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Update user partially (name, email, password, fastPassword)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   updatePartial(@Body() updateUserPartialDTO: UpdateUserPartialDTO) {
@@ -81,6 +119,13 @@ export class UsersController {
   }
 
   @Post('/app-token')
+  @SelfOrRoles({ source: 'body', requestKey: 'userId' })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'userId',
+  })
   setUserAppToken(@Body() setAppTokenDTO: SetAppTokenDTO) {
     return this.usersService.firebaseAppToken(setAppTokenDTO);
   }
@@ -116,6 +161,17 @@ export class UsersController {
     return this.usersService.logout(logoutDTO.userId, logoutDTO.osName);
   }
   @Get('/:userId/positions')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   @ApiParam({ name: 'userId', type: 'number' })
   @ApiOkResponse({ type: [PositionResponseDTO] })
   getUserPositions(@Param('userId') userId: number) {

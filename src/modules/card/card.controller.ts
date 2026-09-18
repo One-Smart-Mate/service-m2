@@ -17,6 +17,8 @@ import {
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
 import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
 
 @Controller('card')
 @UseGuards(AuthGuard)
@@ -138,9 +140,23 @@ export class CardController {
     return this.cardService.findCardByUUID(uuid);
   }
   @Get('/responsible/:responsibleId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'responsibleId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'responsibleId',
+  })
   @ApiParam({ name: 'responsibleId' })
-  findByResponsibleId(@Param('responsibleId') responsibleId: number) {
-    return this.cardService.findResponsibleCards(responsibleId);
+  findByResponsibleId(
+    @Param('responsibleId') responsibleId: number,
+    @Request() req,
+  ) {
+    return this.cardService.findResponsibleCards(responsibleId, req.user.id);
   }
 
   @Get('/count/:siteId')
@@ -500,9 +516,20 @@ export class CardController {
   }
 
   @Get('/user/:userId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   @ApiParam({ name: 'userId' })
-  findUserCards(@Param('userId') userId: number) {
-    return this.cardService.findUserCards(userId);
+  findUserCards(@Param('userId') userId: number, @Request() req) {
+    return this.cardService.findUserCards(userId, req.user.id);
   }
 
   @Post('/discard')

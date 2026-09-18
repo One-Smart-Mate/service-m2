@@ -1,4 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import * as XLSX from 'xlsx';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
@@ -54,8 +59,23 @@ export class FileUploadService {
     }
   }
 
-  importUsers = async (file: Express.Multer.File, siteIdDTO: SiteIdDTO) => {
+  importUsers = async (
+    file: Express.Multer.File,
+    siteIdDTO: SiteIdDTO,
+    requesterId: number,
+  ) => {
     try {
+      const siteId = Number(siteIdDTO.siteId);
+      if (!Number.isSafeInteger(siteId) || siteId <= 0) {
+        throw new BadRequestException('Invalid siteId');
+      }
+
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(requesterId);
+      if (accessibleSiteIds !== null && !accessibleSiteIds.includes(siteId)) {
+        throw new ForbiddenException('Site access denied');
+      }
+
       const workbook = XLSX.read(file.buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -63,7 +83,7 @@ export class FileUploadService {
 
       const result = await this.validateAndTransformUsersData(
         jsonData,
-        Number(siteIdDTO.siteId),
+        siteId,
       );
 
       return {

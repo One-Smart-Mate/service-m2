@@ -3,6 +3,7 @@ import {
   Controller,
   Post,
   UploadedFile,
+  Request,
   UseInterceptors,
 } from '@nestjs/common';
 import { 
@@ -21,6 +22,8 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 // DTO para documentación de Swagger
 class FileUploadBodyDTO {
@@ -44,6 +47,7 @@ class FileUploadBodyDTO {
 export class FileUploadController {
   constructor(private readonly fileUploadService: FileUploadService) {}
   @Post('import-users')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   @ApiOperation({
     summary: 'Import users from Excel file',
   })
@@ -132,12 +136,17 @@ export class FileUploadController {
   async uploadFile(
     @Body() siteIdDTO: SiteIdDTO,
     @UploadedFile() file: Express.Multer.File,
+    @Request() req,
   ) {
     if (!file) {
       throw new ValidationException(ValidationExceptionType.NO_FILE_UPLOADED);
     }
 
-    const result = await this.fileUploadService.importUsers(file, siteIdDTO);
+    const result = await this.fileUploadService.importUsers(
+      file,
+      siteIdDTO,
+      req.user.id,
+    );
 
     // Return simple response
     return result;

@@ -4,10 +4,13 @@ import { MailService } from './mail.service';
 import { UsersService } from '../users/users.service';
 import { SendCardAssignmentDto } from './templates/entities/SendCardAssignmentDto ';
 import { stringConstants } from 'src/utils/string.constant';
+import { PLATFORM_ADMIN_ROLE } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Mail')
 @ApiBearerAuth()
 @Controller('mail')
+@RequireRoles(PLATFORM_ADMIN_ROLE)
 export class MailController {
   constructor(
     private readonly mailService: MailService,

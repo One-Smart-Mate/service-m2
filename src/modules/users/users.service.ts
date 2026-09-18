@@ -31,6 +31,10 @@ import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import {
+  PLATFORM_ADMIN_ROLE,
+  normalizeRole,
+} from 'src/common/auth/roles.constants';
 
 @Injectable()
 export class UsersService {
@@ -273,6 +277,24 @@ export class UsersService {
       where: { id: userId },
       relations: { userHasSites: { site: true } },
     });
+  };
+
+  getAccessibleSiteIds = async (userId: number): Promise<number[] | null> => {
+    const roles = await this.getUserRoles(userId);
+    if (roles.map(normalizeRole).includes(PLATFORM_ADMIN_ROLE)) {
+      return null;
+    }
+
+    const user = await this.findByIdWithSites(userId);
+    if (!user?.userHasSites?.length) {
+      throw new UnauthorizedException('User has no site access');
+    }
+
+    return [
+      ...new Set(
+        user.userHasSites.map((userSite) => Number(userSite.site.id)),
+      ),
+    ];
   };
 
   findSiteUsersResponsibleData = async (siteId: number) => {

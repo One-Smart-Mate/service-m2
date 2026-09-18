@@ -429,11 +429,21 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  findResponsibleCards = async (responsibleId: number) => {
+  findResponsibleCards = async (
+    responsibleId: number,
+    requesterId: number,
+  ) => {
     try {
-      const cards = await this.cardRepository.findBy({
-        responsableId: responsibleId,
-      });
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(requesterId);
+      const cards = await this.cardRepository.findBy(
+        accessibleSiteIds === null
+          ? { responsableId: responsibleId }
+          : {
+              responsableId: responsibleId,
+              siteId: In(accessibleSiteIds),
+            },
+      );
       if (cards) {
         for (const card of cards) {
           card['levelName'] = card.nodeName;
@@ -1841,7 +1851,7 @@ export class CardService {
     };
   }
 
-  findUserCards = async (userId: number) => {
+  findUserCards = async (userId: number, requesterId: number) => {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
@@ -1852,21 +1862,37 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const userSite = user.userHasSites[0].site;
+      const targetSiteIds = user.userHasSites.map((userSite) =>
+        Number(userSite.site.id),
+      );
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(requesterId);
+      const authorizedSiteIds =
+        accessibleSiteIds === null
+          ? targetSiteIds
+          : targetSiteIds.filter((siteId) =>
+              accessibleSiteIds.includes(siteId),
+            );
+
+      if (authorizedSiteIds.length === 0) {
+        return [];
+      }
 
       const cards = await this.cardRepository.find({
-        where: { 
-          siteId: userSite.id,
-          mechanicId: userId
+        where: {
+          siteId: In(authorizedSiteIds),
+          mechanicId: userId,
         },
-        order: { siteCardId: 'DESC' }
+        order: { siteCardId: 'DESC' },
       });
 
-      if (cards) {
-        const allEvidencesMap = await this.findAllEvidences(userSite.id);
+      if (cards.length > 0) {
+        const allEvidences = await this.evidenceRepository.find({
+          where: { cardId: In(cards.map((card) => card.id)) },
+        });
 
         const cardEvidencesMap = new Map();
-        allEvidencesMap.forEach((evidence) => {
+        allEvidences.forEach((evidence) => {
           if (!cardEvidencesMap.has(evidence.cardId)) {
             cardEvidencesMap.set(evidence.cardId, []);
           }

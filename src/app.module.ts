@@ -49,6 +49,7 @@ import { IncidentModule } from './modules/incident/incident.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { ChartsModule } from './modules/charts/charts.module';
 import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
+import { RolesGuard } from './modules/auth/guard/roles.guard';
 
 @Module({
   imports: [
@@ -120,6 +121,10 @@ import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
     {
       provide: APP_GUARD,
       useClass: SiteAccessGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
     {
       provide: APP_FILTER,

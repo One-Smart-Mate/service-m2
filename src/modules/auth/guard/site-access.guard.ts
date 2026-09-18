@@ -8,6 +8,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import {
+  PLATFORM_ADMIN_ROLE,
+  normalizeRole,
+} from 'src/common/auth/roles.constants';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import {
   SITE_RESOURCE_ACCESS_KEY,
@@ -15,12 +19,12 @@ import {
 } from 'src/common/decorators/site-resource-access.decorator';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { SiteEntity } from 'src/modules/site/entities/site.entity';
 import { UsersService } from 'src/modules/users/users.service';
 import { DataSource } from 'typeorm';
 
 export const SKIP_SITE_ACCESS_KEY = 'skipSiteAccess';
 export const REQUIRE_SITE_ACCESS_KEY = 'requireSiteAccess';
-const GLOBAL_SITE_ACCESS_ROLE = 'ih_sis_admin';
 
 @Injectable()
 export class SiteAccessGuard implements CanActivate {
@@ -62,7 +66,17 @@ export class SiteAccessGuard implements CanActivate {
       );
 
     if (resourceAccess) {
-      siteIds.push(await this.resolveResourceSiteId(request, resourceAccess));
+      const resourceSiteIds = await this.resolveResourceSiteIds(
+        request,
+        resourceAccess,
+      );
+      if (resourceSiteIds.length === 0) {
+        if (await this.hasGlobalSiteAccess(user.id)) {
+          return true;
+        }
+        throw new ForbiddenException('Resource has no accessible site');
+      }
+      siteIds.push(...resourceSiteIds);
     }
 
     if (siteIds.length === 0) {
@@ -134,10 +148,10 @@ export class SiteAccessGuard implements CanActivate {
     });
   }
 
-  private async resolveResourceSiteId(
+  private async resolveResourceSiteIds(
     request: any,
     options: SiteResourceAccessOptions,
-  ): Promise<number> {
+  ): Promise<number[]> {
     const resourceId = request[options.source]?.[options.requestKey];
 
     if (resourceId === undefined || resourceId === null || resourceId === '') {
@@ -146,8 +160,6 @@ export class SiteAccessGuard implements CanActivate {
       );
     }
 
-    let resource: Pick<CardEntity, 'siteId'> | Pick<Chart, 'siteId'> | null;
-
     if (options.resource === 'card') {
       const repository = this.dataSource.getRepository(CardEntity);
       const where =
@@ -155,26 +167,60 @@ export class SiteAccessGuard implements CanActivate {
           ? { cardUUID: String(resourceId) }
           : { id: this.parseResourceId(resourceId, options.requestKey) };
 
-      resource = await repository.findOne({
+      const resource = await repository.findOne({
         select: { siteId: true },
         where,
       });
-    } else {
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
+
+      return [Number(resource.siteId)];
+    }
+
+    if (options.resource === 'chart') {
       if (options.lookup !== 'id') {
         throw new BadRequestException('Unsupported chart lookup');
       }
 
-      resource = await this.dataSource.getRepository(Chart).findOne({
+      const resource = await this.dataSource.getRepository(Chart).findOne({
         select: { siteId: true },
         where: { id: this.parseResourceId(resourceId, options.requestKey) },
       });
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
+
+      return [Number(resource.siteId)];
     }
 
-    if (!resource) {
+    const id = this.parseResourceId(resourceId, options.requestKey);
+
+    if (options.resource === 'site') {
+      const resource = await this.dataSource.getRepository(SiteEntity).findOne({
+        select: { id: true },
+        where: { id },
+      });
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
+
+      return [Number(resource.id)];
+    }
+
+    const user = await this.usersService.findByIdWithSites(id);
+    if (!user) {
       throw new NotFoundException('Resource not found');
     }
 
-    return Number(resource.siteId);
+    return [
+      ...new Set(
+        (user.userHasSites ?? []).map((userSite) => Number(userSite.site.id)),
+      ),
+    ];
   }
 
   private parseResourceId(value: unknown, key: string): number {
@@ -220,7 +266,7 @@ export class SiteAccessGuard implements CanActivate {
     const userRoles = await this.usersService.getUserRoles(userId);
 
     return userRoles.some(
-      (role) => role?.trim().toLowerCase() === GLOBAL_SITE_ACCESS_ROLE,
+      (role) => normalizeRole(role) === PLATFORM_ADMIN_ROLE,
     );
   }
 }
