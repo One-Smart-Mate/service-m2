@@ -11,6 +11,7 @@ import {
   SITE_RESOURCE_ACCESS_KEY,
   SiteResourceAccessOptions,
 } from 'src/common/decorators/site-resource-access.decorator';
+import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
 import { UsersService } from 'src/modules/users/users.service';
@@ -47,10 +48,15 @@ describe('SiteAccessGuard', () => {
   const chartRepository = {
     findOne: jest.fn(),
   } as unknown as Repository<Chart>;
+  const cardTypeRepository = {
+    findOne: jest.fn(),
+  } as unknown as Repository<CardTypesEntity>;
   const dataSource = {
-    getRepository: jest.fn((entity) =>
-      entity === CardEntity ? cardRepository : chartRepository,
-    ),
+    getRepository: jest.fn((entity) => {
+      if (entity === CardEntity) return cardRepository;
+      if (entity === CardTypesEntity) return cardTypeRepository;
+      return chartRepository;
+    }),
   } as unknown as DataSource;
   const guard = new SiteAccessGuard(reflector, usersService, dataSource);
 
@@ -246,6 +252,32 @@ describe('SiteAccessGuard', () => {
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  it('resolves the tenant of a site-owned catalog record', async () => {
+    metadata.siteResourceAccess = {
+      resource: 'cardType',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'id',
+    };
+    jest
+      .mocked(cardTypeRepository.findOne)
+      .mockResolvedValue({ siteId: 2 } as CardTypesEntity);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
+    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
+      userHasSites: [{ site: { id: 2 } }],
+    } as never);
+    const context = createContext({
+      user: { id: 10 },
+      body: { id: 8 },
+    });
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(cardTypeRepository.findOne).toHaveBeenCalledWith({
+      select: { siteId: true },
+      where: { id: 8 },
+    });
   });
 
   it('returns not found when the protected resource does not exist', async () => {

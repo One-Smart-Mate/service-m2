@@ -16,15 +16,34 @@ import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import {
   SITE_RESOURCE_ACCESS_KEY,
   SiteResourceAccessOptions,
+  SiteResourceType,
 } from 'src/common/decorators/site-resource-access.decorator';
+import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { LevelEntity } from 'src/modules/level/entities/level.entity';
+import { PreclassifierEntity } from 'src/modules/preclassifier/entities/preclassifier.entity';
+import { PriorityEntity } from 'src/modules/priority/entities/priority.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
 import { UsersService } from 'src/modules/users/users.service';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityTarget } from 'typeorm';
 
 export const SKIP_SITE_ACCESS_KEY = 'skipSiteAccess';
 export const REQUIRE_SITE_ACCESS_KEY = 'requireSiteAccess';
+
+type SiteOwnedResource = {
+  id: number;
+  siteId: number | null;
+};
+
+const SITE_OWNED_RESOURCE_ENTITIES: Partial<
+  Record<SiteResourceType, EntityTarget<SiteOwnedResource>>
+> = {
+  cardType: CardTypesEntity,
+  level: LevelEntity,
+  preclassifier: PreclassifierEntity,
+  priority: PriorityEntity,
+};
 
 @Injectable()
 export class SiteAccessGuard implements CanActivate {
@@ -194,6 +213,29 @@ export class SiteAccessGuard implements CanActivate {
       }
 
       return [Number(resource.siteId)];
+    }
+
+    const siteOwnedResourceEntity =
+      SITE_OWNED_RESOURCE_ENTITIES[options.resource];
+    if (siteOwnedResourceEntity) {
+      if (options.lookup !== 'id') {
+        throw new BadRequestException('Unsupported resource lookup');
+      }
+
+      const resource = await this.dataSource
+        .getRepository(siteOwnedResourceEntity)
+        .findOne({
+          select: { siteId: true },
+          where: {
+            id: this.parseResourceId(resourceId, options.requestKey),
+          },
+        });
+
+      if (!resource) {
+        throw new NotFoundException('Resource not found');
+      }
+
+      return resource.siteId === null ? [] : [Number(resource.siteId)];
     }
 
     const id = this.parseResourceId(resourceId, options.requestKey);

@@ -2,7 +2,15 @@ import { SetMetadata } from '@nestjs/common';
 
 export const SITE_RESOURCE_ACCESS_KEY = 'siteResourceAccess';
 
-export type SiteResourceType = 'card' | 'chart' | 'site' | 'user';
+export type SiteResourceType =
+  | 'card'
+  | 'cardType'
+  | 'chart'
+  | 'level'
+  | 'preclassifier'
+  | 'priority'
+  | 'site'
+  | 'user';
 export type SiteResourceLookup = 'id' | 'uuid';
 export type SiteResourceRequestSource = 'params' | 'query' | 'body';
 

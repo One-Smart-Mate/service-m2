@@ -3,6 +3,9 @@ import { CardTypesService } from './cardTypes.service';
 import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { CreateCardTypesDTO } from './dto/create.cardTypes.dto';
 import { UpdateCardTypesDTO } from './dto/update.cardTypes.dto';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('card-types')
 @ApiTags('card-types')
@@ -23,18 +26,32 @@ export class CardTypesController {
   }
 
   @Post('/create')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   @ApiBody({ type: CreateCardTypesDTO })
   create(@Body() createCardTypesDTO: CreateCardTypesDTO) {
     return this.cardTypesService.create(createCardTypesDTO);
   }
 
   @Put('/update')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'cardType',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   @ApiBody({ type: UpdateCardTypesDTO })
   update(@Body() updateCardTypesDTO: UpdateCardTypesDTO) {
     return this.cardTypesService.update(updateCardTypesDTO);
   }
 
   @Get('/card-type/:id')
+  @SiteResourceAccess({
+    resource: 'cardType',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiParam({ name: 'id', required: true, example: 1 })
   findoneById(@Param('id') id: number) {
     return this.cardTypesService.findById(id);
