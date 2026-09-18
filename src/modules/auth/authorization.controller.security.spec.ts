@@ -13,6 +13,7 @@ import {
 } from 'src/common/decorators/site-resource-access.decorator';
 import { CardController } from '../card/card.controller';
 import { CardTypesController } from '../cardTypes/cardTypes.controller';
+import { AmDiscardReasonController } from '../amDiscardReason/am-discard-reason.controller';
 import { CiltFrequenciesController } from '../ciltFrequencies/ciltFrequencies.controller';
 import { CiltMstrController } from '../ciltMstr/ciltMstr.controller';
 import { CiltMstrPositionLevelsController } from '../ciltMstrPositionLevels/ciltMstrPositionLevels.controller';
@@ -22,6 +23,7 @@ import { CiltSecuencesScheduleController } from '../ciltSecuencesSchedule/ciltSe
 import { CiltTypesController } from '../ciltTypes/ciltTypes.controller';
 import { CompanyController } from '../company/company.controller';
 import { FileUploadController } from '../file-upload/file-upload.controller';
+import { ExportController } from '../export/export.controller';
 import { IncidentController } from '../incident/incident.controller';
 import { MailController } from '../mail/mail.controller';
 import { NotificationsController } from '../notifications/notifications.controller';
@@ -32,6 +34,7 @@ import { OplTypesController } from '../oplTypes/oplTypes.controller';
 import { LevelController } from '../level/level.controller';
 import { PreclassifierController } from '../preclassifier/preclassifier.controller';
 import { PriorityController } from '../priority/priority.controller';
+import { PositionController } from '../position/position.controller';
 import { RolesController } from '../roles/roles.controller';
 import { SiteController } from '../site/site.controller';
 import { UsersController } from '../users/users.controller';
@@ -64,6 +67,7 @@ describe('Administrative authorization metadata', () => {
     [OplTypesController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [OplMstrController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [OplDetailsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
+    [PositionController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [CardTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
     [CardTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
     [PreclassifierController.prototype.create, [...SITE_ADMIN_ROLES]],
@@ -101,6 +105,13 @@ describe('Administrative authorization metadata', () => {
     [OplDetailsController.prototype.delete, [...SITE_ADMIN_ROLES]],
     [OplLevelsController.prototype.create, [...SITE_ADMIN_ROLES]],
     [OplLevelsController.prototype.remove, [...SITE_ADMIN_ROLES]],
+    [PositionController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [PositionController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [PositionController.prototype.updateOrder, [...SITE_ADMIN_ROLES]],
+    [AmDiscardReasonController.prototype.create, [...SITE_ADMIN_ROLES]],
+    [AmDiscardReasonController.prototype.update, [...SITE_ADMIN_ROLES]],
+    [AmDiscardReasonController.prototype.delete, [...SITE_ADMIN_ROLES]],
+    [ExportController.prototype.exportXLS, [...SITE_ADMIN_ROLES]],
   ])(
     'sets the expected roles on an administrative handler',
     (handler, roles) => {
@@ -167,6 +178,20 @@ describe('Administrative authorization metadata', () => {
         lookup: 'id',
         source: 'params',
         requestKey: 'creatorId',
+      },
+    },
+    {
+      handler: PositionController.prototype.findAllByUser,
+      selfAccess: {
+        source: 'params',
+        requestKey: 'userId',
+        roles: SITE_ADMIN_ROLES,
+      },
+      resourceAccess: {
+        resource: 'user',
+        lookup: 'id',
+        source: 'params',
+        requestKey: 'userId',
       },
     },
   ];

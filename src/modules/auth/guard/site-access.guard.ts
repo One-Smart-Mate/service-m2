@@ -22,6 +22,7 @@ import {
 import { CardTypesEntity } from 'src/modules/cardTypes/entities/cardTypes.entity';
 import { CardEntity } from 'src/modules/card/entities/card.entity';
 import { Chart } from 'src/modules/charts/entities/chart.entity';
+import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
 import { CiltFrequenciesEntity } from 'src/modules/ciltFrequencies/entities/ciltFrequencies.entity';
 import { CiltMstrEntity } from 'src/modules/ciltMstr/entities/ciltMstr.entity';
 import { CiltMstrPositionLevelsEntity } from 'src/modules/ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
@@ -58,6 +59,7 @@ const SITE_OWNED_RESOURCE_ENTITIES: Partial<
   ciltSchedule: CiltSecuencesScheduleEntity,
   ciltSequence: CiltSequencesEntity,
   ciltType: CiltTypesEntity,
+  discardReason: AmDiscardReasonEntity,
   level: LevelEntity,
   oplMaster: OplMstr,
   oplType: OplTypes,

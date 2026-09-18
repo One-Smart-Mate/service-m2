@@ -4,6 +4,8 @@ import { Response } from 'express';
 import { CardService } from '../card/card.service';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { SiteService } from '../site/site.service';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 @ApiBearerAuth()
 @ApiTags('export')
@@ -16,6 +18,7 @@ export class ExportController {
 
   @ApiTags('card-data')
   @Get('card-data/site/:siteId')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   async exportXLS(@Param('siteId') siteId: number, @Res() res: Response) {
     const cards = await this.cardService.findbySiteId(siteId);
     const cardTypes =

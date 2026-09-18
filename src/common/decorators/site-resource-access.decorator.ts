@@ -12,6 +12,7 @@ export type SiteResourceType =
   | 'ciltSchedule'
   | 'ciltSequence'
   | 'ciltType'
+  | 'discardReason'
   | 'level'
   | 'oplDetail'
   | 'oplLevel'
