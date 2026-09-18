@@ -8,7 +8,7 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
 export class FirebaseService {
   constructor(
     @Inject('FIREBASE_APP') private readonly firebaseApp: app.App,
-    private readonly logger: CustomLoggerService
+    private readonly logger: CustomLoggerService,
   ) {}
 
   sendNewMessage = async (
@@ -28,10 +28,10 @@ export class FirebaseService {
         },
         token: userToken,
       };
-      this.logger.logFirebase(`Sending single notification to token: ${userToken}`);
+      this.logger.logFirebase('Sending single notification');
       const messaging = this.firebaseApp.messaging();
       await messaging.send(message);
-      this.logger.logFirebase(`Notification sent successfully to token: ${userToken}`);
+      this.logger.logFirebase('Notification sent successfully');
       return Promise.resolve(true);
     } catch (error) {
       this.logger.logException('FirebaseService', 'sendNewMessage', error);
@@ -44,24 +44,30 @@ export class FirebaseService {
     registrationTokens: { token: string; type: string }[],
   ) => {
     try {
-      this.logger.logFirebase(`Starting batch notification to ${registrationTokens.length} tokens`);
+      this.logger.logFirebase(
+        `Starting batch notification to ${registrationTokens.length} tokens`,
+      );
 
       const messaging = this.firebaseApp.messaging();
       const results: { token: string; success: boolean; error?: any }[] = [];
-  
-      for (const tokenObj of registrationTokens) {
+
+      for (const [index, tokenObj] of registrationTokens.entries()) {
         let message;
-       
+
         if (tokenObj.type === stringConstants.OS_ANDROID) {
           message = {
             data: {
               notification_title: notificationDTO.notification_title,
-              notification_description: notificationDTO.notification_description,
+              notification_description:
+                notificationDTO.notification_description,
               notification_type: notificationDTO.notification_type,
             },
             token: tokenObj.token,
           };
-        } else if (tokenObj.type === stringConstants.OS_IOS || tokenObj.type === stringConstants.OS_WEB) {
+        } else if (
+          tokenObj.type === stringConstants.OS_IOS ||
+          tokenObj.type === stringConstants.OS_WEB
+        ) {
           message = {
             notification: {
               title: notificationDTO.notification_title,
@@ -69,31 +75,42 @@ export class FirebaseService {
             },
             data: {
               notification_title: notificationDTO.notification_title,
-              notification_description: notificationDTO.notification_description,
+              notification_description:
+                notificationDTO.notification_description,
               notification_type: notificationDTO.notification_type,
             },
             token: tokenObj.token,
           };
         }
-  
+
         try {
           const response = await messaging.send(message);
-          this.logger.logFirebase(`✅ Notification sent to: ${tokenObj.token} (${tokenObj.type}) | MessageId: ${response}`);
+          this.logger.logFirebase(
+            `Notification sent to recipient ${index + 1} (${tokenObj.type}) | MessageId: ${response}`,
+          );
           results.push({ token: tokenObj.token, success: true });
         } catch (error) {
-          this.logger.logFirebase(`❌ Error sending to: ${tokenObj.token} (${tokenObj.type}) - ${error.message}`);
+          this.logger.logFirebase(
+            `Error sending to recipient ${index + 1} (${tokenObj.type}) - ${error.message}`,
+          );
           results.push({ token: tokenObj.token, success: false, error });
         }
       }
-  
+
       const successCount = results.filter((r) => r.success).length;
       const failureCount = results.length - successCount;
-  
-      this.logger.logFirebase(`Batch completed. Successes: ${successCount} | Failures: ${failureCount}`);
-  
+
+      this.logger.logFirebase(
+        `Batch completed. Successes: ${successCount} | Failures: ${failureCount}`,
+      );
+
       return Promise.resolve(true);
     } catch (exception) {
-      this.logger.logException('FirebaseService', 'sendMultipleMessage', exception);
+      this.logger.logException(
+        'FirebaseService',
+        'sendMultipleMessage',
+        exception,
+      );
       return Promise.resolve(false);
     }
   };

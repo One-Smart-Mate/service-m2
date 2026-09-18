@@ -1,44 +1,64 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { IncidentService } from '../modules/incident/incident.service';
 import { CustomLoggerService } from '../common/logger/logger.service';
 import { WhatsappService } from '../modules/whatsapp/whatsapp.service';
 import { stringConstants } from '../utils/string.constant';
+import {
+  sanitizeForLogging,
+  sanitizeTextForLogging,
+} from '../common/logger/log-sanitizer';
 
 @Injectable()
 export class IncidentInterceptor implements NestInterceptor {
   constructor(
     private readonly incidentService: IncidentService,
     private readonly logger: CustomLoggerService,
-    private readonly whatsappService: WhatsappService
-  ) { }
+    private readonly whatsappService: WhatsappService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       catchError((error) => {
         const request = context.switchToHttp().getRequest();
-        
+
         // Early return conditions - skip incident registration for these cases
-        if(request.method === 'GET' && error.status === 404){
+        if (request.method === 'GET' && error.status === 404) {
           return throwError(() => error);
         }
-        if((error.message === stringConstants.incorrectAuth || error.message === stringConstants.inactiveStatus) && error.status === 400){
+        if (
+          (error.message === stringConstants.incorrectAuth ||
+            error.message === stringConstants.inactiveStatus) &&
+          error.status === 400
+        ) {
           return throwError(() => error);
         }
 
         // Process the incident in the background without blocking the error response
         this.processIncident(error, context).catch((incidentError) => {
-          this.logger.logException('IncidentInterceptor', 'processIncident', incidentError);
+          this.logger.logException(
+            'IncidentInterceptor',
+            'processIncident',
+            incidentError,
+          );
         });
 
         // Always re-throw the original error to maintain the error flow
         return throwError(() => error);
-      })
+      }),
     );
   }
 
-  private async processIncident(error: any, context: ExecutionContext): Promise<void> {
+  private async processIncident(
+    error: any,
+    context: ExecutionContext,
+  ): Promise<void> {
     try {
       const request = context.switchToHttp().getRequest();
       const controller = context.getClass().name;
@@ -51,10 +71,13 @@ export class IncidentInterceptor implements NestInterceptor {
 
       const userAgent = request.headers['user-agent'] || '';
       let platform: 'browser' | 'android' | 'ios' = 'browser';
-      
+
       if (userAgent.toLowerCase().includes('android')) {
         platform = 'android';
-      } else if (userAgent.toLowerCase().includes('iphone') || userAgent.toLowerCase().includes('ios')) {
+      } else if (
+        userAgent.toLowerCase().includes('iphone') ||
+        userAgent.toLowerCase().includes('ios')
+      ) {
         platform = 'ios';
       }
 
@@ -62,30 +85,32 @@ export class IncidentInterceptor implements NestInterceptor {
         timestamp,
         controller: controller,
         method: method,
-        url: request.url,
+        url: sanitizeTextForLogging(request.url),
         httpMethod: request.method,
-        body: request.body,
-        query: request.query,
-        params: request.params,
+        body: sanitizeForLogging(request.body),
+        query: sanitizeForLogging(request.query),
+        params: sanitizeForLogging(request.params),
         userAgent: userAgent,
         ip: request.ip || request.connection?.remoteAddress,
         headers: {
-          authorization: request.headers.authorization ? '[PRESENT]' : '[NOT PRESENT]',
+          authorization: request.headers.authorization
+            ? '[PRESENT]'
+            : '[NOT PRESENT]',
           'content-type': request.headers['content-type'],
-          'accept': request.headers['accept'],
+          accept: request.headers['accept'],
         },
         user: {
           id: userId,
           name: userName,
-          email: user?.email || 'N/A'
+          email: sanitizeForLogging({ email: user?.email || 'N/A' }).email,
         },
         error: {
           name: error.name,
-          message: error.message,
+          message: sanitizeTextForLogging(error.message),
           status: error.status,
           statusCode: error.statusCode,
-          stack: error.stack
-        }
+          stack: sanitizeTextForLogging(error.stack),
+        },
       };
 
       const description = `COMPLETE ERROR DETAILS:
@@ -124,10 +149,10 @@ ${errorDetails.userAgent}
       await this.incidentService.create(
         {
           platform,
-          description
+          description,
         },
         userId,
-        userName
+        userName,
       );
 
       this.logger.logProcess('INCIDENT AUTO-REGISTERED WITH FULL DETAILS', {
@@ -137,23 +162,30 @@ ${errorDetails.userAgent}
         userName,
         platform,
         errorMessage: error.message,
-        url: request.url
+        url: request.url,
       });
 
       try {
         // k
-        
+
         this.logger.logProcess('WHATSAPP NOTIFICATION SENT', {
           controller,
           method,
-          userName
+          userName,
         });
       } catch (whatsappError) {
-        this.logger.logException('IncidentInterceptor', 'whatsappNotification', whatsappError);
+        this.logger.logException(
+          'IncidentInterceptor',
+          'whatsappNotification',
+          whatsappError,
+        );
       }
-
     } catch (incidentError) {
-      this.logger.logException('IncidentInterceptor', 'registerIncident', incidentError);
+      this.logger.logException(
+        'IncidentInterceptor',
+        'registerIncident',
+        incidentError,
+      );
     }
   }
-} 
+}

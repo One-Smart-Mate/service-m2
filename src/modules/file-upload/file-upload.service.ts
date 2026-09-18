@@ -28,7 +28,7 @@ import { CustomLoggerService } from 'src/common/logger/logger.service';
 @Injectable()
 export class FileUploadService {
   private readonly logger = new Logger(FileUploadService.name);
-  
+
   constructor(
     private readonly roleService: RolesService,
     private readonly userService: UsersService,
@@ -38,20 +38,29 @@ export class FileUploadService {
     private readonly customLogger: CustomLoggerService,
   ) {}
 
-  private async sendFastPasswordWhatsAppMessage(phoneNumber: string | number, fastPassword: string, language?: string | null): Promise<void> {
+  private async sendFastPasswordWhatsAppMessage(
+    phoneNumber: string | number,
+    fastPassword: string,
+    language?: string | null,
+  ): Promise<void> {
     try {
       if (phoneNumber && fastPassword) {
         // Convert phoneNumber to string if it's a number
         const phoneNumberStr = String(phoneNumber);
-        
+
         // Ensure language is valid, default to ES if null, undefined, or invalid
-        const validLanguage = (language === stringConstants.LANG_EN) ? stringConstants.LANG_EN : stringConstants.LANG_ES;
-        
-        await this.whatsappService.sendAuthenticationMessages([{
-          phoneNumber: phoneNumberStr,
-          code: fastPassword,
-          language: validLanguage
-        }]);
+        const validLanguage =
+          language === stringConstants.LANG_EN
+            ? stringConstants.LANG_EN
+            : stringConstants.LANG_ES;
+
+        await this.whatsappService.sendAuthenticationMessages([
+          {
+            phoneNumber: phoneNumberStr,
+            code: fastPassword,
+            language: validLanguage,
+          },
+        ]);
         this.customLogger.log(
           `WhatsApp authentication message sent successfully in language: ${validLanguage}`,
         );
@@ -85,16 +94,14 @@ export class FileUploadService {
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      const result = await this.validateAndTransformUsersData(
-        jsonData,
-        siteId,
-      );
+      const result = await this.validateAndTransformUsersData(jsonData, siteId);
 
       return {
-        message: result.successfullyCreated > 0 
-          ? stringConstants.successImport
-          : stringConstants.allUsersAlreadyExist,
-        data: result
+        message:
+          result.successfullyCreated > 0
+            ? stringConstants.successImport
+            : stringConstants.allUsersAlreadyExist,
+        data: result,
       };
     } catch (exception) {
       HandleException.exception(exception);
@@ -108,7 +115,12 @@ export class FileUploadService {
     const usersAndRoles: UsersAndRolesDTO[] = [];
     const randomPassword = generateRandomCode(8);
     const currentDate = new Date();
-    const processedUsers: { email: string; name: string; reason: string; registered: boolean }[] = [];
+    const processedUsers: {
+      email: string;
+      name: string;
+      reason: string;
+      registered: boolean;
+    }[] = [];
 
     const [
       hashedPassword,
@@ -250,21 +262,27 @@ export class FileUploadService {
     const appUrl = process.env.URL_WEB;
     for (const newUser of savedUsers) {
       try {
-        await this.mailService.sendWelcomeEmail(newUser, appUrl, newUser.translation || stringConstants.LANG_ES);
+        await this.mailService.sendWelcomeEmail(
+          newUser,
+          appUrl,
+          newUser.translation || stringConstants.LANG_ES,
+        );
       } catch (error) {
-        this.logger.error(`Failed to send welcome email to ${newUser.email}: ${error.message}`);
+        this.logger.error(`Failed to send welcome email: ${error.message}`);
       }
-      
+
       // Send fastPassword via WhatsApp if phone number is provided
       if (newUser.phoneNumber && newUser.fastPassword) {
         try {
           await this.sendFastPasswordWhatsAppMessage(
-            newUser.phoneNumber, 
-            newUser.fastPassword, 
-            newUser.translation || stringConstants.LANG_ES
+            newUser.phoneNumber,
+            newUser.fastPassword,
+            newUser.translation || stringConstants.LANG_ES,
           );
         } catch (error) {
-          this.logger.error(`Failed to send WhatsApp authentication message to ${newUser.phoneNumber}: ${error.message}`);
+          this.logger.error(
+            `Failed to send WhatsApp authentication message: ${error.message}`,
+          );
         }
       }
     }
