@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Request } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UserResponsible } from './models/user.responsible.dto';
@@ -22,6 +22,11 @@ import {
 import { RequireRoles } from 'src/common/decorators/roles.decorator';
 import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
 import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  AUTH_THROTTLE,
+  getAuthThrottleTracker,
+} from 'src/common/auth/auth-throttle';
 
 @Controller('users')
 @ApiTags('users')
@@ -57,17 +62,44 @@ export class UsersController {
 
   @Public()
   @Post('/send-code')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: {
+      ...AUTH_THROTTLE.recoverySend,
+      getTracker: getAuthThrottleTracker,
+    },
+  })
   @ApiBody({ type: SendCodeEmailDto })
-  sendCodeToEmail(@Body() sendCodeEmailDto: SendCodeEmailDto) {
-    return this.usersService.sendCodeToEmail(sendCodeEmailDto.email, sendCodeEmailDto.translation);
+  async sendCodeToEmail(@Body() sendCodeEmailDto: SendCodeEmailDto) {
+    await this.usersService.sendCodeToEmail(
+      sendCodeEmailDto.email,
+      sendCodeEmailDto.translation,
+    );
+    return {
+      message: 'If the account exists, a recovery code will be sent',
+    };
   }
   @Public()
   @Post('/verify-code')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: {
+      ...AUTH_THROTTLE.recoveryVerify,
+      getTracker: getAuthThrottleTracker,
+    },
+  })
   veryfyCode(@Body() sendCodeDTO: SendCodeDTO) {
     return this.usersService.verifyResetCode(sendCodeDTO);
   }
   @Public()
   @Post('/reset-password')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({
+    default: {
+      ...AUTH_THROTTLE.recoveryReset,
+      getTracker: getAuthThrottleTracker,
+    },
+  })
   async resetPassword(@Body() resetPasswordDTO: ResetPasswordDTO) {
     await this.usersService.resetPassword(resetPasswordDTO);
   }

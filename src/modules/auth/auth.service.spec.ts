@@ -13,6 +13,8 @@ describe('AuthService token refresh', () => {
   const usersService = {
     findByIdWithSites: jest.fn(),
     getUserRoles: jest.fn(),
+    findOneByPhoneNumber: jest.fn(),
+    sendFastPasswordWhatsApp: jest.fn(),
   } as unknown as UsersService;
   const siteService = {
     getCompanyName: jest.fn(),
@@ -101,5 +103,41 @@ describe('AuthService token refresh', () => {
       }),
     );
     expect(response.token).toBe('new-token');
+  });
+
+  it('does not reveal whether a phone number belongs to a user', async () => {
+    jest.mocked(usersService.findOneByPhoneNumber).mockResolvedValue(null);
+
+    const response = await service.sendFastPasswordByPhone({
+      phoneNumber: '521234567890',
+    });
+
+    expect(response).toEqual({
+      message: 'If the account exists, the fast password will be sent',
+    });
+    expect(usersService.sendFastPasswordWhatsApp).not.toHaveBeenCalled();
+  });
+
+  it('sends a fast password without returning the phone or secret', async () => {
+    jest.mocked(usersService.findOneByPhoneNumber).mockResolvedValue({
+      phoneNumber: '521234567890',
+      fastPassword: 'AB12',
+      translation: 'ES',
+      status: 'A',
+    } as any);
+    jest.mocked(usersService.sendFastPasswordWhatsApp).mockResolvedValue();
+
+    const response = await service.sendFastPasswordByPhone({
+      phoneNumber: '521234567890',
+    });
+
+    expect(usersService.sendFastPasswordWhatsApp).toHaveBeenCalledWith(
+      '521234567890',
+      'AB12',
+      'ES',
+    );
+    expect(response).toEqual({
+      message: 'If the account exists, the fast password will be sent',
+    });
   });
 });

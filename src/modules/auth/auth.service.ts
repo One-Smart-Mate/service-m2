@@ -263,19 +263,22 @@ export class AuthService {
     try {
       const user = await this.usersSevice.findOneByPhoneNumber(data.phoneNumber);
 
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      if (
+        user &&
+        user.status !== stringConstants.inactiveStatus &&
+        user.status !== stringConstants.cancelledStatus &&
+        user.phoneNumber &&
+        user.fastPassword
+      ) {
+        await this.usersSevice.sendFastPasswordWhatsApp(
+          user.phoneNumber,
+          user.fastPassword,
+          user.translation,
+        );
       }
-
-      if (user.status === stringConstants.inactiveStatus) {
-        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
-      }
-
-      await this.usersSevice.sendFastPasswordWhatsApp(user.phoneNumber, user.fastPassword, user.translation);
 
       return {
-        message: 'Fast password sent successfully',
-        phoneNumber: user.phoneNumber
+        message: 'If the account exists, the fast password will be sent',
       };
     } catch (exception) {
       console.log(exception);

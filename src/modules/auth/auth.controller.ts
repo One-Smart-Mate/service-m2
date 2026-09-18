@@ -8,9 +8,14 @@ import { UpdateLastLoginDTO } from './models/dto/update-last-login.dto';
 import { RefreshTokenDTO } from './models/dto/refresh-token.dto';
 import { PhoneNumberDTO } from './models/dto/phone-number.dto';
 import { Public } from 'src/common/decorators/public.decorator';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  AUTH_THROTTLE,
+  getAuthThrottleTracker,
+} from 'src/common/auth/auth-throttle';
 
 @ApiBearerAuth()
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, ThrottlerGuard)
 @ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
@@ -18,12 +23,21 @@ export class AuthController {
 
   @Public()
   @Post('login')
+  @Throttle({
+    default: { ...AUTH_THROTTLE.login, getTracker: getAuthThrottleTracker },
+  })
   @ApiBody({ type: LoginDTO })
   login(@Body() loginDto: LoginDTO) {
     return this.authService.login(loginDto);
   }
 
   @Post('login-fast')
+  @Throttle({
+    default: {
+      ...AUTH_THROTTLE.fastLogin,
+      getTracker: getAuthThrottleTracker,
+    },
+  })
   @ApiBody({ type: FastLoginDTO })
   loginWithFastPassword(@Body() fastLoginDto: FastLoginDTO, @Request() req) {
     return this.authService.loginWithFastPassword(fastLoginDto, req.user.id);
@@ -43,6 +57,12 @@ export class AuthController {
 
   @Public()
   @Post('send-fastpassword-by-phone')
+  @Throttle({
+    default: {
+      ...AUTH_THROTTLE.recoverySend,
+      getTracker: getAuthThrottleTracker,
+    },
+  })
   @ApiBody({ type: PhoneNumberDTO })
   sendFastPasswordByPhone(@Body() phoneNumberDto: PhoneNumberDTO) {
     return this.authService.sendFastPasswordByPhone(phoneNumberDto);

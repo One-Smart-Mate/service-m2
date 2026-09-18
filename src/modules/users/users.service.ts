@@ -38,6 +38,8 @@ import {
 
 @Injectable()
 export class UsersService {
+  private static readonly RESET_CODE_TTL_MS = 15 * 60 * 1000;
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
@@ -59,9 +61,7 @@ export class UsersService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const length = 4;
     while (true) {
-      const fastPassword = Array.from({ length }, () =>
-        chars.charAt(Math.floor(Math.random() * chars.length)),
-      ).join('');
+      const fastPassword = generateRandomCode(length, chars);
 
       const existingUser = await this.userRepository.findOne({
         where: {
@@ -87,10 +87,14 @@ export class UsersService {
           code: fastPassword,
           language: validLanguage
         }]);
-        this.logger.log(`WhatsApp authentication message sent to ${phoneNumber} with fastPassword: ${fastPassword} in language: ${validLanguage}`);
+        this.logger.log(
+          `WhatsApp authentication message sent successfully in language: ${validLanguage}`,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send WhatsApp authentication message to ${phoneNumber}: ${error.message}`);
+      this.logger.error(
+        `Failed to send WhatsApp authentication message: ${error.message}`,
+      );
     }
   }
 
@@ -127,18 +131,21 @@ export class UsersService {
         throw new ValidationException(ValidationExceptionType.EMAIL_MISSING);
       }
 
-      const user = await this.userRepository.findOneBy({ email });
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await this.userRepository.findOneBy({ email: normalizedEmail });
 
       if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        return;
       }
 
       const resetCode = generateRandomCode(6);
-      user.resetCode = await await bcryptjs.hash(
+      user.resetCode = await bcryptjs.hash(
         resetCode,
         stringConstants.SALT_ROUNDS,
       );
-      user.resetCodeExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      user.resetCodeExpiration = new Date(
+        Date.now() + UsersService.RESET_CODE_TTL_MS,
+      );
       await this.userRepository.save(user);
 
       if (!email.endsWith('@fakeosm.com')) {
@@ -152,11 +159,21 @@ export class UsersService {
   verifyResetCode = async (sendCodeDTO: SendCodeDTO) => {
     try {
       const user = await this.userRepository.findOne({
-        where: { email: sendCodeDTO.email },
+        where: { email: sendCodeDTO.email.toLowerCase() },
       });
 
       if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (!user.resetCode || !user.resetCodeExpiration) {
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (new Date() > user.resetCodeExpiration) {
+        throw new ValidationException(
+          ValidationExceptionType.RESETCODE_EXPIRED,
+        );
       }
 
       const isCodeValid = await bcryptjs.compare(
@@ -168,11 +185,6 @@ export class UsersService {
         throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
       }
 
-      if (new Date() > user.resetCodeExpiration) {
-        throw new ValidationException(
-          ValidationExceptionType.RESETCODE_EXPIRED,
-        );
-      }
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -181,11 +193,21 @@ export class UsersService {
   resetPassword = async (resetPasswordDTO: ResetPasswordDTO) => {
     try {
       const user = await this.userRepository.findOne({
-        where: { email: resetPasswordDTO.email },
+        where: { email: resetPasswordDTO.email.toLowerCase() },
       });
 
       if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (!user.resetCode || !user.resetCodeExpiration) {
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (new Date() > user.resetCodeExpiration) {
+        throw new ValidationException(
+          ValidationExceptionType.RESETCODE_EXPIRED,
+        );
       }
 
       const isCodeValid = await bcryptjs.compare(
@@ -197,7 +219,7 @@ export class UsersService {
         throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
       }
 
-      user.password = await await bcryptjs.hash(
+      user.password = await bcryptjs.hash(
         resetPasswordDTO.newPassword,
         stringConstants.SALT_ROUNDS,
       );

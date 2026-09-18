@@ -52,10 +52,14 @@ export class FileUploadService {
           code: fastPassword,
           language: validLanguage
         }]);
-        this.customLogger.log(`WhatsApp authentication message sent to ${phoneNumberStr} with fastPassword: ${fastPassword} in language: ${validLanguage}`);
+        this.customLogger.log(
+          `WhatsApp authentication message sent successfully in language: ${validLanguage}`,
+        );
       }
     } catch (error) {
-      this.customLogger.error(`Failed to send WhatsApp authentication message to ${String(phoneNumber)}: ${error.message}`);
+      this.customLogger.error(
+        `Failed to send WhatsApp authentication message: ${error.message}`,
+      );
     }
   }
 

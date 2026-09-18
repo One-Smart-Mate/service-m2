@@ -52,6 +52,8 @@ import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
 import { RolesGuard } from './modules/auth/guard/roles.guard';
 import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-owner.guard';
 import { createJwtOptions } from './config/jwt.config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AUTH_THROTTLE } from './common/auth/auth-throttle';
 
 @Module({
   imports: [
@@ -104,6 +106,7 @@ import { createJwtOptions } from './config/jwt.config';
       inject: [ConfigService],
       useFactory: createJwtOptions,
     }),
+    ThrottlerModule.forRoot([{ name: 'default', ...AUTH_THROTTLE.default }]),
   ],
   controllers: [AppController],
   providers: [

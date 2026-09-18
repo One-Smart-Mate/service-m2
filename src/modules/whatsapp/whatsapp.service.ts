@@ -49,11 +49,11 @@ export class WhatsappService {
           authMessage.language
         );
         results.push(result);
-        this.logger.log(`Authentication message sent successfully to ${authMessage.phoneNumber}`);
-      } catch (error) {
-        this.logger.error(`Failed to send authentication message to ${authMessage.phoneNumber}`, error);
+        this.logger.log('Authentication message sent successfully');
+      } catch {
+        this.logger.error('Failed to send authentication message');
         throw new HttpException(
-          `Failed to send message to ${authMessage.phoneNumber}: ${error.message}`,
+          'Failed to send authentication message',
           HttpStatus.BAD_REQUEST
         );
       }
@@ -74,10 +74,7 @@ export class WhatsappService {
     // If it doesn't start with '+', add it for international format
     if (!cleaned.startsWith('+')) {
       cleaned = '+' + cleaned;
-      this.logger.debug(`Added country code prefix to phone number: ${cleaned}`);
     }
-    
-    this.logger.debug(`Phone number cleaned from "${phoneNumber}" to "${cleaned}"`);
     return cleaned;
   }
 
@@ -142,23 +139,18 @@ export class WhatsappService {
     };
 
     try {
-      this.logger.log(`Sending authentication template message to ${cleanedPhoneNumber} with code: ${code}`);
-      this.logger.debug(`Request payload:`, JSON.stringify(payload, null, 2));
+      this.logger.log('Sending authentication template message');
       
       const response = await axios.post(url, payload, { headers });
       
       this.logger.log(`WhatsApp API Response Status: ${response.status}`);
-      this.logger.log(`WhatsApp API Response Data:`, JSON.stringify(response.data, null, 2));
       
       return response.data;
     } catch (error) {
       const errorDetails = {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        data: error.response?.data,
         message: error.message,
-        phoneNumber: cleanedPhoneNumber,
-        code: code
       };
       
       this.logger.error('WhatsApp API Error Details:', JSON.stringify(errorDetails, null, 2));
@@ -169,7 +161,7 @@ export class WhatsappService {
         || 'Failed to send WhatsApp template message';
       
       throw new HttpException(
-        `WhatsApp API Error: ${finalErrorMessage} (Phone: ${cleanedPhoneNumber})`,
+        `WhatsApp API Error: ${finalErrorMessage}`,
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

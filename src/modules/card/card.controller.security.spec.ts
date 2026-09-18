@@ -6,6 +6,12 @@ import { ChartsController } from '../charts/charts.controller';
 import { CardController } from './card.controller';
 
 describe('Resource site authorization metadata', () => {
+  it('does not expose fast passwords through a card URL', () => {
+    expect(CardController.prototype).not.toHaveProperty(
+      'findCardsByFastPassword',
+    );
+  });
+
   const cardRoutes: Array<{
     method: keyof CardController;
     options: SiteResourceAccessOptions;

@@ -5,7 +5,9 @@ import { stringConstants } from 'src/utils/string.constant';
 
 export class SendCodeEmailDto {
   @ApiProperty({ description: 'email', example: 'username@domain' })
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toLowerCase() : value,
+  )
   @IsEmail()
   email: string;
 
@@ -19,4 +21,4 @@ export class SendCodeEmailDto {
   @IsString()
   @IsOptional()
   translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
-} 
+}
