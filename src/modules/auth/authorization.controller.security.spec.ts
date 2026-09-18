@@ -30,6 +30,7 @@ import { CompanyController } from '../company/company.controller';
 import { FileUploadController } from '../file-upload/file-upload.controller';
 import { ExportController } from '../export/export.controller';
 import { IncidentController } from '../incident/incident.controller';
+import { IaController } from '../ia/ia.controller';
 import { MailController } from '../mail/mail.controller';
 import { NotificationsController } from '../notifications/notifications.controller';
 import { OplDetailsController } from '../oplDetails/oplDetails.controller';
@@ -73,7 +74,11 @@ describe('Administrative authorization metadata', () => {
     [OplMstrController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [OplDetailsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
     [PositionController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
-    [CiltSequencesExecutionsController.prototype.findAll, [PLATFORM_ADMIN_ROLE]],
+    [
+      CiltSequencesExecutionsController.prototype.findAll,
+      [PLATFORM_ADMIN_ROLE],
+    ],
+    [IaController.prototype.convertToSQL, [PLATFORM_ADMIN_ROLE]],
     [CardTypesController.prototype.create, [...SITE_ADMIN_ROLES]],
     [CardTypesController.prototype.update, [...SITE_ADMIN_ROLES]],
     [PreclassifierController.prototype.create, [...SITE_ADMIN_ROLES]],
@@ -118,7 +123,10 @@ describe('Administrative authorization metadata', () => {
     [AmDiscardReasonController.prototype.update, [...SITE_ADMIN_ROLES]],
     [AmDiscardReasonController.prototype.delete, [...SITE_ADMIN_ROLES]],
     [ExportController.prototype.exportXLS, [...SITE_ADMIN_ROLES]],
-    [CiltSequencesExecutionsController.prototype.softDelete, [...SITE_ADMIN_ROLES]],
+    [
+      CiltSequencesExecutionsController.prototype.softDelete,
+      [...SITE_ADMIN_ROLES],
+    ],
   ])(
     'sets the expected roles on an administrative handler',
     (handler, roles) => {
@@ -202,7 +210,8 @@ describe('Administrative authorization metadata', () => {
       },
     },
     {
-      handler: CiltSequencesExecutionsController.prototype.findAllByUserIdAndDate,
+      handler:
+        CiltSequencesExecutionsController.prototype.findAllByUserIdAndDate,
       selfAccess: {
         source: 'params',
         requestKey: 'userId',

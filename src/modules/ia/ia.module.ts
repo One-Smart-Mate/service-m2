@@ -21,12 +21,13 @@ import { ConfigModule } from '@nestjs/config';
         synchronize: false,
         autoLoadEntities: true,
         extra: {
-          connectionLimit: 1000,
+          connectionLimit: 10,
+          multipleStatements: false,
         },
-        logging: true,
+        logging: false,
         ssl: {
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+        },
       }),
     }),
   ],
@@ -34,4 +35,4 @@ import { ConfigModule } from '@nestjs/config';
   providers: [IaService, CustomLoggerService],
   exports: [IaService],
 })
-export class IaModule {} 
+export class IaModule {}
