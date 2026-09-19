@@ -33,7 +33,6 @@ import {
   normalizeRole,
 } from 'src/common/auth/roles.constants';
 import { digestFastPassword } from '../auth/fast-password.crypto';
-import { AuthSessionService } from '../auth-session/auth-session.service';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
 import { PasswordResetPersistence } from './password-reset.persistence';
@@ -56,16 +55,16 @@ export class UsersService {
     private readonly whatsappService: WhatsappService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
-    private readonly authSessionService: AuthSessionService,
     private readonly userCreationPersistence: UserCreationPersistence,
     private readonly userUpdatePersistence: UserUpdatePersistence,
     private readonly passwordResetPersistence: PasswordResetPersistence,
     private readonly userLogoutPersistence: UserLogoutPersistence,
   ) {}
 
-  async generateUniqueFastPassword(siteId: number): Promise<string> {
+  async generateUniqueFastPassword(siteIds: number | number[]): Promise<string> {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = 4;
+    const normalizedSiteIds = Array.isArray(siteIds) ? siteIds : [siteIds];
     while (true) {
       const fastPassword = generateRandomCode(length, chars);
       const fastPasswordDigest = digestFastPassword(fastPassword);
@@ -73,7 +72,14 @@ export class UsersService {
       const existingUser = await this.userRepository.findOne({
         where: {
           fastPasswordDigest,
-          userHasSites: { site: { id: siteId } },
+          userHasSites: {
+            site: {
+              id:
+                normalizedSiteIds.length === 1
+                  ? normalizedSiteIds[0]
+                  : In(normalizedSiteIds),
+            },
+          },
         },
       });
 
@@ -928,11 +934,13 @@ export class UsersService {
     });
   };
 
-  findOneByPhoneNumber = (phoneNumber: string) => {
-    return this.userRepository.findOne({
+  findOneByPhoneNumber = async (phoneNumber: string) => {
+    const users = await this.userRepository.find({
       where: { phoneNumber },
       relations: { userHasSites: { site: true } },
+      take: 2,
     });
+    return users.length === 1 ? users[0] : null;
   };
 
   sendFastPasswordWhatsApp = async (phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> => {
@@ -940,20 +948,27 @@ export class UsersService {
   };
 
   rotateFastPasswordAndSend = async (user: UserEntity): Promise<void> => {
-    const siteId = user.userHasSites?.[0]?.site?.id ?? user.siteId;
-    if (!siteId || !user.phoneNumber) {
+    const siteIds = [
+      ...new Set([
+        ...(user.userHasSites?.map(({ site }) => site.id) ?? []),
+        ...(user.siteId ? [user.siteId] : []),
+      ]),
+    ];
+    if (siteIds.length === 0 || !user.phoneNumber) {
       return;
     }
 
-    const fastPassword = await this.generateUniqueFastPassword(siteId);
-    user.fastPasswordDigest = digestFastPassword(fastPassword);
-    user.updatedAt = new Date();
-    await this.userRepository.save(user);
-    await this.authSessionService.revokeFastSessionsForUser(user.id);
+    const fastPassword = await this.generateUniqueFastPassword(siteIds);
+    const result = await this.userUpdatePersistence.persistPartial({
+      userId: user.id,
+      update: {},
+      fastPasswordDigest: digestFastPassword(fastPassword),
+      updatedAt: new Date(),
+    });
     await this.sendFastPasswordWhatsAppMessage(
-      user.phoneNumber,
+      result.user.phoneNumber,
       fastPassword,
-      user.translation,
+      result.user.translation,
     );
   };
 

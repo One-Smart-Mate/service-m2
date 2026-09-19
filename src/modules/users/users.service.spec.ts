@@ -8,7 +8,6 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import * as bcryptjs from 'bcryptjs';
-import { AuthSessionService } from '../auth-session/auth-session.service';
 import { SiteService } from '../site/site.service';
 import { RolesService } from '../roles/roles.service';
 import { UserCreationPersistence } from './user-creation.persistence';
@@ -20,6 +19,7 @@ import { UserLogoutPersistence } from './user-logout.persistence';
 
 describe('UsersService', () => {
   const userRepository = {
+    find: jest.fn(),
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     save: jest.fn(),
@@ -28,10 +28,6 @@ describe('UsersService', () => {
   const mailService = {
     sendResetPasswordCode: jest.fn(),
   } as unknown as MailService;
-  const authSessionService = {
-    revokeAllForUser: jest.fn(),
-    revokeFastSessionsForUser: jest.fn(),
-  } as unknown as AuthSessionService;
   const siteService = {
     findById: jest.fn(),
   } as unknown as SiteService;
@@ -52,8 +48,12 @@ describe('UsersService', () => {
     logout: jest.fn(),
   } as unknown as UserLogoutPersistence;
   const logger = {
+    log: jest.fn(),
     logProcess: jest.fn(),
     error: jest.fn(),
+  };
+  const whatsappService = {
+    sendAuthenticationMessages: jest.fn(),
   };
 
   const service = Reflect.construct(UsersService, [
@@ -64,9 +64,8 @@ describe('UsersService', () => {
     undefined,
     undefined,
     logger,
+    whatsappService,
     undefined,
-    undefined,
-    authSessionService,
     userCreationPersistence,
     userUpdatePersistence,
     passwordResetPersistence,
@@ -283,6 +282,75 @@ describe('UsersService', () => {
         requestedPlatform: stringConstants.OS_ANDROID,
         loggedOutAt: expect.any(Date),
       });
+    });
+  });
+
+  describe('Fast Password recovery', () => {
+    it('does not select an arbitrary account when a phone is duplicated', async () => {
+      jest.mocked(userRepository.find).mockResolvedValue([
+        { id: 7, phoneNumber: '521234567890' },
+        { id: 8, phoneNumber: '521234567890' },
+      ] as UserEntity[]);
+
+      await expect(
+        service.findOneByPhoneNumber('521234567890'),
+      ).resolves.toBeNull();
+      expect(userRepository.find).toHaveBeenCalledWith({
+        where: { phoneNumber: '521234567890' },
+        relations: { userHasSites: { site: true } },
+        take: 2,
+      });
+    });
+
+    it('rotates the digest and Fast Password sessions in one transaction', async () => {
+      const previousPepper = process.env.FAST_PASSWORD_PEPPER;
+      process.env.FAST_PASSWORD_PEPPER =
+        '0123456789abcdef0123456789abcdef';
+      const user = {
+        id: 7,
+        phoneNumber: '521234567890',
+        translation: stringConstants.LANG_ES,
+        userHasSites: [{ site: { id: 2 } }, { site: { id: 3 } }],
+      } as UserEntity;
+      jest
+        .spyOn(service, 'generateUniqueFastPassword')
+        .mockResolvedValue('AB12');
+      jest.mocked(userUpdatePersistence.persistPartial).mockResolvedValue({
+        user,
+        fastPasswordChanged: true,
+      });
+      jest
+        .mocked(whatsappService.sendAuthenticationMessages)
+        .mockResolvedValue(undefined);
+
+      try {
+        await service.rotateFastPasswordAndSend(user);
+
+        expect(service.generateUniqueFastPassword).toHaveBeenCalledWith([
+          2, 3,
+        ]);
+        expect(userUpdatePersistence.persistPartial).toHaveBeenCalledWith({
+          userId: user.id,
+          update: {},
+          fastPasswordDigest: expect.any(String),
+          updatedAt: expect.any(Date),
+        });
+        expect(
+          whatsappService.sendAuthenticationMessages,
+        ).toHaveBeenCalledWith([
+          {
+            phoneNumber: user.phoneNumber,
+            code: 'AB12',
+            language: stringConstants.LANG_ES,
+          },
+        ]);
+      } finally {
+        if (previousPepper === undefined) {
+          delete process.env.FAST_PASSWORD_PEPPER;
+        } else {
+          process.env.FAST_PASSWORD_PEPPER = previousPepper;
+        }
+      }
     });
   });
 
