@@ -9,7 +9,9 @@ import { AuthSessionService } from '../auth-session/auth-session.service';
 import { SiteService } from '../site/site.service';
 import { RolesService } from '../roles/roles.service';
 import { UserCreationPersistence } from './user-creation.persistence';
+import { UserUpdatePersistence } from './user-update.persistence';
 import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
+import { stringConstants } from 'src/utils/string.constant';
 
 describe('UsersService', () => {
   const userRepository = {
@@ -34,6 +36,13 @@ describe('UsersService', () => {
   const userCreationPersistence = {
     persist: jest.fn(),
   } as unknown as UserCreationPersistence;
+  const userUpdatePersistence = {
+    persist: jest.fn(),
+  } as unknown as UserUpdatePersistence;
+  const logger = {
+    logProcess: jest.fn(),
+    error: jest.fn(),
+  };
 
   const service = Reflect.construct(UsersService, [
     userRepository,
@@ -43,11 +52,12 @@ describe('UsersService', () => {
     mailService,
     undefined,
     undefined,
-    undefined,
+    logger,
     undefined,
     undefined,
     authSessionService,
     userCreationPersistence,
+    userUpdatePersistence,
   ]) as UsersService;
 
   beforeEach(() => {
@@ -101,6 +111,84 @@ describe('UsersService', () => {
         }),
       ).rejects.toBeInstanceOf(NotFoundCustomException);
       expect(userCreationPersistence.persist).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateUser', () => {
+    it('preserves the Fast Password when the request omits it', async () => {
+      jest.mocked(siteService.findById).mockResolvedValue({
+        id: 3,
+        siteCode: 'SITE03',
+      } as any);
+      jest.mocked(roleService.findRolesByIds).mockResolvedValue([
+        { id: 1, name: 'operator' },
+      ] as any);
+      jest.mocked(userUpdatePersistence.persist).mockResolvedValue({
+        user: {
+          id: 7,
+          email: 'user@example.com',
+          phoneNumber: '521234567890',
+          translation: stringConstants.LANG_ES,
+        } as UserEntity,
+        fastPasswordChanged: false,
+      });
+      const generateFastPassword = jest.spyOn(
+        service,
+        'generateUniqueFastPassword',
+      );
+
+      await service.updateUser({
+        id: 7,
+        name: 'User',
+        email: ' USER@example.com ',
+        phoneNumber: '521234567890',
+        siteId: 3,
+        password: undefined,
+        uploadCardDataWithDataNet: 0,
+        uploadCardEvidenceWithDataNet: 0,
+        roles: [1],
+        status: stringConstants.activeStatus,
+        translation: stringConstants.LANG_ES,
+      });
+
+      expect(generateFastPassword).not.toHaveBeenCalled();
+      expect(userUpdatePersistence.persist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 7,
+          siteId: 3,
+          siteCode: 'SITE03',
+          fastPasswordDigest: undefined,
+          revokeAllSessions: false,
+          update: expect.objectContaining({ email: 'user@example.com' }),
+        }),
+      );
+    });
+
+    it('rejects the update when any requested role does not exist', async () => {
+      jest.mocked(siteService.findById).mockResolvedValue({
+        id: 3,
+        siteCode: 'SITE03',
+      } as any);
+      jest.mocked(roleService.findRolesByIds).mockResolvedValue([
+        { id: 1, name: 'operator' },
+      ] as any);
+
+      await expect(
+        service.updateUser({
+          id: 7,
+          name: 'User',
+          email: 'user@example.com',
+          phoneNumber: '521234567890',
+          siteId: 3,
+          password: undefined,
+          uploadCardDataWithDataNet: 0,
+          uploadCardEvidenceWithDataNet: 0,
+          roles: [1, 999],
+          status: stringConstants.activeStatus,
+          translation: stringConstants.LANG_ES,
+        }),
+      ).rejects.toBeInstanceOf(NotFoundCustomException);
+      expect(userUpdatePersistence.persist).not.toHaveBeenCalled();
     });
   });
 

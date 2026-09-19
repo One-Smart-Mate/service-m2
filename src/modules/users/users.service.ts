@@ -36,6 +36,7 @@ import {
 import { digestFastPassword } from '../auth/fast-password.crypto';
 import { AuthSessionService } from '../auth-session/auth-session.service';
 import { UserCreationPersistence } from './user-creation.persistence';
+import { UserUpdatePersistence } from './user-update.persistence';
 
 @Injectable()
 export class UsersService {
@@ -58,6 +59,7 @@ export class UsersService {
     private readonly dataSource: DataSource,
     private readonly authSessionService: AuthSessionService,
     private readonly userCreationPersistence: UserCreationPersistence,
+    private readonly userUpdatePersistence: UserUpdatePersistence,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -552,29 +554,22 @@ export class UsersService {
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
       this.logger.logProcess(`[UPDATE_USER] Starting update for user_id: ${updateUserDTO.id}`);
-  
-      const [user, site, roles] = await Promise.all([
-        this.userRepository.findOneBy({ id: updateUserDTO.id }),
+
+      const [site, roles] = await Promise.all([
         this.siteService.findById(updateUserDTO.siteId),
         this.roleService.findRolesByIds(updateUserDTO.roles),
       ]);
-  
-      if (!user) throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+
       if (!site) throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      if (roles.length === 0) throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
-  
-      const emailIsNotUnique = await this.userRepository.exists({
-        where: {
-          email: updateUserDTO.email,
-          id: Not(updateUserDTO.id),
-          siteCode: site.siteCode,
-        },
-      });
-      if (emailIsNotUnique) throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-  
-      let updatePayload: Partial<UserEntity> = {
+      const requestedRoleCount = new Set(updateUserDTO.roles).size;
+      if (roles.length !== requestedRoleCount) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
+      }
+
+      const updatedAt = new Date();
+      const updatePayload: Partial<UserEntity> = {
         name: updateUserDTO.name,
-        email: updateUserDTO.email,
+        email: updateUserDTO.email.trim().toLowerCase(),
         status: updateUserDTO.status,
         siteId: site.id,
         siteCode: site.siteCode,
@@ -583,9 +578,9 @@ export class UsersService {
         uploadCardEvidenceWithDataNet: updateUserDTO.uploadCardEvidenceWithDataNet,
         phoneNumber: updateUserDTO.phoneNumber,
         translation: updateUserDTO.translation || stringConstants.LANG_ES,
-        updatedAt: new Date(),
+        updatedAt,
       };
-  
+
       if (updateUserDTO.password) {
         updatePayload.password = await bcryptjs.hash(
           updateUserDTO.password,
@@ -593,78 +588,69 @@ export class UsersService {
         );
       }
   
-      let newFastPassword = updateUserDTO.fastPassword;
-      if (!newFastPassword) {
-        newFastPassword = await this.generateUniqueFastPassword(site.id);
-      } else {
-        if (!/^[a-zA-Z0-9]{4}$/.test(updateUserDTO.fastPassword)) {
-          throw new ValidationException(
-            ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
-          );
-        }
-
-        const existingUser = await this.userRepository.findOne({
-          where: {
-            fastPasswordDigest: digestFastPassword(
-              updateUserDTO.fastPassword,
-            ),
-            userHasSites: { site: { id: site.id } },
-            id: Not(updateUserDTO.id),
-          },
-        });
-
-        if (existingUser) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
+      let fastPasswordDigest: string | undefined;
+      if (updateUserDTO.fastPassword) {
+        fastPasswordDigest = digestFastPassword(updateUserDTO.fastPassword);
       }
 
-      const newFastPasswordDigest = digestFastPassword(newFastPassword);
-      const fastPasswordChanged =
-        user.fastPasswordDigest !== newFastPasswordDigest;
-      updatePayload.fastPasswordDigest = newFastPasswordDigest;
-
-      this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
-      await this.userRepository.update({ id: user.id }, updatePayload);
-      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
-
-      if (fastPasswordChanged) {
-        await this.authSessionService.revokeFastSessionsForUser(user.id);
-      }
-
-      if (updatePayload.phoneNumber && fastPasswordChanged) {
-        await this.sendFastPasswordWhatsAppMessage(
-          updatePayload.phoneNumber,
-          newFastPassword,
-          updatePayload.translation,
-        );
-      }
-
-      const mustRevokeSessions =
+      const revokeAllSessions =
         Boolean(updateUserDTO.password) ||
         updateUserDTO.status === stringConstants.inactiveStatus ||
         updateUserDTO.status === stringConstants.cancelledStatus;
-      if (mustRevokeSessions) {
-        await this.authSessionService.revokeAllForUser(user.id);
-      }
-  
-      if (updateUserDTO.status === stringConstants.inactiveStatus || updateUserDTO.status === stringConstants.cancelledStatus) {
-        const tokens = await this.getUserToken(user.id);
-        if (tokens?.length > 0) {
-          await this.firebaseService.sendMultipleMessage(
-            new NotificationDTO(
-              stringConstants.closeSessionTitle,
-              stringConstants.closeSessionDescription,
-              stringConstants.closeSessionType,
-            ),
-            tokens,
+      const result = await this.userUpdatePersistence.persist({
+        userId: updateUserDTO.id,
+        siteId: site.id,
+        siteCode: site.siteCode,
+        update: updatePayload,
+        roles,
+        fastPasswordDigest,
+        revokeAllSessions,
+        updatedAt,
+      });
+
+      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${result.user.id}`);
+
+      if (
+        updateUserDTO.fastPassword &&
+        result.user.phoneNumber &&
+        result.fastPasswordChanged
+      ) {
+        try {
+          await this.sendFastPasswordWhatsAppMessage(
+            result.user.phoneNumber,
+            updateUserDTO.fastPassword,
+            result.user.translation,
+          );
+        } catch (notificationError) {
+          this.logger.error(
+            `[UPDATE_USER] Fast Password notification failed for user_id: ${result.user.id}. Error: ${notificationError.message}`,
           );
         }
       }
 
-      return await this.roleService.updateUserRoles(user, roles);
+      if (updateUserDTO.status === stringConstants.inactiveStatus || updateUserDTO.status === stringConstants.cancelledStatus) {
+        try {
+          const tokens = await this.getUserToken(result.user.id);
+          if (tokens?.length > 0) {
+            await this.firebaseService.sendMultipleMessage(
+              new NotificationDTO(
+                stringConstants.closeSessionTitle,
+                stringConstants.closeSessionDescription,
+                stringConstants.closeSessionType,
+              ),
+              tokens,
+            );
+          }
+        } catch (notificationError) {
+          this.logger.error(
+            `[UPDATE_USER] Session close notification failed for user_id: ${result.user.id}. Error: ${notificationError.message}`,
+          );
+        }
+      }
+
+      return result.user;
     } catch (exception) {
       this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
