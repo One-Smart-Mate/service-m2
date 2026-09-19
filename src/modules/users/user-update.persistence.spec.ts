@@ -4,6 +4,7 @@ import { AuthSessionEntity } from '../auth-session/entities/auth-session.entity'
 import { RoleEntity } from '../roles/entities/role.entity';
 import { UserRoleEntity } from '../roles/entities/user-role.entity';
 import { UserEntity } from './entities/user.entity';
+import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { UserUpdatePersistence } from './user-update.persistence';
 
 describe('UserUpdatePersistence', () => {
@@ -46,13 +47,15 @@ describe('UserUpdatePersistence', () => {
     const result = await persistence.persist({
       userId: user.id,
       siteId: 3,
-      siteCode: 'SITE03',
       update: { email: 'new@example.com', name: 'Updated' },
       roles: [mechanic],
       revokeAllSessions: false,
       updatedAt,
     });
 
+    expect(manager.exists).toHaveBeenNthCalledWith(1, UserEntity, {
+      where: expect.not.objectContaining({ siteCode: expect.anything() }),
+    });
     expect(manager.find).toHaveBeenCalledWith(UserRoleEntity, {
       where: { user: { id: user.id } },
       relations: { role: true },
@@ -71,7 +74,6 @@ describe('UserUpdatePersistence', () => {
     const result = await persistence.persist({
       userId: user.id,
       siteId: 3,
-      siteCode: 'SITE03',
       update: { email: user.email, name: 'Updated' },
       roles: [operator],
       revokeAllSessions: false,
@@ -96,7 +98,6 @@ describe('UserUpdatePersistence', () => {
       persistence.persist({
         userId: user.id,
         siteId: 3,
-        siteCode: 'SITE03',
         update: { email: user.email },
         roles: [operator],
         fastPasswordDigest: 'duplicate-digest',
@@ -111,7 +112,6 @@ describe('UserUpdatePersistence', () => {
     await persistence.persist({
       userId: user.id,
       siteId: 3,
-      siteCode: 'SITE03',
       update: { email: user.email, password: 'new-password-hash' },
       roles: [operator],
       revokeAllSessions: true,
@@ -126,6 +126,76 @@ describe('UserUpdatePersistence', () => {
     expect(manager.update).toHaveBeenCalledWith(
       AuthSessionEntity,
       expect.objectContaining({ actorId: user.id }),
+      { revokedAt: updatedAt },
+    );
+  });
+
+  it('updates partial profile fields and revokes sessions atomically', async () => {
+    manager.find.mockResolvedValue([
+      { user, site: { id: 3 } } as UserHasSitesEntity,
+    ]);
+
+    const result = await persistence.persistPartial({
+      userId: user.id,
+      update: {
+        email: 'new@example.com',
+        phoneNumber: '521234567890',
+        translation: 'EN',
+        password: 'new-password-hash',
+        resetCode: null,
+        resetCodeExpiration: null,
+      },
+      fastPasswordDigest: 'new-fast-password-digest',
+      updatedAt,
+    });
+
+    expect(manager.find).toHaveBeenCalledWith(UserHasSitesEntity, {
+      where: { user: { id: user.id } },
+      relations: { site: true },
+    });
+    expect(result.user).toEqual(
+      expect.objectContaining({
+        email: 'new@example.com',
+        phoneNumber: '521234567890',
+        translation: 'EN',
+        password: 'new-password-hash',
+        resetCode: null,
+        resetCodeExpiration: null,
+        fastPasswordDigest: 'new-fast-password-digest',
+      }),
+    );
+    expect(manager.update).toHaveBeenCalledWith(
+      AuthSessionEntity,
+      expect.objectContaining({ userId: user.id }),
+      { revokedAt: updatedAt },
+    );
+    expect(manager.update).toHaveBeenCalledWith(
+      AuthSessionEntity,
+      expect.objectContaining({ actorId: user.id }),
+      { revokedAt: updatedAt },
+    );
+  });
+
+  it('revokes only Fast Password sessions after a partial Fast Password change', async () => {
+    manager.find.mockResolvedValue([
+      { user, site: { id: 3 } } as UserHasSitesEntity,
+    ]);
+
+    const result = await persistence.persistPartial({
+      userId: user.id,
+      update: { name: 'Updated' },
+      fastPasswordDigest: 'new-fast-password-digest',
+      updatedAt,
+    });
+
+    expect(result.fastPasswordChanged).toBe(true);
+    expect(manager.update).toHaveBeenCalledTimes(1);
+    expect(manager.update).toHaveBeenCalledWith(
+      AuthSessionEntity,
+      expect.objectContaining({
+        userId: user.id,
+        sessionType: 'fast',
+      }),
       { revokedAt: updatedAt },
     );
   });

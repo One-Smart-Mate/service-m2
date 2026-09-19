@@ -24,7 +24,6 @@ import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
-import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
@@ -45,8 +44,6 @@ export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(UserHasSitesEntity)
-    private readonly userHasSiteRepository: Repository<UserHasSitesEntity>,
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
@@ -586,6 +583,8 @@ export class UsersService {
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+        updatePayload.resetCode = null;
+        updatePayload.resetCodeExpiration = null;
       }
   
       let fastPasswordDigest: string | undefined;
@@ -600,7 +599,6 @@ export class UsersService {
       const result = await this.userUpdatePersistence.persist({
         userId: updateUserDTO.id,
         siteId: site.id,
-        siteCode: site.siteCode,
         update: updatePayload,
         roles,
         fastPasswordDigest,
@@ -657,91 +655,61 @@ export class UsersService {
 
   updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO) => {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: updateUserPartialDTO.id },
-      });
-      let fastPasswordChanged = false;
-      
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      const updatedAt = new Date();
+      const updatePayload: Partial<UserEntity> = {};
+
+      if (updateUserPartialDTO.email) {
+        updatePayload.email = updateUserPartialDTO.email.trim().toLowerCase();
       }
-      
-      if (updateUserPartialDTO.email && updateUserPartialDTO.email !== user.email) {
-        const emailIsNotUnique = await this.userRepository.exists({
-          where: { email: updateUserPartialDTO.email, id: Not(updateUserPartialDTO.id) },
-        });
-        
-        if (emailIsNotUnique) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
-        
-        user.email = updateUserPartialDTO.email;
+      if (updateUserPartialDTO.name !== undefined) {
+        updatePayload.name = updateUserPartialDTO.name;
       }
-      
-      if (updateUserPartialDTO.name) {
-        user.name = updateUserPartialDTO.name;
+      if (updateUserPartialDTO.phoneNumber !== undefined) {
+        updatePayload.phoneNumber = updateUserPartialDTO.phoneNumber;
       }
-      
+      if (updateUserPartialDTO.translation !== undefined) {
+        updatePayload.translation = updateUserPartialDTO.translation;
+      }
       if (updateUserPartialDTO.password) {
-        user.password = await bcryptjs.hash(
+        updatePayload.password = await bcryptjs.hash(
           updateUserPartialDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+        updatePayload.resetCode = null;
+        updatePayload.resetCodeExpiration = null;
       }
-      
+
+      let fastPasswordDigest: string | undefined;
       if (updateUserPartialDTO.fastPassword) {
         if (!/^[a-zA-Z0-9]{4}$/.test(updateUserPartialDTO.fastPassword)) {
           throw new ValidationException(
             ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
           );
         }
-
-        const userSites = await this.userHasSiteRepository.find({
-          where: { user: { id: user.id } },
-          select: ['site'],
-        });
-        const userSiteIds = userSites.map((us) => us.site.id);
-
-        const existingUser = await this.userRepository.findOne({
-          where: {
-            fastPasswordDigest: digestFastPassword(
-              updateUserPartialDTO.fastPassword,
-            ),
-            userHasSites: { site: { id: In(userSiteIds) } },
-            id: Not(updateUserPartialDTO.id),
-          },
-        });
-
-        if (existingUser) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
-
-        const newFastPasswordDigest = digestFastPassword(
+        fastPasswordDigest = digestFastPassword(
           updateUserPartialDTO.fastPassword,
         );
-        fastPasswordChanged =
-          user.fastPasswordDigest !== newFastPasswordDigest;
-        user.fastPasswordDigest = newFastPasswordDigest;
       }
 
-      user.updatedAt = new Date();
-
-      const savedUser = await this.userRepository.save(user);
-      if (fastPasswordChanged) {
-        await this.authSessionService.revokeFastSessionsForUser(user.id);
-        if (user.phoneNumber) {
-          await this.sendFastPasswordWhatsAppMessage(
-            user.phoneNumber,
-            updateUserPartialDTO.fastPassword,
-            user.translation,
-          );
-        }
+      const result = await this.userUpdatePersistence.persistPartial({
+        userId: updateUserPartialDTO.id,
+        update: updatePayload,
+        fastPasswordDigest,
+        updatedAt,
+      });
+      if (
+        updateUserPartialDTO.fastPassword &&
+        result.fastPasswordChanged &&
+        result.user.phoneNumber
+      ) {
+        await this.sendFastPasswordWhatsAppMessage(
+          result.user.phoneNumber,
+          updateUserPartialDTO.fastPassword,
+          result.user.translation,
+        );
       }
-      if (updateUserPartialDTO.password) {
-        await this.authSessionService.revokeAllForUser(user.id);
-      }
 
-      return savedUser;
+      return result.user;
     } catch (exception) {
       HandleException.exception(exception);
     }

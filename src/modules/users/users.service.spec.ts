@@ -38,6 +38,7 @@ describe('UsersService', () => {
   } as unknown as UserCreationPersistence;
   const userUpdatePersistence = {
     persist: jest.fn(),
+    persistPartial: jest.fn(),
   } as unknown as UserUpdatePersistence;
   const logger = {
     logProcess: jest.fn(),
@@ -46,7 +47,6 @@ describe('UsersService', () => {
 
   const service = Reflect.construct(UsersService, [
     userRepository,
-    undefined,
     siteService,
     roleService,
     mailService,
@@ -156,7 +156,6 @@ describe('UsersService', () => {
         expect.objectContaining({
           userId: 7,
           siteId: 3,
-          siteCode: 'SITE03',
           fastPasswordDigest: undefined,
           revokeAllSessions: false,
           update: expect.objectContaining({ email: 'user@example.com' }),
@@ -189,6 +188,71 @@ describe('UsersService', () => {
         }),
       ).rejects.toBeInstanceOf(NotFoundCustomException);
       expect(userUpdatePersistence.persist).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateUserPartial', () => {
+    it('normalizes and persists every supported profile field', async () => {
+      jest.mocked(userUpdatePersistence.persistPartial).mockImplementation(
+        async ({ userId, update }) => ({
+          user: { id: userId, ...update } as UserEntity,
+          fastPasswordChanged: false,
+        }),
+      );
+
+      const result = await service.updateUserPartial({
+        id: 7,
+        name: 'Updated User',
+        email: ' UPDATED@example.com ',
+        phoneNumber: '521234567890',
+        translation: stringConstants.LANG_EN,
+      });
+
+      expect(userUpdatePersistence.persistPartial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 7,
+          update: {
+            name: 'Updated User',
+            email: 'updated@example.com',
+            phoneNumber: '521234567890',
+            translation: stringConstants.LANG_EN,
+          },
+          fastPasswordDigest: undefined,
+        }),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 7,
+          email: 'updated@example.com',
+          phoneNumber: '521234567890',
+          translation: stringConstants.LANG_EN,
+        }),
+      );
+    });
+
+    it('invalidates recovery codes when changing the password', async () => {
+      jest.mocked(userUpdatePersistence.persistPartial).mockImplementation(
+        async ({ userId, update }) => ({
+          user: { id: userId, ...update } as UserEntity,
+          fastPasswordChanged: false,
+        }),
+      );
+
+      await service.updateUserPartial({
+        id: 7,
+        password: 'new-password',
+      });
+
+      const input = jest.mocked(userUpdatePersistence.persistPartial).mock
+        .calls[0][0];
+      expect(input.update.resetCode).toBeNull();
+      expect(input.update.resetCodeExpiration).toBeNull();
+      expect(
+        await bcryptjs.compare(
+          'new-password',
+          input.update.password as string,
+        ),
+      ).toBe(true);
     });
   });
 
