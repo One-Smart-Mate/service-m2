@@ -6,6 +6,8 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from 'src/common/auth/auth-throttle';
+import { AuthSessionService } from '../auth-session/auth-session.service';
+import { UsersService } from '../users/users.service';
 
 describe('AuthController', () => {
   let app: INestApplication;
@@ -32,6 +34,14 @@ describe('AuthController', () => {
         {
           provide: JwtService,
           useValue: { verifyAsync: jest.fn() },
+        },
+        {
+          provide: AuthSessionService,
+          useValue: { isSessionActive: jest.fn() },
+        },
+        {
+          provide: UsersService,
+          useValue: { findById: jest.fn() },
         },
       ],
     }).compile();

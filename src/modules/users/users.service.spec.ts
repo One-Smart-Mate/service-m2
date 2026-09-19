@@ -5,6 +5,7 @@ import { UsersService } from './users.service';
 import { MailService } from '../mail/mail.service';
 import { ValidationException } from 'src/common/exceptions/types/validation.exception';
 import * as bcryptjs from 'bcryptjs';
+import { AuthSessionService } from '../auth-session/auth-session.service';
 
 describe('UsersService', () => {
   const userRepository = {
@@ -16,6 +17,10 @@ describe('UsersService', () => {
   const mailService = {
     sendResetPasswordCode: jest.fn(),
   } as unknown as MailService;
+  const authSessionService = {
+    revokeAllForUser: jest.fn(),
+    revokeFastSessionsForUser: jest.fn(),
+  } as unknown as AuthSessionService;
 
   const service = Reflect.construct(UsersService, [
     userRepository,
@@ -23,6 +28,12 @@ describe('UsersService', () => {
     undefined,
     undefined,
     mailService,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    authSessionService,
   ]) as UsersService;
 
   beforeEach(() => {
@@ -110,6 +121,7 @@ describe('UsersService', () => {
     it('creates a six-character code that expires in fifteen minutes', async () => {
       const now = Date.now();
       const user = {
+        id: 7,
         email: 'user@example.com',
         name: 'User',
       } as UserEntity;
@@ -150,6 +162,7 @@ describe('UsersService', () => {
     it('consumes a valid code after changing the password', async () => {
       const resetCode = 'ABC123';
       const user = {
+        id: 7,
         email: 'user@example.com',
         resetCode: await bcryptjs.hash(resetCode, 4),
         resetCodeExpiration: new Date(Date.now() + 60_000),
@@ -167,6 +180,9 @@ describe('UsersService', () => {
       expect(user.resetCodeExpiration).toBeNull();
       expect(await bcryptjs.compare('new-password', user.password)).toBe(true);
       expect(userRepository.save).toHaveBeenCalledWith(user);
+      expect(authSessionService.revokeAllForUser).toHaveBeenCalledWith(
+        user.id,
+      );
     });
   });
 });

@@ -40,7 +40,11 @@ export class AuthController {
   })
   @ApiBody({ type: FastLoginDTO })
   loginWithFastPassword(@Body() fastLoginDto: FastLoginDTO, @Request() req) {
-    return this.authService.loginWithFastPassword(fastLoginDto, req.user.id);
+    return this.authService.loginWithFastPassword(
+      fastLoginDto,
+      req.user.id,
+      req.user.jti,
+    );
   }
 
   @Post('update-last-login')
@@ -55,7 +59,11 @@ export class AuthController {
   @Post('refresh-token')
   @ApiBody({ type: RefreshTokenDTO })
   refreshToken(@Body() refreshTokenDto: RefreshTokenDTO, @Request() req) {
-    return this.authService.refreshToken(refreshTokenDto, req.user.id);
+    return this.authService.refreshToken(
+      refreshTokenDto,
+      req.user.id,
+      req.user.jti,
+    );
   }
 
   @Public()

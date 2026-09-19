@@ -54,6 +54,7 @@ import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-own
 import { createJwtOptions } from './config/jwt.config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from './common/auth/auth-throttle';
+import { AuthSessionModule } from './modules/auth-session/auth-session.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { AUTH_THROTTLE } from './common/auth/auth-throttle';
       envFilePath: '.env',
     }),
     typeOrmConfig,
+    AuthSessionModule,
     ScheduleModule.forRoot(),
     UsersModule,
     AuthModule,

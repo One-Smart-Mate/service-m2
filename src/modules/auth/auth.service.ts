@@ -23,8 +23,14 @@ import {
   AuthTokenPayload,
   FAST_SESSION,
   FAST_SESSION_EXPIRES_IN,
+  FAST_SESSION_TTL_MS,
   PRIMARY_SESSION,
 } from './models/auth-token.payload';
+import { randomUUID } from 'crypto';
+import {
+  AuthSessionService,
+  CreateAuthSession,
+} from '../auth-session/auth-session.service';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +38,46 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly usersSevice: UsersService,
     private readonly siteService: SiteService,
+    private readonly authSessionService: AuthSessionService,
   ) {}
+
+  private async issueToken(
+    payload: Omit<AuthTokenPayload, 'jti'>,
+    options?: { expiresIn: string },
+    parentSessionId?: string,
+  ): Promise<string> {
+    const sessionId = randomUUID();
+    const token = await this.jwtService.signAsync(
+      { ...payload, jti: sessionId },
+      options,
+    );
+    const session: CreateAuthSession = {
+      id: sessionId,
+      userId: payload.id,
+      actorId: payload.actorId,
+      parentSessionId,
+      sessionType: payload.sessionType,
+      platform: payload.platform,
+      expiresAt:
+        payload.sessionType === FAST_SESSION
+          ? new Date(Date.now() + FAST_SESSION_TTL_MS)
+          : undefined,
+    };
+
+    if (payload.sessionType === FAST_SESSION) {
+      const created = await this.authSessionService.createChildSession(
+        session,
+        parentSessionId,
+        payload.actorId,
+      );
+      if (!created) {
+        throw new UnauthorizedException('Primary session is no longer active');
+      }
+    } else {
+      await this.authSessionService.createSession(session);
+    }
+    return token;
+  }
 
   login = async (data: LoginDTO): Promise<UserResponse> => {
     try {
@@ -42,7 +87,10 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
-      if (user.status === stringConstants.inactiveStatus) {
+      if (
+        user.status === stringConstants.inactiveStatus ||
+        user.status === stringConstants.cancelledStatus
+      ) {
         throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
       }
 
@@ -71,7 +119,7 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload: AuthTokenPayload = {
+      const payload: Omit<AuthTokenPayload, 'jti'> = {
         id: user.id,
         name: user.name,
         email: user.email,
@@ -80,7 +128,7 @@ export class AuthService {
         sessionType: PRIMARY_SESSION,
       };
 
-      const access_token = await this.jwtService.signAsync(payload);
+      const access_token = await this.issueToken(payload);
 
       const companyName = await this.siteService.getCompanyName(
         user.userHasSites[0].site.companyId,
@@ -108,6 +156,7 @@ export class AuthService {
   loginWithFastPassword = async (
     data: FastLoginDTO,
     userId: number,
+    parentSessionId: string,
   ): Promise<UserResponse> => {
     try {
       const authUser = await this.usersSevice.findByIdWithSites(userId);
@@ -149,7 +198,7 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
-      const payload: AuthTokenPayload = {
+      const payload: Omit<AuthTokenPayload, 'jti'> = {
         id: user.id,
         name: user.name,
         email: user.email,
@@ -159,9 +208,11 @@ export class AuthService {
         actorId: userId,
       };
 
-      const access_token = await this.jwtService.signAsync(payload, {
-        expiresIn: FAST_SESSION_EXPIRES_IN,
-      });
+      const access_token = await this.issueToken(
+        payload,
+        { expiresIn: FAST_SESSION_EXPIRES_IN },
+        parentSessionId,
+      );
 
       const companyName = await this.siteService.getCompanyName(
         user.userHasSites[0].site.companyId,
@@ -221,7 +272,11 @@ export class AuthService {
     }
   };
 
-  refreshToken = async (data: RefreshTokenDTO, authenticatedUserId: number) => {
+  refreshToken = async (
+    data: RefreshTokenDTO,
+    authenticatedUserId: number,
+    currentSessionId: string,
+  ) => {
     try {
       let payload: AuthTokenPayload;
       try {
@@ -232,7 +287,12 @@ export class AuthService {
         throw new UnauthorizedException('Invalid or expired token');
       }
 
-      if (!payload?.id || Number(payload.id) !== Number(authenticatedUserId)) {
+      if (
+        !payload?.id ||
+        !payload.jti ||
+        payload.jti !== currentSessionId ||
+        Number(payload.id) !== Number(authenticatedUserId)
+      ) {
         throw new UnauthorizedException(
           'Token does not belong to the active session',
         );
@@ -260,6 +320,7 @@ export class AuthService {
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
+      const newSessionId = randomUUID();
       const newPayload: AuthTokenPayload = {
         id: user.id,
         name: user.name,
@@ -267,9 +328,23 @@ export class AuthService {
         platform: payload.platform || stringConstants.OS_WEB,
         timezone: payload.timezone || 'UTC',
         sessionType: PRIMARY_SESSION,
+        jti: newSessionId,
       };
 
       const access_token = await this.jwtService.signAsync(newPayload);
+      const rotated = await this.authSessionService.rotateSession(
+        currentSessionId,
+        user.id,
+        {
+          id: newSessionId,
+          userId: user.id,
+          sessionType: PRIMARY_SESSION,
+          platform: newPayload.platform,
+        },
+      );
+      if (!rotated) {
+        throw new UnauthorizedException('Session is no longer active');
+      }
 
       const companyName = await this.siteService.getCompanyName(
         user.userHasSites[0].site.companyId,
@@ -303,14 +378,9 @@ export class AuthService {
         user &&
         user.status !== stringConstants.inactiveStatus &&
         user.status !== stringConstants.cancelledStatus &&
-        user.phoneNumber &&
-        user.fastPassword
+        user.phoneNumber
       ) {
-        await this.usersSevice.sendFastPasswordWhatsApp(
-          user.phoneNumber,
-          user.fastPassword,
-          user.translation,
-        );
+        await this.usersSevice.rotateFastPasswordAndSend(user);
       }
 
       return {

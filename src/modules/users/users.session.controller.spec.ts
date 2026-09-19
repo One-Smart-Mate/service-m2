@@ -28,10 +28,20 @@ describe('UsersController session mutations', () => {
 
     await controller.logout(
       { userId: 999, osName: 'ANDROID' },
-      { user: { id: 7, sessionType: PRIMARY_SESSION } },
+      {
+        user: {
+          id: 7,
+          jti: 'primary-session-id',
+          sessionType: PRIMARY_SESSION,
+        },
+      },
     );
 
-    expect(usersService.logout).toHaveBeenCalledWith(7, 'ANDROID');
+    expect(usersService.logout).toHaveBeenCalledWith(
+      7,
+      'ANDROID',
+      'primary-session-id',
+    );
   });
 
   it('does not let a fast session close the primary session', () => {

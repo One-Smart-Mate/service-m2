@@ -5,15 +5,12 @@ import {
   Column,
   OneToMany,
   Index,
-  Check,
 } from 'typeorm';
 import { UserRoleEntity } from 'src/modules/roles/entities/user-role.entity';
 import { UserHasSitesEntity } from './user.has.sites.entity';
 import { UsersPositionsEntity } from './users.positions.entity';
 
-@Index('site_fast_password', ['siteId', 'fastPassword'], { unique: true })
 @Index('user_email_unique_index', ['siteCode', 'email'], { unique: true })
-@Check('chk_fast_password_alphanumeric', "fast_password REGEXP '^[a-zA-Z0-9]{1,6}$'")
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
@@ -81,16 +78,16 @@ export class UserEntity {
   @Column({ type: 'varchar', length: 191, nullable: false })
   password: string;
 
+  @Exclude()
   @Column({
-    name: 'fast_password',
-    type: 'varchar',
-    length: 4,
+    name: 'fast_password_digest',
+    type: 'char',
+    length: 64,
     nullable: true,
-    comment:
-      'Used to identify users quickly; accepts alphanumeric values (a-z, A-Z, 0-9)',
   })
-  fastPassword?: string;
+  fastPasswordDigest?: string;
 
+  @Exclude()
   @Column({
     name: 'remember_token',
     type: 'varchar',
@@ -111,15 +108,19 @@ export class UserEntity {
   })
   resetCodeExpiration?: Date;
 
+  @Exclude()
   @Column({ name: 'app_token', type: 'text', nullable: true })
   appToken?: string;
 
+  @Exclude()
   @Column({ name: 'ios_token', type: 'text', nullable: true })
   iosToken?: string;
 
+  @Exclude()
   @Column({ name: 'android_token', type: 'text', nullable: true })
   androidToken?: string;
 
+  @Exclude()
   @Column({ name: 'web_token', type: 'text', nullable: true })
   webToken?: string;
 
@@ -162,12 +163,12 @@ export class UserEntity {
   @Column({ name: 'last_login_app', type: 'timestamp', nullable: true })
   lastLoginApp?: Date;
 
-  @Column({ 
-    type: 'varchar', 
-    length: 2, 
-    nullable: true, 
+  @Column({
+    type: 'varchar',
+    length: 2,
+    nullable: true,
     default: 'ES',
-    comment: 'User preferred language (ES/EN)' 
+    comment: 'User preferred language (ES/EN)',
   })
   translation?: string | null;
 

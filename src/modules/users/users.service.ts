@@ -35,6 +35,8 @@ import {
   PLATFORM_ADMIN_ROLE,
   normalizeRole,
 } from 'src/common/auth/roles.constants';
+import { digestFastPassword } from '../auth/fast-password.crypto';
+import { AuthSessionService } from '../auth-session/auth-session.service';
 
 @Injectable()
 export class UsersService {
@@ -55,17 +57,19 @@ export class UsersService {
     private readonly whatsappService: WhatsappService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly authSessionService: AuthSessionService,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = 4;
     while (true) {
       const fastPassword = generateRandomCode(length, chars);
+      const fastPasswordDigest = digestFastPassword(fastPassword);
 
       const existingUser = await this.userRepository.findOne({
         where: {
-          fastPassword,
+          fastPasswordDigest,
           userHasSites: { site: { id: siteId } },
         },
       });
@@ -227,6 +231,7 @@ export class UsersService {
       user.resetCodeExpiration = null;
       user.updatedAt = new Date();
       await this.userRepository.save(user);
+      await this.authSessionService.revokeAllForUser(user.id);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -509,7 +514,7 @@ export class UsersService {
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
           ),
-          fastPassword,
+          fastPasswordDigest: digestFastPassword(fastPassword),
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
@@ -528,12 +533,17 @@ export class UsersService {
           this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
         }
       } else {
-        const oldFastPassword = user.fastPassword;
-        user.fastPassword = fastPassword;
+        const newFastPasswordDigest = digestFastPassword(fastPassword);
+        const fastPasswordChanged =
+          user.fastPasswordDigest !== newFastPasswordDigest;
+        user.fastPasswordDigest = newFastPasswordDigest;
         await this.userRepository.save(user);
+        if (fastPasswordChanged) {
+          await this.authSessionService.revokeFastSessionsForUser(user.id);
+        }
         userSite.user = user;
 
-        if (user.phoneNumber && fastPassword && oldFastPassword !== fastPassword) {
+        if (user.phoneNumber && fastPassword && fastPasswordChanged) {
           this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
         }
       }
@@ -601,10 +611,9 @@ export class UsersService {
         );
       }
   
-      if (!updateUserDTO.fastPassword) {
-        updatePayload.fastPassword = await this.generateUniqueFastPassword(
-          site.id,
-        );
+      let newFastPassword = updateUserDTO.fastPassword;
+      if (!newFastPassword) {
+        newFastPassword = await this.generateUniqueFastPassword(site.id);
       } else {
         if (!/^[a-zA-Z0-9]{4}$/.test(updateUserDTO.fastPassword)) {
           throw new ValidationException(
@@ -614,7 +623,9 @@ export class UsersService {
 
         const existingUser = await this.userRepository.findOne({
           where: {
-            fastPassword: updateUserDTO.fastPassword,
+            fastPasswordDigest: digestFastPassword(
+              updateUserDTO.fastPassword,
+            ),
             userHasSites: { site: { id: site.id } },
             id: Not(updateUserDTO.id),
           },
@@ -623,17 +634,35 @@ export class UsersService {
         if (existingUser) {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
-
-        updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
-  
-      const oldFastPassword = user.fastPassword;
+
+      const newFastPasswordDigest = digestFastPassword(newFastPassword);
+      const fastPasswordChanged =
+        user.fastPasswordDigest !== newFastPasswordDigest;
+      updatePayload.fastPasswordDigest = newFastPasswordDigest;
+
       this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
       await this.userRepository.update({ id: user.id }, updatePayload);
       this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
 
-      if (updatePayload.phoneNumber && updatePayload.fastPassword && oldFastPassword !== updatePayload.fastPassword) {
-        await this.sendFastPasswordWhatsAppMessage(updatePayload.phoneNumber, updatePayload.fastPassword, updatePayload.translation);
+      if (fastPasswordChanged) {
+        await this.authSessionService.revokeFastSessionsForUser(user.id);
+      }
+
+      if (updatePayload.phoneNumber && fastPasswordChanged) {
+        await this.sendFastPasswordWhatsAppMessage(
+          updatePayload.phoneNumber,
+          newFastPassword,
+          updatePayload.translation,
+        );
+      }
+
+      const mustRevokeSessions =
+        Boolean(updateUserDTO.password) ||
+        updateUserDTO.status === stringConstants.inactiveStatus ||
+        updateUserDTO.status === stringConstants.cancelledStatus;
+      if (mustRevokeSessions) {
+        await this.authSessionService.revokeAllForUser(user.id);
       }
   
       if (updateUserDTO.status === stringConstants.inactiveStatus || updateUserDTO.status === stringConstants.cancelledStatus) {
@@ -663,6 +692,7 @@ export class UsersService {
       const user = await this.userRepository.findOne({
         where: { id: updateUserPartialDTO.id },
       });
+      let fastPasswordChanged = false;
       
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
@@ -706,7 +736,9 @@ export class UsersService {
 
         const existingUser = await this.userRepository.findOne({
           where: {
-            fastPassword: updateUserPartialDTO.fastPassword,
+            fastPasswordDigest: digestFastPassword(
+              updateUserPartialDTO.fastPassword,
+            ),
             userHasSites: { site: { id: In(userSiteIds) } },
             id: Not(updateUserPartialDTO.id),
           },
@@ -716,17 +748,32 @@ export class UsersService {
           throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
         }
 
-        const oldFastPassword = user.fastPassword;
-        user.fastPassword = updateUserPartialDTO.fastPassword;
-
-        if (user.phoneNumber && updateUserPartialDTO.fastPassword && oldFastPassword !== updateUserPartialDTO.fastPassword) {
-          await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updateUserPartialDTO.fastPassword, user.translation);
-        }
+        const newFastPasswordDigest = digestFastPassword(
+          updateUserPartialDTO.fastPassword,
+        );
+        fastPasswordChanged =
+          user.fastPasswordDigest !== newFastPasswordDigest;
+        user.fastPasswordDigest = newFastPasswordDigest;
       }
 
       user.updatedAt = new Date();
 
-      return await this.userRepository.save(user);
+      const savedUser = await this.userRepository.save(user);
+      if (fastPasswordChanged) {
+        await this.authSessionService.revokeFastSessionsForUser(user.id);
+        if (user.phoneNumber) {
+          await this.sendFastPasswordWhatsAppMessage(
+            user.phoneNumber,
+            updateUserPartialDTO.fastPassword,
+            user.translation,
+          );
+        }
+      }
+      if (updateUserPartialDTO.password) {
+        await this.authSessionService.revokeAllForUser(user.id);
+      }
+
+      return savedUser;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -796,7 +843,7 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
-  logout = async (userId: number, osName: string) => {
+  logout = async (userId: number, osName: string, sessionId: string) => {
     try {
       const user = await this.userRepository.findOneBy({ id: userId });
       if (!user) {
@@ -819,7 +866,16 @@ export class UsersService {
   
       user.updatedAt = new Date();
   
-      return await this.userRepository.save(user);
+      const savedUser = await this.userRepository.save(user);
+      const revoked = await this.authSessionService.revokeSession(
+        sessionId,
+        userId,
+      );
+      if (!revoked) {
+        throw new UnauthorizedException('Session is no longer active');
+      }
+
+      return savedUser;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -838,18 +894,28 @@ export class UsersService {
   };
 
   getExistingUsersInSite = async (data: any, siteId: number) => {
+    const emails = data
+      .map((user) => user.Email?.trim().toLowerCase())
+      .filter(Boolean);
+    if (emails.length === 0) return [];
+
     const existingUsers = await this.userRepository.find({
       where: {
-        email: In(data.map((user) => user.Email.toLowerCase())),
+        email: In(emails),
         userHasSites: { site: { id: siteId } },
       },
     });
     return existingUsers;
   };
   getExistingUsersMap = async (data: any): Promise<Map<string, UserEntity>> => {
+    const emails = data
+      .map((user) => user.Email?.trim().toLowerCase())
+      .filter(Boolean);
+    if (emails.length === 0) return new Map();
+
     const existingUsers = await this.userRepository.find({
       where: {
-        email: In(data.map((user) => user.Email.toLowerCase())),
+        email: In(emails),
       },
     });
 
@@ -980,7 +1046,10 @@ export class UsersService {
 
   findOneByFastPassword = (fastPassword: string, siteId: number) => {
     return this.userRepository.findOne({
-      where: { fastPassword, siteId },
+      where: {
+        fastPasswordDigest: digestFastPassword(fastPassword),
+        userHasSites: { site: { id: siteId } },
+      },
       relations: { userHasSites: { site: true } },
     });
   };
@@ -994,6 +1063,24 @@ export class UsersService {
 
   sendFastPasswordWhatsApp = async (phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> => {
     await this.sendFastPasswordWhatsAppMessage(phoneNumber, fastPassword, language);
+  };
+
+  rotateFastPasswordAndSend = async (user: UserEntity): Promise<void> => {
+    const siteId = user.userHasSites?.[0]?.site?.id ?? user.siteId;
+    if (!siteId || !user.phoneNumber) {
+      return;
+    }
+
+    const fastPassword = await this.generateUniqueFastPassword(siteId);
+    user.fastPasswordDigest = digestFastPassword(fastPassword);
+    user.updatedAt = new Date();
+    await this.userRepository.save(user);
+    await this.authSessionService.revokeFastSessionsForUser(user.id);
+    await this.sendFastPasswordWhatsAppMessage(
+      user.phoneNumber,
+      fastPassword,
+      user.translation,
+    );
   };
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {

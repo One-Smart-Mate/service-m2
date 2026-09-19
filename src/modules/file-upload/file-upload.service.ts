@@ -4,7 +4,6 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import * as XLSX from 'xlsx';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { SiteIdDTO } from './dto/site.id.dto';
 import { RolesService } from '../roles/roles.service';
@@ -24,6 +23,11 @@ import { RoleEntity } from '../roles/entities/role.entity';
 import { MailService } from '../mail/mail.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
+import {
+  ImportedUserRow,
+  parseUserImportWorkbook,
+} from './xlsx-import.parser';
+import { digestFastPassword } from '../auth/fast-password.crypto';
 
 @Injectable()
 export class FileUploadService {
@@ -89,10 +93,7 @@ export class FileUploadService {
         throw new ForbiddenException('Site access denied');
       }
 
-      const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const jsonData = await parseUserImportWorkbook(file.buffer);
 
       const result = await this.validateAndTransformUsersData(jsonData, siteId);
 
@@ -108,7 +109,10 @@ export class FileUploadService {
     }
   };
 
-  private validateAndTransformUsersData = async (data: any, siteId: number) => {
+  private validateAndTransformUsersData = async (
+    data: ImportedUserRow[],
+    siteId: number,
+  ) => {
     const existingEmailsInFile = new Set();
     const usersToCreate: CreateUsersDTO[] = [];
     const usersAndSites: UsersAndSitesDTO[] = [];
@@ -121,6 +125,8 @@ export class FileUploadService {
       reason: string;
       registered: boolean;
     }[] = [];
+    const importedFastPasswords = new Map<string, string>();
+    const importedFastPasswordDigests = new Set<string>();
 
     const [
       hashedPassword,
@@ -213,13 +219,20 @@ export class FileUploadService {
           registered: true,
         });
       } else {
-        const fastPassword =
+        let fastPassword =
           await this.userService.generateUniqueFastPassword(siteId);
+        let fastPasswordDigest = digestFastPassword(fastPassword);
+        while (importedFastPasswordDigests.has(fastPasswordDigest)) {
+          fastPassword =
+            await this.userService.generateUniqueFastPassword(siteId);
+          fastPasswordDigest = digestFastPassword(fastPassword);
+        }
+        importedFastPasswordDigests.add(fastPasswordDigest);
         usersToCreate.push({
           name: Name,
           email: normalizedEmail,
           password: hashedPassword,
-          fastPassword,
+          fastPasswordDigest,
           siteId: siteId,
           createdAt: currentDate,
           appVersion: process.env.APP_ENV,
@@ -227,6 +240,7 @@ export class FileUploadService {
           phoneNumber: phoneNumber || null,
           translation: Translation || stringConstants.LANG_ES,
         });
+        importedFastPasswords.set(normalizedEmail, fastPassword);
         processedUsers.push({
           email: normalizedEmail,
           name: Name,
@@ -272,11 +286,12 @@ export class FileUploadService {
       }
 
       // Send fastPassword via WhatsApp if phone number is provided
-      if (newUser.phoneNumber && newUser.fastPassword) {
+      const fastPassword = importedFastPasswords.get(newUser.email);
+      if (newUser.phoneNumber && fastPassword) {
         try {
           await this.sendFastPasswordWhatsAppMessage(
             newUser.phoneNumber,
-            newUser.fastPassword,
+            fastPassword,
             newUser.translation || stringConstants.LANG_ES,
           );
         } catch (error) {

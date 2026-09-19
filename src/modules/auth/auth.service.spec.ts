@@ -4,6 +4,7 @@ import { SiteService } from '../site/site.service';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { FAST_SESSION, PRIMARY_SESSION } from './models/auth-token.payload';
+import { AuthSessionService } from '../auth-session/auth-session.service';
 
 describe('AuthService token refresh', () => {
   const jwtService = {
@@ -16,12 +17,22 @@ describe('AuthService token refresh', () => {
     getUserRoles: jest.fn(),
     updateLastLogin: jest.fn(),
     findOneByPhoneNumber: jest.fn(),
-    sendFastPasswordWhatsApp: jest.fn(),
+    rotateFastPasswordAndSend: jest.fn(),
   } as unknown as UsersService;
   const siteService = {
     getCompanyName: jest.fn(),
   } as unknown as SiteService;
-  const service = new AuthService(jwtService, usersService, siteService);
+  const authSessionService = {
+    createSession: jest.fn(),
+    createChildSession: jest.fn(),
+    rotateSession: jest.fn(),
+  } as unknown as AuthSessionService;
+  const service = new AuthService(
+    jwtService,
+    usersService,
+    siteService,
+    authSessionService,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,12 +41,13 @@ describe('AuthService token refresh', () => {
   it('rejects refreshing another user token', async () => {
     jest.mocked(jwtService.verifyAsync).mockResolvedValue({
       id: 22,
+      jti: 'other-session',
       email: 'other@example.com',
       sessionType: PRIMARY_SESSION,
-    });
+    } as any);
 
     await expect(
-      service.refreshToken({ token: 'other-user-token' }, 10),
+      service.refreshToken({ token: 'other-user-token' }, 10, 'session-10'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(usersService.findByIdWithSites).not.toHaveBeenCalled();
   });
@@ -48,20 +60,21 @@ describe('AuthService token refresh', () => {
       );
 
     await expect(
-      service.refreshToken({ token: 'expired-token' }, 10),
+      service.refreshToken({ token: 'expired-token' }, 10, 'session-10'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('does not refresh a temporary fast-password session', async () => {
     jest.mocked(jwtService.verifyAsync).mockResolvedValue({
       id: 10,
+      jti: 'fast-session',
       email: 'effective@example.com',
       sessionType: FAST_SESSION,
       actorId: 5,
-    });
+    } as any);
 
     await expect(
-      service.refreshToken({ token: 'fast-session-token' }, 10),
+      service.refreshToken({ token: 'fast-session-token' }, 10, 'fast-session'),
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(usersService.findByIdWithSites).not.toHaveBeenCalled();
   });
@@ -69,11 +82,12 @@ describe('AuthService token refresh', () => {
   it('refreshes only the authenticated primary user', async () => {
     jest.mocked(jwtService.verifyAsync).mockResolvedValue({
       id: 10,
+      jti: 'primary-session',
       email: 'user@example.com',
       platform: 'ANDROID',
       timezone: 'America/Mexico_City',
       sessionType: PRIMARY_SESSION,
-    });
+    } as any);
     jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
       id: 10,
       name: 'User',
@@ -94,8 +108,13 @@ describe('AuthService token refresh', () => {
     jest.mocked(usersService.getUserRoles).mockResolvedValue(['operator']);
     jest.mocked(siteService.getCompanyName).mockResolvedValue('Company');
     jest.mocked(jwtService.signAsync).mockResolvedValue('new-token');
+    jest.mocked(authSessionService.rotateSession).mockResolvedValue(true);
 
-    const response = await service.refreshToken({ token: 'valid-token' }, 10);
+    const response = await service.refreshToken(
+      { token: 'valid-token' },
+      10,
+      'primary-session',
+    );
 
     expect(usersService.findByIdWithSites).toHaveBeenCalledWith(10);
     expect(jwtService.signAsync).toHaveBeenCalledWith(
@@ -145,26 +164,23 @@ describe('AuthService token refresh', () => {
     expect(response).toEqual({
       message: 'If the account exists, the fast password will be sent',
     });
-    expect(usersService.sendFastPasswordWhatsApp).not.toHaveBeenCalled();
+    expect(usersService.rotateFastPasswordAndSend).not.toHaveBeenCalled();
   });
 
   it('sends a fast password without returning the phone or secret', async () => {
     jest.mocked(usersService.findOneByPhoneNumber).mockResolvedValue({
       phoneNumber: '521234567890',
-      fastPassword: 'AB12',
       translation: 'ES',
       status: 'A',
     } as any);
-    jest.mocked(usersService.sendFastPasswordWhatsApp).mockResolvedValue();
+    jest.mocked(usersService.rotateFastPasswordAndSend).mockResolvedValue();
 
     const response = await service.sendFastPasswordByPhone({
       phoneNumber: '521234567890',
     });
 
-    expect(usersService.sendFastPasswordWhatsApp).toHaveBeenCalledWith(
-      '521234567890',
-      'AB12',
-      'ES',
+    expect(usersService.rotateFastPasswordAndSend).toHaveBeenCalledWith(
+      expect.objectContaining({ phoneNumber: '521234567890' }),
     );
     expect(response).toEqual({
       message: 'If the account exists, the fast password will be sent',

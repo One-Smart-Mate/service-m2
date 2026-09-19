@@ -215,7 +215,11 @@ export class UsersController {
       );
     }
 
-    return this.usersService.logout(req.user.id, logoutDTO.osName);
+    return this.usersService.logout(
+      req.user.id,
+      logoutDTO.osName,
+      req.user.jti,
+    );
   }
   @Get('/:userId/positions')
   @SelfOrRoles({

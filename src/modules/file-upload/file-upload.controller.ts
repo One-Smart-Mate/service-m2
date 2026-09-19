@@ -118,9 +118,18 @@ export class FileUploadController {
     FileInterceptor('file', {
       limits: {
         fileSize: 5 * 1024 * 1024, // 5MB size limit
+        files: 1,
+        fields: 1,
+        parts: 2,
+        fieldNameSize: 100,
+        fieldSize: 1_024,
       },
       fileFilter: (req, file, cb) => {
+        const hasXlsxExtension = file.originalname
+          .toLowerCase()
+          .endsWith('.xlsx');
         if (
+          !hasXlsxExtension ||
           file.mimetype !==
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         ) {
