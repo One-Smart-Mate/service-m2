@@ -14,6 +14,7 @@ import { CustomLoggerService } from '../../common/logger/logger.service';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
 import { PasswordResetPersistence } from './password-reset.persistence';
+import { UserLogoutPersistence } from './user-logout.persistence';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PasswordResetPersistence } from './password-reset.persistence';
     UserCreationPersistence,
     UserUpdatePersistence,
     PasswordResetPersistence,
+    UserLogoutPersistence,
   ],
   controllers: [UsersController],
   exports: [UsersService],

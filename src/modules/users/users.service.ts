@@ -37,6 +37,7 @@ import { AuthSessionService } from '../auth-session/auth-session.service';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
 import { PasswordResetPersistence } from './password-reset.persistence';
+import { UserLogoutPersistence } from './user-logout.persistence';
 
 @Injectable()
 export class UsersService {
@@ -59,6 +60,7 @@ export class UsersService {
     private readonly userCreationPersistence: UserCreationPersistence,
     private readonly userUpdatePersistence: UserUpdatePersistence,
     private readonly passwordResetPersistence: PasswordResetPersistence,
+    private readonly userLogoutPersistence: UserLogoutPersistence,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -757,37 +759,12 @@ export class UsersService {
   };
   logout = async (userId: number, osName: string, sessionId: string) => {
     try {
-      const user = await this.userRepository.findOneBy({ id: userId });
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-  
-      switch (osName) {
-        case stringConstants.OS_ANDROID:
-          user.androidToken = null;
-          break;
-        case stringConstants.OS_IOS:
-          user.iosToken = null;
-          break;
-        case stringConstants.OS_WEB:
-          user.webToken = null;
-          break;
-        default:
-          throw new Error('OS no reconocido');
-      }
-  
-      user.updatedAt = new Date();
-  
-      const savedUser = await this.userRepository.save(user);
-      const revoked = await this.authSessionService.revokeSession(
-        sessionId,
+      return await this.userLogoutPersistence.logout({
         userId,
-      );
-      if (!revoked) {
-        throw new UnauthorizedException('Session is no longer active');
-      }
-
-      return savedUser;
+        sessionId,
+        requestedPlatform: osName,
+        loggedOutAt: new Date(),
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

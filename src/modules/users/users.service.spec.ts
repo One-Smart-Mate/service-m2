@@ -16,6 +16,7 @@ import { UserUpdatePersistence } from './user-update.persistence';
 import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
 import { stringConstants } from 'src/utils/string.constant';
 import { PasswordResetPersistence } from './password-reset.persistence';
+import { UserLogoutPersistence } from './user-logout.persistence';
 
 describe('UsersService', () => {
   const userRepository = {
@@ -47,6 +48,9 @@ describe('UsersService', () => {
   const passwordResetPersistence = {
     reset: jest.fn(),
   } as unknown as PasswordResetPersistence;
+  const userLogoutPersistence = {
+    logout: jest.fn(),
+  } as unknown as UserLogoutPersistence;
   const logger = {
     logProcess: jest.fn(),
     error: jest.fn(),
@@ -66,6 +70,7 @@ describe('UsersService', () => {
     userCreationPersistence,
     userUpdatePersistence,
     passwordResetPersistence,
+    userLogoutPersistence,
   ]) as UsersService;
 
   beforeEach(() => {
@@ -261,6 +266,23 @@ describe('UsersService', () => {
           input.update.password as string,
         ),
       ).toBe(true);
+    });
+  });
+
+  describe('logout', () => {
+    it('delegates token cleanup and session revocation to one transaction', async () => {
+      const user = { id: 7, androidToken: null } as UserEntity;
+      jest.mocked(userLogoutPersistence.logout).mockResolvedValue(user);
+
+      await expect(
+        service.logout(7, stringConstants.OS_ANDROID, 'primary-session-id'),
+      ).resolves.toBe(user);
+      expect(userLogoutPersistence.logout).toHaveBeenCalledWith({
+        userId: 7,
+        sessionId: 'primary-session-id',
+        requestedPlatform: stringConstants.OS_ANDROID,
+        loggedOutAt: expect.any(Date),
+      });
     });
   });
 
