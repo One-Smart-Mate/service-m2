@@ -36,6 +36,7 @@ import { digestFastPassword } from '../auth/fast-password.crypto';
 import { AuthSessionService } from '../auth-session/auth-session.service';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
+import { PasswordResetPersistence } from './password-reset.persistence';
 
 @Injectable()
 export class UsersService {
@@ -57,6 +58,7 @@ export class UsersService {
     private readonly authSessionService: AuthSessionService,
     private readonly userCreationPersistence: UserCreationPersistence,
     private readonly userUpdatePersistence: UserUpdatePersistence,
+    private readonly passwordResetPersistence: PasswordResetPersistence,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -195,42 +197,16 @@ export class UsersService {
 
   resetPassword = async (resetPasswordDTO: ResetPasswordDTO) => {
     try {
-      const user = await this.userRepository.findOne({
-        where: { email: resetPasswordDTO.email.toLowerCase() },
-      });
-
-      if (!user) {
-        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
-      }
-
-      if (!user.resetCode || !user.resetCodeExpiration) {
-        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
-      }
-
-      if (new Date() > user.resetCodeExpiration) {
-        throw new ValidationException(
-          ValidationExceptionType.RESETCODE_EXPIRED,
-        );
-      }
-
-      const isCodeValid = await bcryptjs.compare(
-        resetPasswordDTO.resetCode,
-        user.resetCode,
-      );
-
-      if (!isCodeValid) {
-        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
-      }
-
-      user.password = await bcryptjs.hash(
+      const passwordHash = await bcryptjs.hash(
         resetPasswordDTO.newPassword,
         stringConstants.SALT_ROUNDS,
       );
-      user.resetCode = null;
-      user.resetCodeExpiration = null;
-      user.updatedAt = new Date();
-      await this.userRepository.save(user);
-      await this.authSessionService.revokeAllForUser(user.id);
+      await this.passwordResetPersistence.reset({
+        email: resetPasswordDTO.email.trim().toLowerCase(),
+        resetCode: resetPasswordDTO.resetCode,
+        passwordHash,
+        resetAt: new Date(),
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

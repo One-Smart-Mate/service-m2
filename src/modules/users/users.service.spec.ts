@@ -3,7 +3,10 @@ import { Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { MailService } from '../mail/mail.service';
-import { ValidationException } from 'src/common/exceptions/types/validation.exception';
+import {
+  ValidationException,
+  ValidationExceptionType,
+} from 'src/common/exceptions/types/validation.exception';
 import * as bcryptjs from 'bcryptjs';
 import { AuthSessionService } from '../auth-session/auth-session.service';
 import { SiteService } from '../site/site.service';
@@ -12,6 +15,7 @@ import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
 import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
 import { stringConstants } from 'src/utils/string.constant';
+import { PasswordResetPersistence } from './password-reset.persistence';
 
 describe('UsersService', () => {
   const userRepository = {
@@ -40,6 +44,9 @@ describe('UsersService', () => {
     persist: jest.fn(),
     persistPartial: jest.fn(),
   } as unknown as UserUpdatePersistence;
+  const passwordResetPersistence = {
+    reset: jest.fn(),
+  } as unknown as PasswordResetPersistence;
   const logger = {
     logProcess: jest.fn(),
     error: jest.fn(),
@@ -58,6 +65,7 @@ describe('UsersService', () => {
     authSessionService,
     userCreationPersistence,
     userUpdatePersistence,
+    passwordResetPersistence,
   ]) as UsersService;
 
   beforeEach(() => {
@@ -335,18 +343,15 @@ describe('UsersService', () => {
     });
 
     it('rejects an expired code when changing the password', async () => {
-      const resetCode = 'ABC123';
-      jest.mocked(userRepository.findOne).mockResolvedValue({
-        email: 'user@example.com',
-        resetCode: await bcryptjs.hash(resetCode, 4),
-        resetCodeExpiration: new Date(Date.now() - 1),
-      } as UserEntity);
+      jest.mocked(passwordResetPersistence.reset).mockRejectedValue(
+        new ValidationException(ValidationExceptionType.RESETCODE_EXPIRED),
+      );
 
       await expect(
         service.resetPassword({
           email: 'user@example.com',
           newPassword: 'new-password',
-          resetCode,
+          resetCode: 'ABC123',
         }),
       ).rejects.toBeInstanceOf(ValidationException);
       expect(userRepository.save).not.toHaveBeenCalled();
@@ -354,27 +359,19 @@ describe('UsersService', () => {
 
     it('consumes a valid code after changing the password', async () => {
       const resetCode = 'ABC123';
-      const user = {
-        id: 7,
-        email: 'user@example.com',
-        resetCode: await bcryptjs.hash(resetCode, 4),
-        resetCodeExpiration: new Date(Date.now() + 60_000),
-      } as UserEntity;
-      jest.mocked(userRepository.findOne).mockResolvedValue(user);
-      jest.mocked(userRepository.save).mockResolvedValue(user);
+      jest.mocked(passwordResetPersistence.reset).mockResolvedValue();
 
       await service.resetPassword({
-        email: 'user@example.com',
+        email: ' USER@example.com ',
         newPassword: 'new-password',
         resetCode,
       });
 
-      expect(user.resetCode).toBeNull();
-      expect(user.resetCodeExpiration).toBeNull();
-      expect(await bcryptjs.compare('new-password', user.password)).toBe(true);
-      expect(userRepository.save).toHaveBeenCalledWith(user);
-      expect(authSessionService.revokeAllForUser).toHaveBeenCalledWith(
-        user.id,
+      const input = jest.mocked(passwordResetPersistence.reset).mock.calls[0][0];
+      expect(input.email).toBe('user@example.com');
+      expect(input.resetCode).toBe(resetCode);
+      expect(await bcryptjs.compare('new-password', input.passwordHash)).toBe(
+        true,
       );
     });
   });

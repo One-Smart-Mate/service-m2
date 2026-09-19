@@ -13,6 +13,7 @@ import { UsersPositionsEntity } from './entities/users.positions.entity';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
+import { PasswordResetPersistence } from './password-reset.persistence';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { UserUpdatePersistence } from './user-update.persistence';
     CustomLoggerService,
     UserCreationPersistence,
     UserUpdatePersistence,
+    PasswordResetPersistence,
   ],
   controllers: [UsersController],
   exports: [UsersService],
