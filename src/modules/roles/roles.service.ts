@@ -15,7 +15,6 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { UsersAndRolesDTO } from '../file-upload/dto/users.and.roles.dto';
 
 @Injectable()
 export class RolesService {
@@ -57,13 +56,6 @@ export class RolesService {
     }
   };
 
-  assignRoleToImportedUsers = async (usersAndSites: UsersAndRolesDTO[]) => {
-    try {
-      return await this.userRoleRepository.save(usersAndSites);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
 
   assignUserRoles = async (
     user: UserEntity,

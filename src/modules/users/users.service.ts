@@ -25,8 +25,6 @@ import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
-import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
-import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
@@ -923,21 +921,6 @@ export class UsersService {
     return userMap;
   };
 
-  saveImportedNewUsers = async (users: CreateUsersDTO[]) => {
-    try {
-      return await this.userRepository.save(users);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  assignSiteToImportedUsers = async (usersAndSites: UsersAndSitesDTO[]) => {
-    try {
-      return await this.userHasSiteRepository.save(usersAndSites);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
   async findUsersByRole(siteId: number, roleName: string) {
     try {
       const users = await this.userRepository.find({

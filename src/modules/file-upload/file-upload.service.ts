@@ -14,11 +14,9 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { UsersAndSitesDTO } from './dto/users.and.sites.dto';
 import { generateRandomCode } from 'src/utils/general.functions';
 import * as bcryptjs from 'bcryptjs';
 import { stringConstants } from 'src/utils/string.constant';
-import { UsersAndRolesDTO } from './dto/users.and.roles.dto';
 import { RoleEntity } from '../roles/entities/role.entity';
 import { MailService } from '../mail/mail.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -28,6 +26,10 @@ import {
   parseUserImportWorkbook,
 } from './xlsx-import.parser';
 import { digestFastPassword } from '../auth/fast-password.crypto';
+import {
+  ExistingUserSiteAssignment,
+  UserImportPersistence,
+} from './user-import.persistence';
 
 @Injectable()
 export class FileUploadService {
@@ -40,6 +42,7 @@ export class FileUploadService {
     private readonly mailService: MailService,
     private readonly whatsappService: WhatsappService,
     private readonly customLogger: CustomLoggerService,
+    private readonly userImportPersistence: UserImportPersistence,
   ) {}
 
   private async sendFastPasswordWhatsAppMessage(
@@ -115,8 +118,7 @@ export class FileUploadService {
   ) => {
     const existingEmailsInFile = new Set();
     const usersToCreate: CreateUsersDTO[] = [];
-    const usersAndSites: UsersAndSitesDTO[] = [];
-    const usersAndRoles: UsersAndRolesDTO[] = [];
+    const existingAssignments: ExistingUserSiteAssignment[] = [];
     const randomPassword = generateRandomCode(8);
     const currentDate = new Date();
     const processedUsers: {
@@ -207,10 +209,8 @@ export class FileUploadService {
       const existingUser = existingUsersMap.get(normalizedEmail);
 
       if (existingUser) {
-        usersAndSites.push({
+        existingAssignments.push({
           user: existingUser,
-          site: site,
-          createdAt: currentDate,
         });
         processedUsers.push({
           email: normalizedEmail,
@@ -250,28 +250,13 @@ export class FileUploadService {
       }
     }
 
-    const savedUsers =
-      await this.userService.saveImportedNewUsers(usersToCreate);
-
-    savedUsers.forEach((newUser) => {
-      usersAndSites.push({
-        user: newUser,
-        site: site,
-        createdAt: currentDate,
-      });
-
-      const role = roleAssignments.get(newUser.email);
-      if (role) {
-        usersAndRoles.push({
-          user: newUser,
-          role: role,
-          createdAt: currentDate,
-        });
-      }
+    const savedUsers = await this.userImportPersistence.persist({
+      newUsers: usersToCreate,
+      existingAssignments,
+      rolesByEmail: roleAssignments,
+      site,
+      createdAt: currentDate,
     });
-
-    await this.userService.assignSiteToImportedUsers(usersAndSites);
-    await this.roleService.assignRoleToImportedUsers(usersAndRoles);
 
     const appUrl = process.env.URL_WEB;
     for (const newUser of savedUsers) {
