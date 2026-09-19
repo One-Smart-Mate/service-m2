@@ -35,6 +35,7 @@ import {
 } from 'src/common/auth/roles.constants';
 import { digestFastPassword } from '../auth/fast-password.crypto';
 import { AuthSessionService } from '../auth-session/auth-session.service';
+import { UserCreationPersistence } from './user-creation.persistence';
 
 @Injectable()
 export class UsersService {
@@ -56,6 +57,7 @@ export class UsersService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly authSessionService: AuthSessionService,
+    private readonly userCreationPersistence: UserCreationPersistence,
   ) {}
 
   async generateUniqueFastPassword(siteId: number): Promise<string> {
@@ -469,15 +471,6 @@ export class UsersService {
 
   create = async (createUserDTO: CreateUserDTO) => {
     try {
-      const userAlreadyExistInSite = await this.userRepository.existsBy({
-        email: createUserDTO.email,
-        userHasSites: { site: { id: createUserDTO.siteId } },
-      });
-
-      if (userAlreadyExistInSite) {
-        throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-      }
-
       const [site, roles] = await Promise.all([
         this.siteService.findById(createUserDTO.siteId),
         this.roleService.findRolesByIds(createUserDTO.roles),
@@ -485,17 +478,13 @@ export class UsersService {
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (roles.length === 0) {
+      }
+      const requestedRoleCount = new Set(createUserDTO.roles).size;
+      if (roles.length !== requestedRoleCount) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
 
-      const user = await this.userRepository.findOne({
-        where: { email: createUserDTO.email },
-      });
-
-      const userSite = new UserHasSitesEntity();
-      userSite.site = site;
-
+      const normalizedEmail = createUserDTO.email.trim().toLowerCase();
       let fastPassword = createUserDTO.fastPassword;
       if (!fastPassword) {
         fastPassword = await this.generateUniqueFastPassword(
@@ -503,16 +492,19 @@ export class UsersService {
         );
       }
 
-      if (!user) {
-        const createUser = await this.userRepository.create({
+      const createdAt = new Date();
+      const fastPasswordDigest = digestFastPassword(fastPassword);
+      const result = await this.userCreationPersistence.persist({
+        email: normalizedEmail,
+        newUser: {
           name: createUserDTO.name,
-          email: createUserDTO.email,
+          email: normalizedEmail,
           phoneNumber: createUserDTO.phoneNumber,
           password: await bcryptjs.hash(
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
           ),
-          fastPasswordDigest: digestFastPassword(fastPassword),
+          fastPasswordDigest,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
@@ -520,46 +512,38 @@ export class UsersService {
             createUserDTO.uploadCardEvidenceWithDataNet,
           translation: createUserDTO.translation || stringConstants.LANG_ES,
           status: createUserDTO.status || stringConstants.activeStatus,
-          createdAt: new Date(),
-        });
+          createdAt,
+        },
+        roles,
+        site,
+        createdAt,
+      });
 
-        await this.userRepository.save(createUser);
-        await this.roleService.assignUserRoles(createUser, roles);
-        userSite.user = createUser;
-
-        if (createUser.phoneNumber && fastPassword) {
-          this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
-        }
-      } else {
-        const newFastPasswordDigest = digestFastPassword(fastPassword);
-        const fastPasswordChanged =
-          user.fastPasswordDigest !== newFastPasswordDigest;
-        user.fastPasswordDigest = newFastPasswordDigest;
-        await this.userRepository.save(user);
-        if (fastPasswordChanged) {
-          await this.authSessionService.revokeFastSessionsForUser(user.id);
-        }
-        userSite.user = user;
-
-        if (user.phoneNumber && fastPassword && fastPasswordChanged) {
-          this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
-        }
+      if (
+        result.user.phoneNumber &&
+        (result.isNewUser || result.fastPasswordChanged)
+      ) {
+        void this.sendFastPasswordWhatsAppMessage(
+          result.user.phoneNumber,
+          fastPassword,
+          createUserDTO.translation,
+        );
       }
       const appUrl = process.env.URL_WEB;
 
-      if (!userSite.user.email.endsWith('@fakeosm.com')) {
+      if (!result.user.email.endsWith('@fakeosm.com')) {
         this.mailService.sendWelcomeEmail(
-          userSite.user,
+          result.user,
           appUrl,
           createUserDTO.translation,
         ).catch((error) => {
           this.logger.logProcess(
-            `[CREATE_USER] Welcome email for ${userSite.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
+            `[CREATE_USER] Welcome email for ${result.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
           );
         });
       }
 
-      return await this.userHasSiteRepository.save(userSite);
+      return result.userSite;
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -6,6 +6,10 @@ import { MailService } from '../mail/mail.service';
 import { ValidationException } from 'src/common/exceptions/types/validation.exception';
 import * as bcryptjs from 'bcryptjs';
 import { AuthSessionService } from '../auth-session/auth-session.service';
+import { SiteService } from '../site/site.service';
+import { RolesService } from '../roles/roles.service';
+import { UserCreationPersistence } from './user-creation.persistence';
+import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
 
 describe('UsersService', () => {
   const userRepository = {
@@ -21,12 +25,21 @@ describe('UsersService', () => {
     revokeAllForUser: jest.fn(),
     revokeFastSessionsForUser: jest.fn(),
   } as unknown as AuthSessionService;
+  const siteService = {
+    findById: jest.fn(),
+  } as unknown as SiteService;
+  const roleService = {
+    findRolesByIds: jest.fn(),
+  } as unknown as RolesService;
+  const userCreationPersistence = {
+    persist: jest.fn(),
+  } as unknown as UserCreationPersistence;
 
   const service = Reflect.construct(UsersService, [
     userRepository,
     undefined,
-    undefined,
-    undefined,
+    siteService,
+    roleService,
     mailService,
     undefined,
     undefined,
@@ -34,6 +47,7 @@ describe('UsersService', () => {
     undefined,
     undefined,
     authSessionService,
+    userCreationPersistence,
   ]) as UsersService;
 
   beforeEach(() => {
@@ -60,6 +74,33 @@ describe('UsersService', () => {
         where: { email: 'user@example.com' },
         relations: { userHasSites: { site: true } },
       });
+    });
+  });
+
+  describe('create', () => {
+    it('rejects the request when any requested role does not exist', async () => {
+      jest.mocked(siteService.findById).mockResolvedValue({
+        id: 3,
+        siteCode: 'SITE03',
+      } as any);
+      jest.mocked(roleService.findRolesByIds).mockResolvedValue([
+        { id: 1, name: 'operator' },
+      ] as any);
+
+      await expect(
+        service.create({
+          name: 'User',
+          email: 'user@example.com',
+          phoneNumber: '521234567890',
+          siteId: 3,
+          password: 'password',
+          uploadCardDataWithDataNet: 0,
+          uploadCardEvidenceWithDataNet: 0,
+          roles: [1, 999],
+          translation: 'ES',
+        }),
+      ).rejects.toBeInstanceOf(NotFoundCustomException);
+      expect(userCreationPersistence.persist).not.toHaveBeenCalled();
     });
   });
 

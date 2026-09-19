@@ -56,27 +56,6 @@ export class RolesService {
     }
   };
 
-
-  assignUserRoles = async (
-    user: UserEntity,
-    roleEntities: RoleEntity[],
-  ): Promise<UserEntity> => {
-    try {
-      const userRoles = roleEntities.map((role) => {
-        const userRole = new UserRoleEntity();
-        userRole.user = user;
-        userRole.role = role;
-        return userRole;
-      });
-
-      await this.userRoleRepository.save(userRoles);
-
-      return user;
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
   updateUserRoles = async (
     user: UserEntity,
     newRoleEntities: RoleEntity[],

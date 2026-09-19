@@ -11,6 +11,7 @@ import { WhatsappModule } from '../whatsapp/whatsapp.module';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 import { UsersPositionsEntity } from './entities/users.positions.entity';
 import { CustomLoggerService } from '../../common/logger/logger.service';
+import { UserCreationPersistence } from './user-creation.persistence';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { CustomLoggerService } from '../../common/logger/logger.service';
     WhatsappModule,
     TypeOrmModule.forFeature([UserEntity, UserHasSitesEntity, UsersPositionsEntity]),
   ],
-  providers: [UsersService, CustomLoggerService],
+  providers: [UsersService, CustomLoggerService, UserCreationPersistence],
   controllers: [UsersController],
   exports: [UsersService],
 })
