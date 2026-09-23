@@ -300,11 +300,22 @@ export class UsersService {
       throw new UnauthorizedException('User has no site access');
     }
 
-    return [
+    const activeSiteIds = [
       ...new Set(
-        user.userHasSites.map((userSite) => Number(userSite.site.id)),
+        user.userHasSites
+          .filter(
+            (userSite) =>
+              userSite.status === stringConstants.activeStatus &&
+              userSite.site?.status === stringConstants.activeStatus,
+          )
+          .map((userSite) => Number(userSite.site.id)),
       ),
     ];
+    if (activeSiteIds.length === 0) {
+      throw new UnauthorizedException('User has no active site access');
+    }
+
+    return activeSiteIds;
   };
 
   findSiteUsersResponsibleData = async (siteId: number) => {
@@ -973,13 +984,12 @@ export class UsersService {
   };
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
-    const authUser = await this.findByIdWithSites(userId);
-    if (!authUser || !authUser.userHasSites?.length) {
-      throw new UnauthorizedException();
+    const accessibleSiteIds = await this.getAccessibleSiteIds(userId);
+    if (accessibleSiteIds === null) {
+      return;
     }
 
-    const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
-    if (!hasAccessToSite) {
+    if (!accessibleSiteIds.includes(siteId)) {
       throw new UnauthorizedException();
     }
   }

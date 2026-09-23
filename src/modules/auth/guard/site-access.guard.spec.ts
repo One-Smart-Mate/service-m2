@@ -45,6 +45,7 @@ describe('SiteAccessGuard', () => {
   } as unknown as Reflector;
   const usersService = {
     getUserRoles: jest.fn(),
+    getAccessibleSiteIds: jest.fn(),
     findByIdWithSites: jest.fn(),
   } as unknown as UsersService;
   const cardRepository = {
@@ -100,6 +101,7 @@ describe('SiteAccessGuard', () => {
     metadata.requireSiteAccess = false;
     metadata.siteResourceAccess = undefined;
     jest.clearAllMocks();
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2, 3]);
   });
 
   it('does not apply tenant filtering to public routes', async () => {
@@ -155,10 +157,6 @@ describe('SiteAccessGuard', () => {
   );
 
   it('validates every siteId found in params, query, and nested body data', async () => {
-    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
-    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
-      userHasSites: [{ site: { id: 2 } }, { site: { id: 3 } }],
-    } as never);
     const context = createContext({
       user: { id: 10 },
       params: { siteId: '2' },
@@ -167,15 +165,11 @@ describe('SiteAccessGuard', () => {
     });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(usersService.getUserRoles).toHaveBeenCalledWith(10);
-    expect(usersService.findByIdWithSites).toHaveBeenCalledWith(10);
+    expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(10);
   });
 
   it('rejects access when any requested site is outside the user sites', async () => {
-    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
-    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
-      userHasSites: [{ site: { id: 2 } }],
-    } as never);
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2]);
     const context = createContext({
       user: { id: 10 },
       body: { siteIds: [2, 3] },
@@ -187,15 +181,14 @@ describe('SiteAccessGuard', () => {
   });
 
   it('grants global site access only to the IH_sis_admin role', async () => {
-    jest
-      .mocked(usersService.getUserRoles)
-      .mockResolvedValue(['mechanic', 'IH_sis_admin']);
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue(null);
     const context = createContext({
       user: { id: 10 },
       params: { siteId: '999' },
     });
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(10);
     expect(usersService.findByIdWithSites).not.toHaveBeenCalled();
   });
 
@@ -267,10 +260,7 @@ describe('SiteAccessGuard', () => {
     jest
       .mocked(chartRepository.findOne)
       .mockResolvedValue({ siteId: 3 } as Chart);
-    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
-    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
-      userHasSites: [{ site: { id: 2 } }],
-    } as never);
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2]);
     const context = createContext({
       user: { id: 10 },
       params: { chartId: '7' },
@@ -328,10 +318,7 @@ describe('SiteAccessGuard', () => {
     jest
       .mocked(levelRepository.findOne)
       .mockResolvedValue({ siteId: 3 } as LevelEntity);
-    jest.mocked(usersService.getUserRoles).mockResolvedValue(['local_admin']);
-    jest.mocked(usersService.findByIdWithSites).mockResolvedValue({
-      userHasSites: [{ site: { id: 2 } }],
-    } as never);
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2]);
     const context = createContext({
       user: { id: 10 },
       body: { cardTypeId: 8, levelId: 9 },

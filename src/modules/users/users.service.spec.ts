@@ -378,19 +378,43 @@ describe('UsersService', () => {
           userRoles: [{ role: { name: 'local_admin' } }],
         } as UserEntity)
         .mockResolvedValueOnce({
-          userHasSites: [{ site: { id: 2 } }, { site: { id: 3 } }],
+          userHasSites: [
+            { status: 'A', site: { id: 2, status: 'A' } },
+            { status: 'A', site: { id: 3, status: 'A' } },
+          ],
         } as UserEntity);
 
       await expect(service.getAccessibleSiteIds(10)).resolves.toEqual([2, 3]);
     });
 
-    it('rejects a regular user without assigned sites', async () => {
+    it('excludes inactive assignments and inactive sites', async () => {
       jest
         .mocked(userRepository.findOne)
         .mockResolvedValueOnce({
           userRoles: [{ role: { name: 'mechanic' } }],
         } as UserEntity)
-        .mockResolvedValueOnce({ userHasSites: [] } as UserEntity);
+        .mockResolvedValueOnce({
+          userHasSites: [
+            { status: 'I', site: { id: 2, status: 'A' } },
+            { status: 'A', site: { id: 3, status: 'I' } },
+            { status: 'A', site: { id: 4, status: 'A' } },
+          ],
+        } as UserEntity);
+
+      await expect(service.getAccessibleSiteIds(10)).resolves.toEqual([4]);
+    });
+
+    it('rejects a regular user without active assigned sites', async () => {
+      jest
+        .mocked(userRepository.findOne)
+        .mockResolvedValueOnce({
+          userRoles: [{ role: { name: 'mechanic' } }],
+        } as UserEntity)
+        .mockResolvedValueOnce({
+          userHasSites: [
+            { status: 'I', site: { id: 2, status: 'A' } },
+          ],
+        } as UserEntity);
 
       await expect(service.getAccessibleSiteIds(10)).rejects.toBeInstanceOf(
         UnauthorizedException,

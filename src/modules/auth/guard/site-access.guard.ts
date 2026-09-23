@@ -389,22 +389,14 @@ export class SiteAccessGuard implements CanActivate {
     siteIds: number[],
     userId: number,
   ): Promise<void> {
-    if (await this.hasGlobalSiteAccess(userId)) {
+    const accessibleSiteIds = await this.usersService.getAccessibleSiteIds(
+      userId,
+    );
+    if (accessibleSiteIds === null) {
       return;
     }
 
-    const authUser = await this.usersService.findByIdWithSites(userId);
-    if (!authUser) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    if (!authUser.userHasSites?.length) {
-      throw new UnauthorizedException('User has no site access');
-    }
-
-    const allowedSiteIds = new Set(
-      authUser.userHasSites.map((userSite) => Number(userSite.site.id)),
-    );
+    const allowedSiteIds = new Set(accessibleSiteIds);
     const hasAccessToAllSites = siteIds.every((siteId) =>
       allowedSiteIds.has(siteId),
     );
