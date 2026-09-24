@@ -93,6 +93,7 @@ describe('CardService paginated list', () => {
       'filtered card list',
       () => service.findSiteCardsPaginated(2, 7, 1, 201),
     ],
+    ['level card list', () => service.getCardsByLevelId(2, 9, 0, 20)],
   ])('rejects unsafe pagination for the %s before querying data', async (_, action) => {
     await expect(action()).rejects.toBeInstanceOf(BadRequestException);
 

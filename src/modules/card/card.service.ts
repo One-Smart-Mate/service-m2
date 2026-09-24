@@ -81,15 +81,12 @@ export class CardService {
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
-    const authUser = await this.userService.findByIdWithSites(userId);
-    if (!authUser || !authUser.userHasSites?.length) {
-      throw new UnauthorizedException();
-    }
-
-    const hasAccessToSite = authUser.userHasSites.some(
-      (userSite) => Number(userSite.site.id) === Number(siteId),
-    );
-    if (!hasAccessToSite) {
+    const accessibleSiteIds =
+      await this.userService.getAccessibleSiteIds(userId);
+    if (
+      accessibleSiteIds !== null &&
+      !accessibleSiteIds.includes(Number(siteId))
+    ) {
       throw new UnauthorizedException();
     }
   }
@@ -163,7 +160,10 @@ export class CardService {
 
   findCardByUUID = async (uuid: string) => {
     try {
-      const card = await this.cardRepository.findOneBy({ cardUUID: uuid });
+      const card = await this.cardRepository.findOneBy({
+        cardUUID: uuid,
+        deletedAt: IsNull(),
+      });
       if (card) {
         const cardEvidences = await this.evidenceRepository.findBy({
           cardId: card.id,
@@ -472,10 +472,11 @@ export class CardService {
         await this.userService.getAccessibleSiteIds(requesterId);
       const cards = await this.cardRepository.findBy(
         accessibleSiteIds === null
-          ? { responsableId: responsibleId }
+          ? { responsableId: responsibleId, deletedAt: IsNull() }
           : {
               responsableId: responsibleId,
               siteId: In(accessibleSiteIds),
+              deletedAt: IsNull(),
             },
       );
       if (cards) {
@@ -756,7 +757,7 @@ export class CardService {
           superiorId: superiorId,
           siteId: siteId,
           status: In([stringConstants.A, stringConstants.P, stringConstants.V]),
-          deletedAt: null,
+          deletedAt: IsNull(),
         },
       });
       if (cards) {
@@ -814,7 +815,11 @@ export class CardService {
 
   findAllEvidences = async (siteId: number) => {
     const evidences = await this.evidenceRepository.find({
-      where: { siteId: siteId },
+      where: {
+        siteId,
+        status: stringConstants.activeStatus,
+        deletedAt: IsNull(),
+      },
     });
     const evidencesMap = new Map();
     evidences.forEach((level) => evidencesMap.set(level.id, level));
@@ -831,7 +836,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering
       if (status) {
@@ -877,7 +883,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering if provided
       if (status) {
@@ -919,10 +926,11 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
-              const queryBuilder = this.cardRepository
+      const queryBuilder = this.cardRepository
           .createQueryBuilder('card')
           .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
-          .where('card.site_id = :siteId', { siteId });
+          .where('card.site_id = :siteId', { siteId })
+          .andWhere('card.deletedAt IS NULL');
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -953,7 +961,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -991,7 +1000,8 @@ export class CardService {
       // Obtener todas las tarjetas con los filtros aplicados
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1154,7 +1164,8 @@ export class CardService {
           'COUNT(*) as totalCards'
         ])
         .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.area_id = :areaId', { areaId });
+        .andWhere('card.area_id = :areaId', { areaId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering
       if (status) {
@@ -1196,7 +1207,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1235,7 +1247,8 @@ export class CardService {
       // Get all cards with the applied filters
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1393,7 +1406,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering - always use the provided status or default to C,R
       if (status) {
@@ -1429,7 +1443,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1654,7 +1669,7 @@ export class CardService {
   findCardNotes = async (cardId: number) => {
     try {
       return await this.cardNoteRepository.find({
-        where: { cardId: cardId },
+        where: { cardId, deletedAt: IsNull() },
         order: { createdAt: 'DESC' },
       });
     } catch (exception) {
@@ -1665,7 +1680,7 @@ export class CardService {
   findCardNotesByUUID = async (cardUUID: string) => {
     try {
       const card = await this.cardRepository.findOne({
-        where: { cardUUID: cardUUID }
+        where: { cardUUID, deletedAt: IsNull() },
       });
 
       if (!card) {
@@ -1673,7 +1688,7 @@ export class CardService {
       }
 
       return await this.cardNoteRepository.find({
-        where: { cardId: card.id },
+        where: { cardId: card.id, deletedAt: IsNull() },
         order: { createdAt: 'DESC' },
       });
     } catch (exception) {
@@ -1707,7 +1722,8 @@ export class CardService {
     const queryBuilder = this.cardRepository
       .createQueryBuilder('card')
       .where('card.siteId = :siteId', { siteId })
-      .andWhere('card.cardTypeName = :cardTypeName', { cardTypeName });
+      .andWhere('card.cardTypeName = :cardTypeName', { cardTypeName })
+      .andWhere('card.deletedAt IS NULL');
 
     switch (true) {
       case !!area:
@@ -1782,14 +1798,18 @@ export class CardService {
 
   findbySiteId = async (siteId: number) => {
     try {
-      return await this.cardRepository.find({ where: { siteId: siteId } });
+      return await this.cardRepository.find({
+        where: { siteId, deletedAt: IsNull() },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
   async getCardsByLevelId(siteId: number, levelId: number, page: number = 1, limit: number = 50) {
-    const skip = (page - 1) * limit;
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
 
     const [cards, total] = await this.cardRepository
       .createQueryBuilder('card')
@@ -1801,7 +1821,7 @@ export class CardService {
         statusR: 'R',
       })
       .orderBy('card.siteCardId', 'DESC')
-      .skip(skip)
+      .skip(pagination.offset)
       .take(limit)
       .getManyAndCount();
 
@@ -1826,9 +1846,15 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const targetSiteIds = user.userHasSites.map((userSite) =>
-        Number(userSite.site.id),
-      );
+      const targetSiteIds = user.userHasSites
+        .filter(
+          (userSite) =>
+            userSite.status === stringConstants.activeStatus &&
+            !userSite.deletedAt &&
+            userSite.site?.status === stringConstants.activeStatus &&
+            !userSite.site.deletedAt,
+        )
+        .map((userSite) => Number(userSite.site.id));
       const accessibleSiteIds =
         await this.userService.getAccessibleSiteIds(requesterId);
       const authorizedSiteIds =
@@ -1846,13 +1872,19 @@ export class CardService {
         where: {
           siteId: In(authorizedSiteIds),
           mechanicId: userId,
+          deletedAt: IsNull(),
         },
         order: { siteCardId: 'DESC' },
       });
 
       if (cards.length > 0) {
         const allEvidences = await this.evidenceRepository.find({
-          where: { cardId: In(cards.map((card) => card.id)) },
+          where: {
+            cardId: In(cards.map((card) => card.id)),
+            siteId: In(authorizedSiteIds),
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          },
         });
 
         const cardEvidencesMap = new Map();
@@ -1943,6 +1975,7 @@ export class CardService {
           'card.cardCreationDate',
         ])
         .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL')
         .andWhere('card.cardDueDate IS NOT NULL')
         .andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
           startDate,
@@ -1993,6 +2026,7 @@ export class CardService {
           'adr.id = card.am_discard_reason_id',
         )
         .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL')
         .andWhere('card.status = :status', {
           status: stringConstants.DISCARDED,
         });
@@ -2779,7 +2813,8 @@ export class CardService {
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'

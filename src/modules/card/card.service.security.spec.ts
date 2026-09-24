@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -49,6 +49,7 @@ describe('CardService tenant-scoped collections', () => {
     expect(cardRepository.findBy).toHaveBeenCalledWith({
       responsableId: 20,
       siteId: expect.objectContaining({ _value: [2, 3] }),
+      deletedAt: IsNull(),
     });
   });
 
@@ -58,12 +59,18 @@ describe('CardService tenant-scoped collections', () => {
 
     await service.findResponsibleCards(20, 10);
 
-    expect(cardRepository.findBy).toHaveBeenCalledWith({ responsableId: 20 });
+    expect(cardRepository.findBy).toHaveBeenCalledWith({
+      responsableId: 20,
+      deletedAt: IsNull(),
+    });
   });
 
   it('intersects mechanic sites with the requester accessible sites', async () => {
     jest.mocked(userRepository.findOne).mockResolvedValue({
-      userHasSites: [{ site: { id: 2 } }, { site: { id: 3 } }],
+      userHasSites: [
+        { status: 'A', deletedAt: null, site: { id: 2, status: 'A' } },
+        { status: 'A', deletedAt: null, site: { id: 3, status: 'A' } },
+      ],
     } as UserEntity);
     jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2]);
     jest.mocked(cardRepository.find).mockResolvedValue([]);
@@ -74,6 +81,7 @@ describe('CardService tenant-scoped collections', () => {
       where: {
         siteId: expect.objectContaining({ _value: [2] }),
         mechanicId: 20,
+        deletedAt: IsNull(),
       },
       order: { siteCardId: 'DESC' },
     });

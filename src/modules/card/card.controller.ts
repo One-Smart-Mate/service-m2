@@ -390,10 +390,8 @@ export class CardController {
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('status') status?: string,
   ) {
     // Always use C,R status for definitive users regardless of parameter
-    console.log(status)
     return this.cardService.findSiteCardsGroupedByDefinitiveUser(
       siteId,
       startDate,
@@ -518,11 +516,11 @@ export class CardController {
   async getCardsByLevel(
     @Param('levelId') levelId: number,
     @Query('siteId') siteId: number,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.getCardsByLevelId(siteId, levelId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
