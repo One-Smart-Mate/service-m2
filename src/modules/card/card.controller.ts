@@ -177,8 +177,11 @@ export class CardController {
   }
 
   @Post('/create')
-  create(@Body() createCardDTO: CreateCardDTO) {
-    return this.cardService.createOptimized(createCardDTO);
+  create(@Body() createCardDTO: CreateCardDTO, @Request() req) {
+    return this.cardService.createOptimized({
+      ...createCardDTO,
+      creatorId: req.user.id,
+    });
   }
   
   @Put('/update/definitive-solution')

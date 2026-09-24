@@ -133,3 +133,25 @@ describe('Resource site authorization metadata', () => {
     });
   });
 });
+
+describe('CardController create identity', () => {
+  it('uses the effective authenticated user instead of a client creatorId', async () => {
+    const cardService = {
+      createOptimized: jest.fn().mockResolvedValue({ id: 1 }),
+    };
+    const controller = new CardController(cardService as never);
+
+    await controller.create(
+      {
+        siteId: 2,
+        creatorId: 999,
+      } as never,
+      { user: { id: 7, actorId: 3 } },
+    );
+
+    expect(cardService.createOptimized).toHaveBeenCalledWith({
+      siteId: 2,
+      creatorId: 7,
+    });
+  });
+});

@@ -2566,6 +2566,64 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
+      const isActiveResource = (resource: {
+        status?: string;
+        deletedAt?: Date | null;
+      }) =>
+        resource.status === stringConstants.activeStatus &&
+        !resource.deletedAt;
+
+      if (!isActiveResource(site)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+      if (!isActiveResource(node)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+      if (priority.id && !isActiveResource(priority)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+      if (!isActiveResource(cardType)) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
+      }
+      if (!isActiveResource(preclassifier)) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.PRECLASSIFIER,
+        );
+      }
+      if (!isActiveResource(creator)) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
+      const selectedSiteId = Number(site.id);
+      const resourcesBelongToSite =
+        Number(node.siteId) === selectedSiteId &&
+        Number(cardType.siteId) === selectedSiteId &&
+        Number(preclassifier.siteId) === selectedSiteId &&
+        (!priority.id || Number(priority.siteId) === selectedSiteId);
+
+      if (!resourcesBelongToSite) {
+        throw new UnauthorizedException(
+          'Card resources do not belong to the selected site',
+        );
+      }
+
+      if (Number(preclassifier.cardTypeId) !== Number(cardType.id)) {
+        throw new ValidationException(
+          ValidationExceptionType.INVALID_CARD_CATALOG_SELECTION,
+        );
+      }
+
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(creator.id);
+      if (
+        accessibleSiteIds !== null &&
+        !accessibleSiteIds.includes(selectedSiteId)
+      ) {
+        throw new UnauthorizedException('Site access denied');
+      }
+
       // 4. OPTIMIZED LEVEL HIERARCHY - Only get superior levels for this node
       const levelMap = await this.levelService.findAllLevelsBySite(site.id);
       const { area, location } = this.levelService.getSuperiorLevelsById(
@@ -2683,7 +2741,6 @@ export class CardService {
 
       return savedCard;
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };

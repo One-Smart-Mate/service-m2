@@ -77,9 +77,14 @@ export class CreateCardDTO {
   @IsInt()
   preclassifierId: number;
 
-  @ApiProperty()
+  @ApiProperty({
+    required: false,
+    deprecated: true,
+    description: 'Ignored by the API. The creator is derived from the authenticated session.',
+  })
+  @IsOptional()
   @IsInt()
-  creatorId: number;
+  creatorId?: number;
   
   @ApiProperty({ required: false })
   @IsString()

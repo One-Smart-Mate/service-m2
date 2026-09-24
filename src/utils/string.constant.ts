@@ -105,6 +105,8 @@ export const stringConstants = {
   inactiveStatus: 'I',
   cancelledStatus: 'C',
   completedStatus: 'R', // For CILT sequences executions
+  invalidCardCatalogSelection:
+    'The selected card catalogs are not compatible',
 
   //Harcoded
   tagVersion: '1.0.0',

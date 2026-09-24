@@ -96,6 +96,9 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.USER_INACTIVE:
         message = stringConstants.inactiveStatus;
         break;
+      case ValidationExceptionType.INVALID_CARD_CATALOG_SELECTION:
+        message = stringConstants.invalidCardCatalogSelection;
+        break;
       default:
         message = 'Validation error';
     }
@@ -134,5 +137,6 @@ export enum ValidationExceptionType {
   CILT_SEQUENCE_INVALID_DATE,
   CILT_SEQUENCE_NOT_STARTED,
   CILT_SEQUENCE_ALREADY_FINISHED,
-  INVALID_FAST_PASSWORD_FORMAT
+  INVALID_FAST_PASSWORD_FORMAT,
+  INVALID_CARD_CATALOG_SELECTION,
 }
