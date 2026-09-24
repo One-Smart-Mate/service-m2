@@ -263,4 +263,26 @@ describe('CardController list identity', () => {
       expect.objectContaining({ myCards: true }),
     );
   });
+
+  it('preserves malformed pagination so the service can reject it', async () => {
+    const cardService = {
+      findSiteCardsPaginated: jest.fn().mockResolvedValue({ cards: [] }),
+    };
+    const controller = new CardController(cardService as never);
+
+    await controller.findBySiteIdPaginated(
+      2,
+      { user: { id: 7, actorId: 3 } },
+      '1abc',
+      '50',
+    );
+
+    expect(cardService.findSiteCardsPaginated).toHaveBeenCalledWith(
+      2,
+      7,
+      Number.NaN,
+      50,
+      expect.any(Object),
+    );
+  });
 });

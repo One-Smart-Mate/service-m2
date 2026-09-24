@@ -34,11 +34,11 @@ export class CardController {
   async findByLevelMachineId(
     @Param('siteId') siteId: number,
     @Param('levelMachineId') levelMachineId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.findByLevelMachineId(siteId, levelMachineId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
@@ -56,11 +56,11 @@ export class CardController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async findBySiteId(
     @Param('siteId') siteId: number,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.findSiteCards(siteId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
@@ -92,8 +92,8 @@ export class CardController {
   findBySiteIdPaginated(
     @Param('siteId') siteId: number,
     @Request() req,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
     @Query('searchText') searchText?: string,
     @Query('cardNumber') cardNumber?: string,
     @Query('location') location?: string,
@@ -111,8 +111,8 @@ export class CardController {
     return this.cardService.findSiteCardsPaginated(
       siteId,
       req.user.id,
-      page || 1,
-      limit || 50,
+      page === undefined ? 1 : Number(page),
+      limit === undefined ? 50 : Number(limit),
       {
         searchText,
         cardNumber,

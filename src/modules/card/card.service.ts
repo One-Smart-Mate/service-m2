@@ -47,6 +47,7 @@ import { CardCreationPersistence } from './card-creation.persistence';
 import { CardCreationPolicy } from './card-creation.policy';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
+import { CardPaginationPolicy } from './card-pagination.policy';
 
 @Injectable()
 export class CardService {
@@ -95,6 +96,10 @@ export class CardService {
     page: number = 1,
     limit: number = 50,
   ) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       const level = await this.levelService.findByLeveleMachineId(
         siteId,
@@ -111,7 +116,7 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
@@ -172,6 +177,10 @@ export class CardService {
   };
 
   findSiteCards = async (siteId: number, page: number = 1, limit: number = 50) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       // Get site to retrieve app_history_days
       const site = await this.siteService.findById(siteId);
@@ -179,7 +188,7 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
@@ -264,6 +273,10 @@ export class CardService {
       myCards?: boolean;
     }
   ) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       // Get site to retrieve app_history_days
       const site = await this.siteService.findById(siteId);
@@ -411,7 +424,7 @@ export class CardService {
       const total = await queryBuilder.getCount();
 
       // Apply pagination
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
       queryBuilder.skip(skip).take(limit);
 
       // Get cards

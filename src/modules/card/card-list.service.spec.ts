@@ -1,4 +1,5 @@
 import { IsNull } from 'typeorm';
+import { BadRequestException } from '@nestjs/common';
 import { CardService } from './card.service';
 
 describe('CardService paginated list', () => {
@@ -84,5 +85,18 @@ describe('CardService paginated list', () => {
         deletedAt: IsNull(),
       },
     });
+  });
+
+  it.each([
+    ['site card list', () => service.findSiteCards(2, 0, 20)],
+    [
+      'filtered card list',
+      () => service.findSiteCardsPaginated(2, 7, 1, 201),
+    ],
+  ])('rejects unsafe pagination for the %s before querying data', async (_, action) => {
+    await expect(action()).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(siteService.findById).not.toHaveBeenCalled();
+    expect(cardRepository.createQueryBuilder).not.toHaveBeenCalled();
   });
 });
