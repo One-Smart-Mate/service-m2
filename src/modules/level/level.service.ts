@@ -22,6 +22,10 @@ import {
 } from 'src/common/exceptions/types/validation.exception';
 import { generateRandomHex } from 'src/utils/general.functions';
 import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
+import {
+  assertActiveCatalogSite,
+  resolveCatalogAssignee,
+} from '../catalog/catalog-assignment.policy';
 
 @Injectable()
 export class LevelService {
@@ -102,6 +106,7 @@ export class LevelService {
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
+      assertActiveCatalogSite(site);
 
       if (createLevelDTO.levelMachineId) {
         const levelMachineIdExists = await this.levelRepository.findOne({
@@ -118,21 +123,29 @@ export class LevelService {
       }
 
       if (createLevelDTO.responsibleId) {
-        const responsible = await this.usersService.findById(
+        const responsible = await resolveCatalogAssignee(
+          this.usersService,
           Number(createLevelDTO.responsibleId),
+          createLevelDTO.siteId,
         );
-        if (!responsible) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         createLevelDTO.responsibleName = responsible.name;
       }
       createLevelDTO.companyId = site.companyId;
       createLevelDTO.createdAt = new Date();
 
       if (createLevelDTO.superiorId) {
-        createLevelDTO.level = await this.getActualLevelBySuperiorId(
-          createLevelDTO.superiorId,
-        );
+        const parent = await this.levelRepository.findOneBy({
+          id: createLevelDTO.superiorId,
+        });
+        if (
+          !parent ||
+          Number(parent.siteId) !== Number(createLevelDTO.siteId) ||
+          parent.status !== stringConstants.A ||
+          parent.deletedAt != null
+        ) {
+          throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+        }
+        createLevelDTO.level = Number(parent.level) + 1;
       }
 
       if (!createLevelDTO.levelMachineId) {
@@ -184,12 +197,11 @@ export class LevelService {
       level.responsibleName = null;
 
       if (updateLevelDTO.responsibleId) {
-        const responsible = await this.usersService.findById(
+        const responsible = await resolveCatalogAssignee(
+          this.usersService,
           Number(updateLevelDTO.responsibleId),
+          level.siteId,
         );
-        if (!responsible) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         level.responsibleName = responsible.name;
       }
 

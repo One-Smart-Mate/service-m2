@@ -17,6 +17,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { IsNull, Not } from 'typeorm';
 import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
+import { assertActiveCatalogSite } from '../catalog/catalog-assignment.policy';
 
 @Injectable()
 export class PriorityService {
@@ -58,6 +59,7 @@ export class PriorityService {
       if (!foundSite) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
+      assertActiveCatalogSite(foundSite);
 
       const existingPriority = await this.priorityRepository.findOne({
         where: {

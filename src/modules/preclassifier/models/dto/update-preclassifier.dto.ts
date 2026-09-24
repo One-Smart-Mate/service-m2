@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsNotEmpty,
+  IsIn,
   IsNumber,
   IsString,
   Length,
@@ -42,5 +43,6 @@ export class UpdatePreclassifierDTO {
   })
   @IsNotEmpty()
   @IsString()
+  @IsIn(['A', 'I'])
   status: string;
 }

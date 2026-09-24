@@ -17,6 +17,10 @@ import { stringConstants } from 'src/utils/string.constant';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
+import {
+  assertActiveCatalogSite,
+  resolveCatalogAssignee,
+} from '../catalog/catalog-assignment.policy';
 
 @Injectable()
 export class CardTypesService {
@@ -66,14 +70,14 @@ export class CardTypesService {
       if (!foundSite) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
+      assertActiveCatalogSite(foundSite);
 
       if (createCardTypesDTO.responsableId) {
-        const foundUser = await this.usersService.findById(
+        const foundUser = await resolveCatalogAssignee(
+          this.usersService,
           createCardTypesDTO.responsableId,
+          createCardTypesDTO.siteId,
         );
-        if (!foundUser) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         createCardTypesDTO.responsableName = foundUser.name;
         createCardTypesDTO.email = foundUser.email;
       }
@@ -104,12 +108,11 @@ export class CardTypesService {
       }
   
       if (updateCardTypesDTO.responsableId) {
-        const foundUser = await this.usersService.findById(
+        const foundUser = await resolveCatalogAssignee(
+          this.usersService,
           updateCardTypesDTO.responsableId,
+          currentCardType.siteId,
         );
-        if (!foundUser) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         currentCardType.responsableId = updateCardTypesDTO.responsableId;
         currentCardType.responsableName = foundUser.name;
         currentCardType.email = foundUser.email;
