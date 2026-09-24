@@ -149,12 +149,15 @@ describe('CardService create scope', () => {
     priorityService.findById.mockResolvedValue({
       id: 20,
       siteId: 2,
+      priorityCode: 'P1',
+      priorityDays: 3,
       status: 'A',
       deletedAt: null,
     });
     cardTypeService.findById.mockResolvedValue({
       id: 30,
       siteId: 2,
+      cardTypeMethodology: 'M',
       status: 'A',
       deletedAt: null,
     });
@@ -210,6 +213,21 @@ describe('CardService create scope', () => {
     );
     expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(7);
     expect(cardRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('requires safe or unsafe for card types that use classification', async () => {
+    cardTypeService.findById.mockResolvedValue({
+      id: 30,
+      siteId: 2,
+      cardTypeMethodology: 'C',
+      status: 'A',
+      deletedAt: null,
+    });
+
+    await expect(
+      service.createOptimized(createCard({ cardTypeValue: null })),
+    ).rejects.toBeInstanceOf(ValidationException);
+    expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
   });
 
   it('returns an existing offline card without creating or notifying again', async () => {

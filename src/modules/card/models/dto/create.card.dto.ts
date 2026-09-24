@@ -6,6 +6,9 @@ import {
   IsOptional,
   IsArray,
   ValidateNested,
+  IsBoolean,
+  MaxLength,
+  Min,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -37,32 +40,36 @@ class Evidence {
   @ApiProperty({ description: 'URL of the evidence' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(500)
   url: string;
 }
 
 export class CreateCardDTO {
   @ApiProperty()
   @IsInt()
+  @Min(1)
   siteId: number;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(60)
   cardUUID: string;
 
   @ApiProperty({ type: 'string', format: 'date-time', example: '2023-06-20T00:00:00.000Z' })
   @IsString()
+  @IsNotEmpty()
   cardCreationDate: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty()
   @IsInt()
-  @IsOptional()
-  nodeId: number | null;
+  @Min(1)
+  nodeId: number;
 
-  @ApiProperty({required: false})
-  @IsOptional()
+  @ApiProperty()
   @IsInt()
-  priorityId: number | 0 | null;
+  @Min(1)
+  priorityId: number;
 
   @ApiProperty({ enum: ['safe', 'unsafe'] })
   @IsEnum(CardTypeValue)
@@ -71,10 +78,12 @@ export class CreateCardDTO {
 
   @ApiProperty()
   @IsInt()
+  @Min(1)
   cardTypeId: number;
 
   @ApiProperty()
   @IsInt()
+  @Min(1)
   preclassifierId: number;
 
   @ApiProperty({
@@ -89,6 +98,7 @@ export class CreateCardDTO {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   comments: string | null;
 
   @ApiProperty({ type: [Evidence] })
@@ -100,19 +110,23 @@ export class CreateCardDTO {
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
+  @MaxLength(45)
   appSo: string | null;
 
   @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
+  @MaxLength(45)
   appVersion: string | null;
 
   @ApiProperty({ required: false, description: 'Custom due date for wildcard priority in YYYY-MM-DD format' })
   @IsString()
   @IsOptional()
+  @MaxLength(10)
   customDueDate: string | null;
 
   @ApiProperty({ required: false, description: 'Whether to notify the level responsible when creating the card', default: false })
   @IsOptional()
+  @IsBoolean()
   notifyResponsible: boolean;
 }

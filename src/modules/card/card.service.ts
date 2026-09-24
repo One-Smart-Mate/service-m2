@@ -44,6 +44,7 @@ import {
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
 import { CardCreationPersistence } from './card-creation.persistence';
+import { CardCreationPolicy } from './card-creation.policy';
 
 @Injectable()
 export class CardService {
@@ -2539,9 +2540,7 @@ export class CardService {
       const [site, priority, node, cardType, preclassifier, creator] =
         await Promise.all([
           this.siteService.findById(createCardDTO.siteId),
-          createCardDTO.priorityId && createCardDTO.priorityId !== 0
-            ? this.priorityService.findById(createCardDTO.priorityId)
-            : Promise.resolve(new PriorityEntity()),
+          this.priorityService.findById(createCardDTO.priorityId),
           this.levelService.findById(createCardDTO.nodeId),
           this.cardTypeService.findById(createCardDTO.cardTypeId),
           this.preclassifierService.findById(createCardDTO.preclassifierId),
@@ -2616,6 +2615,16 @@ export class CardService {
         );
       }
 
+      if (
+        cardType.cardTypeMethodology === stringConstants.C &&
+        createCardDTO.cardTypeValue !== 'safe' &&
+        createCardDTO.cardTypeValue !== 'unsafe'
+      ) {
+        throw new ValidationException(
+          ValidationExceptionType.CARD_TYPE_VALUE_REQUIRED,
+        );
+      }
+
       const accessibleSiteIds =
         await this.userService.getAccessibleSiteIds(creator.id);
       if (
@@ -2632,7 +2641,12 @@ export class CardService {
         levelMap,
       );
 
-      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
+      const dates = CardCreationPolicy.resolveDates({
+        cardCreationDate: createCardDTO.cardCreationDate,
+        priorityCode: priority.priorityCode,
+        priorityDays: priority.priorityDays,
+        customDueDate: createCardDTO.customDueDate,
+      });
 
       // 5. CREATE CARD ENTITY
       const card = this.cardRepository.create({
@@ -2666,14 +2680,9 @@ export class CardService {
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
-        createdAt: createdAt,
-        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
-        cardDueDate: createCardDTO.customDueDate
-          ? (() => {
-              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
-              return new Date(year, month - 1, day);
-            })()
-          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
+        createdAt: dates.createdAt,
+        cardCreationDate: dates.cardCreationDate,
+        cardDueDate: dates.cardDueDate,
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
@@ -2716,7 +2725,7 @@ export class CardService {
         siteId: selectedSiteId,
         creatorId: creator.id,
         cardUUID: createCardDTO.cardUUID,
-        createdAt,
+        createdAt: dates.createdAt,
         evidences: createCardDTO.evidences,
       });
 
