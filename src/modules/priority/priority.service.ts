@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
 import { Repository } from 'typeorm';
@@ -16,9 +16,12 @@ import { UsersService } from '../users/users.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { IsNull, Not } from 'typeorm';
+import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
 
 @Injectable()
 export class PriorityService {
+  private readonly logger = new Logger(PriorityService.name);
+
   constructor(
     @InjectRepository(PriorityEntity)
     private readonly priorityRepository: Repository<PriorityEntity>,
@@ -32,6 +35,7 @@ export class PriorityService {
       return await this.priorityRepository.findBy({
         siteId: siteId,
         status: stringConstants.A,
+        deletedAt: IsNull(),
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -73,20 +77,11 @@ export class PriorityService {
       createPriorityDTO.siteCode = foundSite.siteCode;
       createPriorityDTO.createdAt = new Date();
 
-      const tokens = await this.userService.getSiteUsersTokens(
-        createPriorityDTO.siteId,
-        true, // Exclude web tokens - web always loads data online
+      const savedPriority = await this.priorityRepository.save(
+        createPriorityDTO,
       );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      return await this.priorityRepository.save(createPriorityDTO);
+      await this.notifyCatalogChange(createPriorityDTO.siteId);
+      return savedPriority;
     } catch (exception) {
       if (exception.code === 'ER_DUP_ENTRY') {
         throw new ValidationException(
@@ -108,47 +103,30 @@ export class PriorityService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
       }
 
-      if (updatepriorityDTO.priorityCode !== foundPriority.priorityCode) {
-        const existingPriority = await this.priorityRepository.findOne({
-          where: {
-            siteId: foundPriority.siteId,
-            priorityCode: updatepriorityDTO.priorityCode,
-            id: Not(updatepriorityDTO.id),
-            deletedAt: IsNull()
-          }
-        });
+      const existingPriority = await this.priorityRepository.findOne({
+        where: {
+          siteId: foundPriority.siteId,
+          priorityCode: updatepriorityDTO.priorityCode,
+          id: Not(updatepriorityDTO.id),
+          deletedAt: IsNull(),
+        },
+      });
 
-        if (existingPriority) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATED_PRIORITY,
-            updatepriorityDTO.priorityCode
-          );
-        }
+      if (existingPriority) {
+        throw new ValidationException(
+          ValidationExceptionType.DUPLICATED_PRIORITY,
+          updatepriorityDTO.priorityCode,
+        );
       }
 
       foundPriority.priorityCode = updatepriorityDTO.priorityCode;
       foundPriority.priorityDescription = updatepriorityDTO.priorityDescription;
       foundPriority.priorityDays = updatepriorityDTO.priorityDays;
-      foundPriority.status = updatepriorityDTO.status;
-      if (updatepriorityDTO.status !== stringConstants.A) {
-        foundPriority.deletedAt = new Date();
-      }
-      foundPriority.updatedAt = new Date();
+      applyCatalogLifecycle(foundPriority, updatepriorityDTO.status);
 
-      const tokens = await this.userService.getSiteUsersTokens(
-        foundPriority.siteId,
-        true, // Exclude web tokens - web always loads data online
-      );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      return await this.priorityRepository.save(foundPriority);
+      const savedPriority = await this.priorityRepository.save(foundPriority);
+      await this.notifyCatalogChange(foundPriority.siteId);
+      return savedPriority;
     } catch (exception) {
       if (exception.code === 'ER_DUP_ENTRY') {
         throw new ValidationException(
@@ -171,4 +149,26 @@ export class PriorityService {
       HandleException.exception(exception);
     }
   };
+
+  private async notifyCatalogChange(siteId: number): Promise<void> {
+    try {
+      const tokens = await this.userService.getSiteUsersTokens(siteId, true);
+      if (tokens.length === 0) {
+        return;
+      }
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Priority ${siteId} was saved but catalog notification failed`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
 }

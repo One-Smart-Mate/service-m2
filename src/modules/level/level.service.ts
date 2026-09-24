@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
 import { CardEntity } from '../card/entities/card.entity';
-import { In, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -21,9 +21,12 @@ import {
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
 import { generateRandomHex } from 'src/utils/general.functions';
+import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
 
 @Injectable()
 export class LevelService {
+  private readonly logger = new Logger(LevelService.name);
+
   constructor(
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
@@ -53,6 +56,7 @@ export class LevelService {
         where: {
           siteId: siteId,
           status: stringConstants.A,
+          deletedAt: IsNull(),
         },
         skip,
         take: limit,
@@ -131,35 +135,20 @@ export class LevelService {
         );
       }
 
-      const tokens = await this.usersService.getSiteUsersTokens(
-        createLevelDTO.siteId,
-        true, // Exclude web tokens - web always loads data online
-      );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      const savedLevel = await this.levelRepository.save(createLevelDTO);
-      
-      if (!savedLevel.levelMachineId) {
+      if (!createLevelDTO.levelMachineId) {
         let levelMachineId = generateRandomHex(6);
         let isUnique = false;
         let attempts = 0;
         const maxAttempts = 10;
-        
+
         while (!isUnique && attempts < maxAttempts) {
           const existingLevel = await this.levelRepository.findOne({
-            where: { 
-              levelMachineId, 
-              siteId: createLevelDTO.siteId 
-            }
+            where: {
+              levelMachineId,
+              siteId: createLevelDTO.siteId,
+            },
           });
-          
+
           if (!existingLevel) {
             isUnique = true;
           } else {
@@ -167,11 +156,17 @@ export class LevelService {
             attempts++;
           }
         }
-        
-        savedLevel.levelMachineId = levelMachineId;
-        await this.levelRepository.save(savedLevel);
+
+        if (!isUnique) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+          );
+        }
+        createLevelDTO.levelMachineId = levelMachineId;
       }
 
+      const savedLevel = await this.levelRepository.save(createLevelDTO);
+      await this.notifyCatalogChange(createLevelDTO.siteId);
       return savedLevel;
     } catch (exception) {
       HandleException.exception(exception);
@@ -179,7 +174,6 @@ export class LevelService {
   };
   update = async (updateLevelDTO: UpdateLevelDTO) => {
     try {
-      console.log('this must be printed', updateLevelDTO);
       const level = await this.levelRepository.findOneBy({
         id: updateLevelDTO.id,
       });
@@ -224,41 +218,41 @@ export class LevelService {
         level.assignWhileCreate = updateLevelDTO.assignWhileCreate;
       }
 
-      if (updateLevelDTO.status !== level.status) {
+      const statusChanged = updateLevelDTO.status !== level.status;
+      let descendantIds: number[] = [];
+      if (statusChanged) {
         const allLevels = await this.findAllChildLevels(level.id);
-        if (updateLevelDTO.status !== stringConstants.A) {
-          await this.levelRepository.update(
-            { id: In(allLevels) },
-            {
-              status: updateLevelDTO.status,
-              updatedAt: new Date(),
-              deletedAt: new Date(),
-            },
-          );
-        } else {
-          await this.levelRepository.update(
-            { id: In(allLevels) },
-            {
-              status: updateLevelDTO.status,
-              updatedAt: new Date(),
-            },
-          );
-        }
+        descendantIds = allLevels
+          .map(Number)
+          .filter((levelId) => levelId !== Number(level.id));
       }
-      level.status = updateLevelDTO.status;
-      level.responsibleId = updateLevelDTO.responsibleId;
 
-      const tokens = await this.usersService.getSiteUsersTokens(level.siteId, true); // Exclude web tokens - web always loads data online
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
+      level.responsibleId = updateLevelDTO.responsibleId;
+      const changedAt = new Date();
+      applyCatalogLifecycle(level, updateLevelDTO.status, changedAt);
+
+      const savedLevel = await this.levelRepository.manager.transaction(
+        async (manager) => {
+          if (descendantIds.length > 0) {
+            await manager.update(
+              LevelEntity,
+              { id: In(descendantIds) },
+              {
+                status: updateLevelDTO.status,
+                updatedAt: changedAt,
+                deletedAt:
+                  updateLevelDTO.status === stringConstants.A
+                    ? null
+                    : changedAt,
+              },
+            );
+          }
+          return manager.save(LevelEntity, level);
+        },
       );
 
-      return await this.levelRepository.save(level);
+      await this.notifyCatalogChange(level.siteId);
+      return savedLevel;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -360,6 +354,7 @@ export class LevelService {
       const allLevels = await this.levelRepository.findBy({
         siteId: siteId,
         status: stringConstants.A,
+        deletedAt: IsNull(),
       });
 
       const levelMap = new Map<number, any>();
@@ -634,6 +629,7 @@ export class LevelService {
         where: {
           siteId: siteId,
           status: stringConstants.A,
+          deletedAt: IsNull(),
           ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
         },
       });
@@ -643,6 +639,7 @@ export class LevelService {
         where: {
           siteId: siteId,
           status: stringConstants.A,
+          deletedAt: IsNull(),
           ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
         },
         skip,
@@ -655,7 +652,11 @@ export class LevelService {
           // Just mark if they have children without loading them
           return Promise.all(levels.map(async (level) => {
             const childCount = await this.levelRepository.count({
-              where: { superiorId: level.id, status: stringConstants.A }
+              where: {
+                superiorId: level.id,
+                status: stringConstants.A,
+                deletedAt: IsNull(),
+              },
             });
             return {
               ...level,
@@ -668,7 +669,11 @@ export class LevelService {
 
         return Promise.all(levels.map(async (level) => {
           const children = await this.levelRepository.find({
-            where: { superiorId: level.id, status: stringConstants.A }
+            where: {
+              superiorId: level.id,
+              status: stringConstants.A,
+              deletedAt: IsNull(),
+            },
           });
 
           const childrenWithNested = await loadChildrenRecursive(children, currentDepth - 1);
@@ -709,7 +714,8 @@ export class LevelService {
         where: {
           siteId: siteId,
           superiorId: parentId,
-          status: stringConstants.A
+          status: stringConstants.A,
+          deletedAt: IsNull(),
         },
         skip,
         take: limit,
@@ -718,7 +724,11 @@ export class LevelService {
       // For each child, check if it has children
       const childrenWithMeta = await Promise.all(children.map(async (child) => {
         const grandchildrenCount = await this.levelRepository.count({
-          where: { superiorId: child.id, status: stringConstants.A }
+          where: {
+            superiorId: child.id,
+            status: stringConstants.A,
+            deletedAt: IsNull(),
+          },
         });
 
         return {
@@ -754,14 +764,19 @@ export class LevelService {
       });
 
       const activeLevels = await this.levelRepository.count({
-        where: { siteId: siteId, status: stringConstants.A }
+        where: {
+          siteId: siteId,
+          status: stringConstants.A,
+          deletedAt: IsNull(),
+        },
       });
 
       const rootLevels = await this.levelRepository.count({
         where: {
           siteId: siteId,
           status: stringConstants.A,
-          superiorId: In([0, null])
+          deletedAt: IsNull(),
+          superiorId: In([0, null]),
         }
       });
 
@@ -770,14 +785,19 @@ export class LevelService {
         WITH RECURSIVE level_depth AS (
           SELECT id, superior_id, 1 as depth
           FROM levels
-          WHERE site_id = ? AND (superior_id = 0 OR superior_id IS NULL) AND status = 'A'
+          WHERE site_id = ?
+            AND (superior_id = 0 OR superior_id IS NULL)
+            AND status = 'A'
+            AND deleted_at IS NULL
 
           UNION ALL
 
           SELECT l.id, l.superior_id, ld.depth + 1
           FROM levels l
           INNER JOIN level_depth ld ON l.superior_id = ld.id
-          WHERE l.site_id = ? AND l.status = 'A'
+          WHERE l.site_id = ?
+            AND l.status = 'A'
+            AND l.deleted_at IS NULL
         )
         SELECT MAX(depth) as maxDepth FROM level_depth;
       `;
@@ -966,4 +986,26 @@ export class LevelService {
 
     return savedLevel.id;
   };
+
+  private async notifyCatalogChange(siteId: number): Promise<void> {
+    try {
+      const tokens = await this.usersService.getSiteUsersTokens(siteId, true);
+      if (tokens.length === 0) {
+        return;
+      }
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Level ${siteId} was saved but catalog notification failed`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
 }
