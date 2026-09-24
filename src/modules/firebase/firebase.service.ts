@@ -21,11 +21,7 @@ export class FirebaseService {
           title: notificationDTO.notification_title,
           body: notificationDTO.notification_description,
         },
-        data: {
-          notification_title: notificationDTO.notification_title,
-          notification_description: notificationDTO.notification_description,
-          notification_type: notificationDTO.notification_type,
-        },
+        data: notificationDTO.toData(),
         token: userToken,
       };
       this.logger.logFirebase('Sending single notification');
@@ -54,12 +50,7 @@ export class FirebaseService {
 
         if (tokenObj.type === stringConstants.OS_ANDROID) {
           message = {
-            data: {
-              notification_title: notificationDTO.notification_title,
-              notification_description:
-                notificationDTO.notification_description,
-              notification_type: notificationDTO.notification_type,
-            },
+            data: notificationDTO.toData(),
             token: tokenObj.token,
           };
         } else if (
@@ -71,12 +62,7 @@ export class FirebaseService {
               title: notificationDTO.notification_title,
               body: notificationDTO.notification_description,
             },
-            data: {
-              notification_title: notificationDTO.notification_title,
-              notification_description:
-                notificationDTO.notification_description,
-              notification_type: notificationDTO.notification_type,
-            },
+            data: notificationDTO.toData(),
             token: tokenObj.token,
           };
         }
@@ -102,7 +88,7 @@ export class FirebaseService {
         `Batch completed. Successes: ${successCount} | Failures: ${failureCount}`,
       );
 
-      return Promise.resolve(true);
+      return Promise.resolve(failureCount === 0);
     } catch (exception) {
       this.logger.logException(
         'FirebaseService',

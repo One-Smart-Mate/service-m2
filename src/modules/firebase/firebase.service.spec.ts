@@ -37,4 +37,26 @@ describe('FirebaseService sensitive data', () => {
     expect(logs).not.toContain('private-android-token');
     expect(logs).not.toContain('private-ios-token');
   });
+
+  it('returns false when at least one recipient fails', async () => {
+    send
+      .mockResolvedValueOnce('message-id')
+      .mockRejectedValueOnce(new Error('rejected'));
+
+    await expect(
+      service.sendMultipleMessage(
+        new NotificationDTO('Title', 'Body', 'TYPE', 'outbox-10'),
+        [
+          { token: 'first-token', type: 'ANDROID' },
+          { token: 'second-token', type: 'IOS' },
+        ],
+      ),
+    ).resolves.toBe(false);
+    expect(send).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({ notification_id: 'outbox-10' }),
+      }),
+    );
+  });
 });

@@ -4,6 +4,10 @@ import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CardCreationPersistence } from './card-creation.persistence';
 import { CardEntity } from './entities/card.entity';
+import {
+  NotificationOutboxEntity,
+  NotificationOutboxStatus,
+} from '../notifications/entities/notification-outbox.entity';
 
 describe('CardCreationPersistence', () => {
   const manager = {
@@ -102,6 +106,52 @@ describe('CardCreationPersistence', () => {
       created: false,
     });
     expect(manager.save).not.toHaveBeenCalled();
+  });
+
+  it('persists card notifications in the same transaction', async () => {
+    jest
+      .mocked(manager.findOne)
+      .mockResolvedValueOnce({ id: 2 } as SiteEntity)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    jest
+      .mocked(manager.save)
+      .mockResolvedValueOnce({ ...input.card, id: 91, siteCardId: 1 })
+      .mockResolvedValueOnce([]);
+
+    await persistence.persist({
+      ...input,
+      evidences: [],
+      notifications: [
+        {
+          deduplicationKey: 'card-created:offline-uuid:site',
+          payload: {
+            audience: {
+              type: 'site-except-user',
+              siteId: 2,
+              excludedUserId: 7,
+            },
+            notification: {
+              title: 'Card',
+              description: 'Created',
+              type: 'CARD',
+            },
+          },
+        },
+      ],
+    });
+
+    expect(manager.save).toHaveBeenNthCalledWith(
+      2,
+      NotificationOutboxEntity,
+      [
+        expect.objectContaining({
+          deduplicationKey: 'card-created:offline-uuid:site',
+          status: NotificationOutboxStatus.PENDING,
+          attempts: 0,
+        }),
+      ],
+    );
   });
 
   it('rejects a UUID collision from another creator', async () => {

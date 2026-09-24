@@ -13,6 +13,11 @@ import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CardEntity } from './entities/card.entity';
 import { CardCreationPolicy } from './card-creation.policy';
+import {
+  NotificationOutboxEntity,
+  NotificationOutboxPayload,
+  NotificationOutboxStatus,
+} from '../notifications/entities/notification-outbox.entity';
 
 export interface CardEvidenceToPersist {
   type: string;
@@ -26,6 +31,10 @@ export interface PersistCardCreation {
   cardUUID: string;
   createdAt: Date;
   evidences: CardEvidenceToPersist[];
+  notifications?: Array<{
+    deduplicationKey: string;
+    payload: NotificationOutboxPayload;
+  }>;
 }
 
 export interface PersistedCardCreation {
@@ -75,6 +84,23 @@ export class CardCreationPersistence {
             }),
           );
           await manager.save(EvidenceEntity, evidences);
+        }
+
+        if (input.notifications?.length) {
+          const notifications = input.notifications.map((notification) =>
+            manager.create(NotificationOutboxEntity, {
+              ...notification,
+              status: NotificationOutboxStatus.PENDING,
+              attempts: 0,
+              availableAt: input.createdAt,
+              lockedAt: null,
+              sentAt: null,
+              lastError: null,
+              createdAt: input.createdAt,
+              updatedAt: input.createdAt,
+            }),
+          );
+          await manager.save(NotificationOutboxEntity, notifications);
         }
 
         return { card: savedCard, created: true };

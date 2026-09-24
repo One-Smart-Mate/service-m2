@@ -239,6 +239,68 @@ describe('CardService create scope', () => {
     expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
   });
 
+  it('queues card notifications transactionally for the effective user', async () => {
+    levelService.findById.mockResolvedValue({
+      id: 10,
+      siteId: 2,
+      status: 'A',
+      deletedAt: null,
+      name: 'Machine',
+      notify: 1,
+      responsibleId: 8,
+      responsibleName: 'Mechanic',
+      assignWhileCreate: 0,
+      level: 2,
+      superiorId: 1,
+    });
+    cardTypeService.findById.mockResolvedValue({
+      id: 30,
+      siteId: 2,
+      cardTypeMethodology: 'M',
+      methodology: 'Autonomous maintenance',
+      status: 'A',
+      deletedAt: null,
+    });
+    levelService.findAllLevelsBySite.mockResolvedValue([]);
+    levelService.getSuperiorLevelsById.mockReturnValue({
+      area: { id: 1, name: 'Area' },
+      location: 'Area / Machine',
+    });
+    cardCreationPersistence.persist.mockResolvedValue({
+      card: { id: 91 },
+      created: true,
+    });
+
+    await service.createOptimized(
+      createCard({ notifyResponsible: true }),
+    );
+
+    expect(cardCreationPersistence.persist).toHaveBeenCalledWith(
+      expect.objectContaining({
+        creatorId: 7,
+        notifications: [
+          expect.objectContaining({
+            deduplicationKey: 'card-created:mobile-card-uuid:site',
+            payload: expect.objectContaining({
+              audience: {
+                type: 'site-except-user',
+                siteId: 2,
+                excludedUserId: 7,
+              },
+            }),
+          }),
+          expect.objectContaining({
+            deduplicationKey:
+              'card-created:mobile-card-uuid:responsible:8',
+            payload: expect.objectContaining({
+              audience: { type: 'user', userId: 8 },
+            }),
+          }),
+        ],
+      }),
+    );
+  });
+
   it('returns an existing offline card without creating or notifying again', async () => {
     const existingCard = {
       id: 90,

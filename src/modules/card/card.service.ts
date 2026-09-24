@@ -64,6 +64,7 @@ import {
   CardSyncResponse,
 } from './models/card-sync.response';
 import { CardDeltaSyncReader } from './card-delta-sync.reader';
+import type { EnqueueNotification } from '../notifications/notification-outbox.service';
 
 @Injectable()
 export class CardService {
@@ -2799,17 +2800,17 @@ export class CardService {
         cardUUID: createCardDTO.cardUUID,
         createdAt: dates.createdAt,
         evidences: createCardDTO.evidences,
+        notifications: this.buildCardCreationNotifications({
+          cardUUID: createCardDTO.cardUUID,
+          siteId: selectedSiteId,
+          creatorId: creator.id,
+          methodologyName: card.cardTypeMethodologyName,
+          nodeName: node.name,
+          responsibleId: node.responsibleId,
+          notifyResponsible:
+            createCardDTO.notifyResponsible && node.notify === 1,
+        }),
       });
-
-      if (persisted.created) {
-        this.sendCardNotifications(
-          persisted.card,
-          node,
-          createCardDTO.notifyResponsible,
-        ).catch((error) => {
-          console.error('Error sending notifications (non-blocking):', error);
-        });
-      }
 
       return persisted;
     } catch (exception) {
@@ -2838,51 +2839,51 @@ export class CardService {
     };
   }
 
-  /**
-   * Helper method to send notifications in the background
-   * Extracted from create method to be non-blocking
-   */
-  private async sendCardNotifications(
-    card: any,
-    node: any,
-    notifyResponsible: boolean,
-  ): Promise<void> {
-    try {
-      // Send general notification to all site users (excluding creator)
-      const tokens = await this.userService.getSiteUsersTokensExcludingOwnerUser(
-        card.siteId,
-        card.creatorId,
-      );
+  private buildCardCreationNotifications(input: {
+    cardUUID: string;
+    siteId: number;
+    creatorId: number;
+    methodologyName: string;
+    nodeName: string;
+    responsibleId?: number | null;
+    notifyResponsible: boolean;
+  }): EnqueueNotification[] {
+    const notifications: EnqueueNotification[] = [
+      {
+        deduplicationKey: `card-created:${input.cardUUID}:site`,
+        payload: {
+          audience: {
+            type: 'site-except-user' as const,
+            siteId: input.siteId,
+            excludedUserId: input.creatorId,
+          },
+          notification: {
+            title: stringConstants.cardsTitle,
+            description: `${stringConstants.cardsDescription} ${input.methodologyName}`,
+            type: stringConstants.cardsNotificationType,
+          },
+        },
+      },
+    ];
 
-      if (tokens && tokens.length > 0) {
-        await this.firebaseService.sendMultipleMessage(
-          new NotificationDTO(
-            stringConstants.cardsTitle,
-            `${stringConstants.cardsDescription} ${card.cardTypeMethodologyName}`,
-            stringConstants.cardsNotificationType,
-          ),
-          tokens,
-        );
-      }
-
-      // Send specific notification to responsible if requested
-      if (notifyResponsible && node.notify === 1 && node.responsibleId) {
-        const responsibleTokens = await this.userService.getUserToken(node.responsibleId);
-        if (responsibleTokens && responsibleTokens.length > 0) {
-          await this.firebaseService.sendMultipleMessage(
-            new NotificationDTO(
-              stringConstants.cardsTitle,
-              `${stringConstants.cardResponsibleAssignment} ${node.name}: ${card.cardTypeMethodologyName}`,
-              stringConstants.cardsNotificationType,
-            ),
-            responsibleTokens,
-          );
-        }
-      }
-    } catch (error) {
-      console.error('Error in sendCardNotifications:', error);
-      // Don't throw - we don't want notification failures to affect card creation
+    if (input.notifyResponsible && input.responsibleId) {
+      notifications.push({
+        deduplicationKey: `card-created:${input.cardUUID}:responsible:${input.responsibleId}`,
+        payload: {
+          audience: {
+            type: 'user' as const,
+            userId: input.responsibleId,
+          },
+          notification: {
+            title: stringConstants.cardsTitle,
+            description: `${stringConstants.cardResponsibleAssignment} ${input.nodeName}: ${input.methodologyName}`,
+            type: stringConstants.cardsNotificationType,
+          },
+        },
+      });
     }
+
+    return notifications;
   }
 
   /**
