@@ -48,6 +48,10 @@ import { CardCreationPolicy } from './card-creation.policy';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
 import { CardPaginationPolicy } from './card-pagination.policy';
+import {
+  CardListFilterPolicy,
+  CardListFilters,
+} from './card-list-filter.policy';
 
 @Injectable()
 export class CardService {
@@ -258,22 +262,10 @@ export class CardService {
     requesterId: number,
     page: number = 1,
     limit: number = 50,
-    filters?: {
-      searchText?: string;
-      cardNumber?: string;
-      location?: string;
-      levelMachineId?: string;
-      creator?: string;
-      resolver?: string;
-      dateFilterType?: 'creation' | 'due' | '';
-      startDate?: string;
-      endDate?: string;
-      sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '';
-      status?: string;
-      myCards?: boolean;
-    }
+    filters?: CardListFilters,
   ) => {
     const pagination = CardPaginationPolicy.normalize(page, limit);
+    filters = CardListFilterPolicy.normalize(filters);
     page = pagination.page;
     limit = pagination.limit;
 

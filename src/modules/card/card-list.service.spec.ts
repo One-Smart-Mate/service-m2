@@ -99,4 +99,27 @@ describe('CardService paginated list', () => {
     expect(siteService.findById).not.toHaveBeenCalled();
     expect(cardRepository.createQueryBuilder).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['unknown status', { status: 'A,UNKNOWN' }],
+    [
+      'incomplete dates',
+      { dateFilterType: 'creation' as const, startDate: '2026-09-01' },
+    ],
+    [
+      'inverted dates',
+      {
+        dateFilterType: 'due' as const,
+        startDate: '2026-09-24',
+        endDate: '2026-09-01',
+      },
+    ],
+  ])('rejects %s before querying data', async (_, filters) => {
+    await expect(
+      service.findSiteCardsPaginated(2, 7, 1, 20, filters),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(siteService.findById).not.toHaveBeenCalled();
+    expect(cardRepository.createQueryBuilder).not.toHaveBeenCalled();
+  });
 });
