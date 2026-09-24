@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
@@ -12,23 +16,31 @@ export class CatalogService {
     private readonly usersSevice: UsersService,
   ) {}
 
-  getCatalogs = async (siteId: number, userId: number) => {
-    try {
-      const authUser = await this.usersSevice.findByIdWithSites(userId);
-      if (!authUser || !authUser.userHasSites?.length) {
-        throw new UnauthorizedException();
-      }
+  private validateSiteAccess = async (siteId: number, userId: number) => {
+    const normalizedSiteId = Number(siteId);
+    if (!Number.isSafeInteger(normalizedSiteId) || normalizedSiteId <= 0) {
+      throw new BadRequestException('Invalid siteId');
+    }
 
-      const hasAccessToSite = authUser.userHasSites.some(
-        (userSite) => Number(userSite.site.id) === Number(siteId),
-      );
-      if (!hasAccessToSite) {
-        throw new UnauthorizedException();
-      }
-      const queryRunner = this.dataSource.createQueryRunner();
+    const accessibleSiteIds = await this.usersSevice.getAccessibleSiteIds(
+      userId,
+    );
+    if (
+      accessibleSiteIds !== null &&
+      !accessibleSiteIds.includes(normalizedSiteId)
+    ) {
+      throw new UnauthorizedException('Site access denied');
+    }
+
+    return normalizedSiteId;
+  };
+
+  getCatalogs = async (siteId: number, userId: number) => {
+    siteId = await this.validateSiteAccess(siteId, userId);
+    try {
       
       const [cardTypes, priorities, preclassifiers, levels, employees, cards] = await Promise.all([
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT
             ct.id,
             ct.site_id as siteId,
@@ -60,40 +72,44 @@ export class CatalogService {
           ORDER BY ct.cardType_name
         `, [siteId]),
         
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT p.id, p.priority_code as priorityCode, p.priority_description as priorityDescription, p.priority_days as priorityDays, p.status
           FROM priorities p
           WHERE p.site_id = ? AND p.deleted_at IS NULL
           ORDER BY p.priority_code
         `, [siteId]),
         
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT pc.id, pc.cardType_id as cardTypeId, pc.preclassifier_code as preclassifierCode, pc.preclassifier_description as preclassifierDescription, pc.status
           FROM preclassifiers pc
           WHERE pc.site_id = ? AND pc.deleted_at IS NULL
           ORDER BY pc.preclassifier_code
         `, [siteId]),
         
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT l.id, l.level_name as name, l.level, l.level_machine_id as levelMachineId, l.superior_id as superiorId, l.responsable_id as responsibleId, l.responsable_name as responsibleName
           FROM levels l 
           WHERE l.site_id = ? AND l.deleted_at IS NULL
           ORDER BY l.level, l.level_name
         `, [siteId]),
         
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT u.id, u.name, u.email,
                  GROUP_CONCAT(r.name) as roles
           FROM users u
           INNER JOIN user_has_sites uhs ON u.id = uhs.user_id
           LEFT JOIN user_role ur ON u.id = ur.user_id
           LEFT JOIN role r ON ur.role_id = r.id
-          WHERE uhs.site_id = ? AND u.status = 'A' AND u.deleted_at IS NULL
+          WHERE uhs.site_id = ?
+            AND uhs.status = 'A'
+            AND uhs.deleted_at IS NULL
+            AND u.status = 'A'
+            AND u.deleted_at IS NULL
           GROUP BY u.id, u.name, u.email
           ORDER BY u.name
         `, [siteId]),
         
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT
             c.id,
             c.site_card_id as siteCardId,
@@ -172,15 +188,13 @@ export class CatalogService {
         `, [siteId])
       ]);
 
-      const evidencesResult = await queryRunner.query(`
+      const evidencesResult = await this.dataSource.query(`
         SELECT e.id, e.card_id as cardId, e.site_id as siteId, e.evidence_name as evidenceName,
                e.evidence_type as evidenceType, e.status, e.created_at as createdAt,
                e.updated_at as updatedAt, e.deleted_at as deletedAt
         FROM evidences e
         WHERE e.site_id = ? AND e.deleted_at IS NULL
       `, [siteId]);
-
-      await queryRunner.release();
 
       const evidencesMap = new Map();
       evidencesResult.forEach((evidence) => {
@@ -205,25 +219,12 @@ export class CatalogService {
         cards: cardsWithEvidences
       };
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
   getCatalogsPaginated = async (siteId: number, userId: number, page: number = 1, limit: number = 200) => {
+    siteId = await this.validateSiteAccess(siteId, userId);
     try {
-      const authUser = await this.usersSevice.findByIdWithSites(userId);
-      if (!authUser || !authUser.userHasSites?.length) {
-        throw new UnauthorizedException();
-      }
-
-      const hasAccessToSite = authUser.userHasSites.some(
-        (userSite) => Number(userSite.site.id) === Number(siteId),
-      );
-      if (!hasAccessToSite) {
-        throw new UnauthorizedException();
-      }
-
-      const queryRunner = this.dataSource.createQueryRunner();
       const offset = (page - 1) * limit;
 
       // Execute all paginated queries and count queries in parallel
@@ -242,7 +243,7 @@ export class CatalogService {
         cardsCount
       ] = await Promise.all([
         // Card Types - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT
             ct.id,
             ct.site_id as siteId,
@@ -275,12 +276,12 @@ export class CatalogService {
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Card Types - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(*) as total FROM card_types WHERE site_id = ? AND deleted_at IS NULL
         `, [siteId]),
 
         // Priorities - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT p.id, p.priority_code as priorityCode, p.priority_description as priorityDescription, p.priority_days as priorityDays, p.status
           FROM priorities p
           WHERE p.site_id = ? AND p.deleted_at IS NULL
@@ -288,12 +289,12 @@ export class CatalogService {
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Priorities - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(*) as total FROM priorities WHERE site_id = ? AND deleted_at IS NULL
         `, [siteId]),
 
         // Preclassifiers - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT pc.id, pc.cardType_id as cardTypeId, pc.preclassifier_code as preclassifierCode, pc.preclassifier_description as preclassifierDescription, pc.status
           FROM preclassifiers pc
           WHERE pc.site_id = ? AND pc.deleted_at IS NULL
@@ -301,12 +302,12 @@ export class CatalogService {
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Preclassifiers - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(*) as total FROM preclassifiers WHERE site_id = ? AND deleted_at IS NULL
         `, [siteId]),
 
         // Levels - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT l.id, l.level_name as name, l.level, l.level_machine_id as levelMachineId, l.superior_id as superiorId, l.responsable_id as responsibleId, l.responsable_name as responsibleName
           FROM levels l
           WHERE l.site_id = ? AND l.deleted_at IS NULL
@@ -314,33 +315,41 @@ export class CatalogService {
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Levels - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(*) as total FROM levels WHERE site_id = ? AND deleted_at IS NULL
         `, [siteId]),
 
         // Employees - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT u.id, u.name, u.email,
                  GROUP_CONCAT(r.name) as roles
           FROM users u
           INNER JOIN user_has_sites uhs ON u.id = uhs.user_id
           LEFT JOIN user_role ur ON u.id = ur.user_id
           LEFT JOIN role r ON ur.role_id = r.id
-          WHERE uhs.site_id = ? AND u.status = 'A' AND u.deleted_at IS NULL
+          WHERE uhs.site_id = ?
+            AND uhs.status = 'A'
+            AND uhs.deleted_at IS NULL
+            AND u.status = 'A'
+            AND u.deleted_at IS NULL
           GROUP BY u.id, u.name, u.email
           ORDER BY u.name
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Employees - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(DISTINCT u.id) as total
           FROM users u
           INNER JOIN user_has_sites uhs ON u.id = uhs.user_id
-          WHERE uhs.site_id = ? AND u.status = 'A' AND u.deleted_at IS NULL
+          WHERE uhs.site_id = ?
+            AND uhs.status = 'A'
+            AND uhs.deleted_at IS NULL
+            AND u.status = 'A'
+            AND u.deleted_at IS NULL
         `, [siteId]),
 
         // Cards - data
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT
             c.id,
             c.site_card_id as siteCardId,
@@ -419,7 +428,7 @@ export class CatalogService {
           LIMIT ? OFFSET ?
         `, [siteId, limit, offset]),
         // Cards - count
-        queryRunner.query(`
+        this.dataSource.query(`
           SELECT COUNT(*) as total FROM cards WHERE site_id = ? AND deleted_at IS NULL
         `, [siteId])
       ]);
@@ -428,7 +437,7 @@ export class CatalogService {
       let cardsWithEvidences = [];
       if (cards && cards.length > 0) {
         const cardIds = cards.map((card: any) => card.id);
-        const evidencesResult = await queryRunner.query(`
+        const evidencesResult = await this.dataSource.query(`
           SELECT e.id, e.card_id as cardId, e.site_id as siteId, e.evidence_name as evidenceName,
                  e.evidence_type as evidenceType, e.status, e.created_at as createdAt,
                  e.updated_at as updatedAt, e.deleted_at as deletedAt
@@ -450,8 +459,6 @@ export class CatalogService {
           evidences: evidencesMap.get(card.id) || []
         }));
       }
-
-      await queryRunner.release();
 
       // Helper function to build pagination response
       const buildPaginationResponse = (data: any[], totalResult: any[]) => {
@@ -477,7 +484,6 @@ export class CatalogService {
         cards: buildPaginationResponse(cardsWithEvidences, cardsCount)
       };
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
