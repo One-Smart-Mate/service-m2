@@ -45,6 +45,7 @@ import {
 } from './models/dto/card.report.dto';
 import { CardCreationPersistence } from './card-creation.persistence';
 import { CardCreationPolicy } from './card-creation.policy';
+import { CardSolutionPersistence } from './card-solution.persistence';
 
 @Injectable()
 export class CardService {
@@ -69,6 +70,7 @@ export class CardService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly cardCreationPersistence: CardCreationPersistence,
+    private readonly cardSolutionPersistence: CardSolutionPersistence,
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
@@ -728,70 +730,14 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      card.userDefinitiveSolutionId = userDefinitiveSolution.id;
-      card.userDefinitiveSolutionName = userDefinitiveSolution.name;
-      card.userAppDefinitiveSolutionId = userAppDefinitiveSolution.id;
-      card.userAppDefinitiveSolutionName = userAppDefinitiveSolution.name;
-      card.cardDefinitiveSolutionDate = new Date();
-      card.commentsAtCardDefinitiveSolution =
-        updateDefinitivesolutionDTO.comments;
-      card.status = stringConstants.R;
-      card.updatedAt = new Date();
-
-      await Promise.all(
-        updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
-          switch (evidence.type) {
-            case stringConstants.AUCR:
-              card.evidenceAucr = 1;
-              break;
-            case stringConstants.VICR:
-              card.evidenceVicr = 1;
-              break;
-            case stringConstants.IMCR:
-              card.evidenceImcr = 1;
-              break;
-            case stringConstants.AUCL:
-              card.evidenceAucl = 1;
-              break;
-            case stringConstants.VICL:
-              card.evidenceVicl = 1;
-              break;
-            case stringConstants.IMCL:
-              card.evidenceImcl = 1;
-              break;
-            case stringConstants.IMPS:
-              card.evidenceImps = 1;
-              break;
-            case stringConstants.AUPS:
-              card.evidenceAups = 1;
-              break;
-            case stringConstants.VIPS:
-              card.evidenceVips = 1;
-              break;
-          }
-          var evidenceToCreate = await this.evidenceRepository.create({
-            evidenceName: evidence.url,
-            evidenceType: evidence.type,
-            cardId: card.id,
-            siteId: card.siteId,
-            createdAt: new Date(),
-          });
-          await this.evidenceRepository.save(evidenceToCreate);
-        }),
-      );
-
-      await this.cardRepository.save(card);
-
-      const note = await this.cardNoteRepository.create({
+      return await this.cardSolutionPersistence.persist({
         cardId: card.id,
-        siteId: card.siteId,
-        note: `${stringConstants.noteDefinitiveSoluition} <${card.userAppDefinitiveSolutionId} ${card.userAppDefinitiveSolutionName}> ${stringConstants.aplico} <${card.userDefinitiveSolutionId} ${card.userDefinitiveSolutionName}>`,
-        createdAt: new Date(),
+        type: 'definitive',
+        solutionUser: userDefinitiveSolution,
+        actor: userAppDefinitiveSolution,
+        comments: updateDefinitivesolutionDTO.comments,
+        evidences: updateDefinitivesolutionDTO.evidences,
       });
-
-      await this.cardNoteRepository.save(note);
-
-      return card;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -846,70 +792,14 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      card.userProvisionalSolutionId = userProvisionalSolution.id;
-      card.userProvisionalSolutionName = userProvisionalSolution.name;
-      card.userAppProvisionalSolutionId = userAppProvisionalSolution.id;
-      card.userAppProvisionalSolutionName = userAppProvisionalSolution.name;
-      card.cardProvisionalSolutionDate = new Date();
-      card.commentsAtCardProvisionalSolution =
-        updateProvisionalSolutionDTO.comments;
-      card.status = stringConstants.P;
-      card.updatedAt = new Date();
-
-      await Promise.all(
-        updateProvisionalSolutionDTO.evidences.map(async (evidence) => {
-          switch (evidence.type) {
-            case stringConstants.AUCR:
-              card.evidenceAucr = 1;
-              break;
-            case stringConstants.VICR:
-              card.evidenceVicr = 1;
-              break;
-            case stringConstants.IMCR:
-              card.evidenceImcr = 1;
-              break;
-            case stringConstants.AUCL:
-              card.evidenceAucl = 1;
-              break;
-            case stringConstants.VICL:
-              card.evidenceVicl = 1;
-              break;
-            case stringConstants.IMCL:
-              card.evidenceImcl = 1;
-              break;
-            case stringConstants.IMPS:
-              card.evidenceImps = 1;
-              break;
-            case stringConstants.AUPS:
-              card.evidenceAups = 1;
-              break;
-            case stringConstants.VIPS:
-              card.evidenceVips = 1;
-              break;
-          }
-          var evidenceToCreate = await this.evidenceRepository.create({
-            evidenceName: evidence.url,
-            evidenceType: evidence.type,
-            cardId: card.id,
-            siteId: card.siteId,
-            createdAt: new Date(),
-          });
-          await this.evidenceRepository.save(evidenceToCreate);
-        }),
-      );
-
-      await this.cardRepository.save(card);
-
-      const note = await this.cardNoteRepository.create({
+      return await this.cardSolutionPersistence.persist({
         cardId: card.id,
-        siteId: card.siteId,
-        note: `${stringConstants.noteProvisionalSolution} <${card.userAppProvisionalSolutionId} ${card.userAppProvisionalSolutionName}> ${stringConstants.aplico} <${card.userProvisionalSolutionId} ${card.userProvisionalSolutionName}>`,
-        createdAt: new Date(),
+        type: 'provisional',
+        solutionUser: userProvisionalSolution,
+        actor: userAppProvisionalSolution,
+        comments: updateProvisionalSolutionDTO.comments,
+        evidences: updateProvisionalSolutionDTO.evidences,
       });
-
-      await this.cardNoteRepository.save(note);
-
-      return card;
     } catch (exception) {
       HandleException.exception(exception);
     }
