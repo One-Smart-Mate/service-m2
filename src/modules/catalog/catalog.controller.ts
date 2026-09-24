@@ -2,6 +2,7 @@ import { Controller, Get, Param, Query, UseGuards, Request } from '@nestjs/commo
 import { CatalogService } from './catalog.service';
 import { ApiBearerAuth, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('catalog')
 @UseGuards(AuthGuard)
@@ -9,6 +10,18 @@ import { AuthGuard } from '../auth/guard/auth.guard';
 @ApiBearerAuth()
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
+
+  @Get(':siteId/snapshot')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  async getOfflineSnapshot(@Param('siteId') siteId: number, @Request() req) {
+    return this.catalogService.getOfflineSnapshot(siteId, req.user.id);
+  }
 
   @Get(':siteId')
   async getCatalogs(@Param('siteId') siteId: number, @Request() req) {

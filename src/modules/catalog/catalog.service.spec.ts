@@ -5,6 +5,7 @@ import {
 import { DataSource } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { CatalogService } from './catalog.service';
+import { CatalogSnapshotReader } from './catalog-snapshot.reader';
 
 describe('CatalogService', () => {
   const dataSource = {
@@ -13,7 +14,10 @@ describe('CatalogService', () => {
   const usersService = {
     getAccessibleSiteIds: jest.fn(),
   } as unknown as UsersService;
-  const service = new CatalogService(dataSource, usersService);
+  const snapshotReader = {
+    read: jest.fn(),
+  } as unknown as CatalogSnapshotReader;
+  const service = new CatalogService(dataSource, usersService, snapshotReader);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -62,6 +66,34 @@ describe('CatalogService', () => {
     );
     expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(7);
     expect(dataSource.query).toHaveBeenCalledTimes(12);
+  });
+
+  it('authorizes the offline snapshot before reading it', async () => {
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([25]);
+    jest.mocked(snapshotReader.read).mockResolvedValue({
+      schemaVersion: 1,
+      siteId: 25,
+      generatedAt: '2026-09-23T12:00:00.000Z',
+      revision: null,
+      cardTypes: [],
+      priorities: [],
+      preclassifiers: [],
+      levels: [],
+    });
+
+    await service.getOfflineSnapshot(25, 7);
+
+    expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(7);
+    expect(snapshotReader.read).toHaveBeenCalledWith(25);
+  });
+
+  it('does not read an offline snapshot from an unauthorized site', async () => {
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([2]);
+
+    await expect(service.getOfflineSnapshot(25, 7)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(snapshotReader.read).not.toHaveBeenCalled();
   });
 
   it('returns only active employee assignments in catalog queries', async () => {

@@ -7,6 +7,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { UsersService } from '../users/users.service';
+import { CatalogSnapshotReader } from './catalog-snapshot.reader';
 
 @Injectable()
 export class CatalogService {
@@ -14,6 +15,7 @@ export class CatalogService {
     @InjectDataSource()
     private readonly dataSource: DataSource,
     private readonly usersSevice: UsersService,
+    private readonly catalogSnapshotReader: CatalogSnapshotReader,
   ) {}
 
   private validateSiteAccess = async (siteId: number, userId: number) => {
@@ -33,6 +35,11 @@ export class CatalogService {
     }
 
     return normalizedSiteId;
+  };
+
+  getOfflineSnapshot = async (siteId: number, userId: number) => {
+    const normalizedSiteId = await this.validateSiteAccess(siteId, userId);
+    return this.catalogSnapshotReader.read(normalizedSiteId);
   };
 
   getCatalogs = async (siteId: number, userId: number) => {
