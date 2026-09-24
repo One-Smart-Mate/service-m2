@@ -97,11 +97,18 @@ describe('CardDeltaSyncReader', () => {
     });
 
     const deltaCall = jest.mocked(manager.query).mock.calls[2];
-    expect(String(deltaCall[0])).toContain('LEFT JOIN evidences');
-    expect(String(deltaCall[0])).toContain('c.card_creation_date');
-    expect(String(deltaCall[0])).toContain('e.deleted_at');
-    expect(String(deltaCall[0])).toContain('ORDER BY changedAt ASC, c.id ASC');
+    expect(String(deltaCall[0])).toContain('c.sync_changed_at');
+    expect(String(deltaCall[0])).toContain('e.sync_changed_at');
+    expect(String(deltaCall[0])).toContain('UNION ALL');
+    expect(String(deltaCall[0])).toContain(
+      'ORDER BY changedAt ASC, changes.id ASC',
+    );
     expect(deltaCall[1]).toEqual([
+      25,
+      syncUntil,
+      new Date(0),
+      new Date(0),
+      '0',
       25,
       syncUntil,
       new Date(0),

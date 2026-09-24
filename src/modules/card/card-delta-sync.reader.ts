@@ -132,35 +132,45 @@ export class CardDeltaSyncReader {
     return manager.query(
       `
         SELECT
-          c.id,
-          GREATEST(
-            COALESCE(
-              c.created_at,
-              c.card_creation_date,
-              '1970-01-01 00:00:00'
-            ),
-            COALESCE(c.updated_at, '1970-01-01 00:00:00'),
-            COALESCE(c.deleted_at, '1970-01-01 00:00:00'),
-            COALESCE(
-              MAX(GREATEST(
-                COALESCE(e.created_at, '1970-01-01 00:00:00'),
-                COALESCE(e.updated_at, '1970-01-01 00:00:00'),
-                COALESCE(e.deleted_at, '1970-01-01 00:00:00')
-              )),
-              '1970-01-01 00:00:00'
+          changes.id,
+          MAX(changes.changedAt) AS changedAt
+        FROM (
+          SELECT c.id, c.sync_changed_at AS changedAt
+          FROM cards c
+          WHERE c.site_id = ?
+            AND c.sync_changed_at <= ?
+            AND (
+              c.sync_changed_at > ?
+              OR (c.sync_changed_at = ? AND c.id > ?)
             )
-          ) AS changedAt
-        FROM cards c
-        LEFT JOIN evidences e
-          ON e.card_id = c.id AND e.site_id = c.site_id
-        WHERE c.site_id = ?
-        GROUP BY c.id
-        HAVING changedAt <= ?
-          AND (changedAt > ? OR (changedAt = ? AND c.id > ?))
-        ORDER BY changedAt ASC, c.id ASC
+          UNION ALL
+          SELECT e.card_id AS id, MAX(e.sync_changed_at) AS changedAt
+          FROM evidences e
+          WHERE e.site_id = ?
+            AND e.sync_changed_at <= ?
+            AND (
+              e.sync_changed_at > ?
+              OR (e.sync_changed_at = ? AND e.card_id > ?)
+            )
+          GROUP BY e.card_id
+        ) changes
+        GROUP BY changes.id
+        ORDER BY changedAt ASC, changes.id ASC
         LIMIT ?
       `,
-      [siteId, syncUntil, cursorDate, cursorDate, cursorId, limit],
+      [
+        siteId,
+        syncUntil,
+        cursorDate,
+        cursorDate,
+        cursorId,
+        siteId,
+        syncUntil,
+        cursorDate,
+        cursorDate,
+        cursorId,
+        limit,
+      ],
     );
   }
 

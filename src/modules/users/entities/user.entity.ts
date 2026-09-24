@@ -11,6 +11,7 @@ import { UserHasSitesEntity } from './user.has.sites.entity';
 import { UsersPositionsEntity } from './users.positions.entity';
 
 @Index('user_email_unique_index', ['siteCode', 'email'], { unique: true })
+@Index('idx_users_email', ['email'])
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn({ type: 'int', unsigned: true })

@@ -1,8 +1,9 @@
 import { Exclude } from 'class-transformer';
 import { PreclassifierEntity } from 'src/modules/preclassifier/entities/preclassifier.entity';
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
 
 @Entity('card_types')
+@Index('idx_card_types_site_state', ['siteId', 'status', 'deletedAt', 'id'])
 export class CardTypesEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;

@@ -7,11 +7,14 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  Index,
 } from 'typeorm';
 import { UserEntity } from './user.entity';
 import { SiteEntity } from 'src/modules/site/entities/site.entity';
 
 @Entity('user_has_sites')
+@Index('idx_uhs_user_state', ['user', 'deletedAt', 'status', 'site'])
+@Index('idx_uhs_site_state', ['site', 'deletedAt', 'status', 'user'])
 export class UserHasSitesEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
