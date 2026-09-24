@@ -245,6 +245,11 @@ describe('CardService create scope', () => {
       siteId: 2,
       creatorId: 7,
       cardUUID: 'mobile-card-uuid',
+      nodeId: 10,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
+      cardCreationDate: '2026-09-23T12:00:00.000Z',
     };
     cardRepository.findOneBy.mockResolvedValue(existingCard);
 
@@ -268,6 +273,71 @@ describe('CardService create scope', () => {
       ValidationException,
     );
     expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
+  });
+
+  it('rejects UUID reuse for a different offline card payload', async () => {
+    cardRepository.findOneBy.mockResolvedValue({
+      id: 90,
+      siteId: 2,
+      creatorId: 7,
+      cardUUID: 'mobile-card-uuid',
+      nodeId: 999,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
+    });
+
+    await expect(service.createOptimized(createCard())).rejects.toBeInstanceOf(
+      ValidationException,
+    );
+    expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
+  });
+
+  it('synchronizes a batch independently and uses the effective user', async () => {
+    cardRepository.findOneBy
+      .mockResolvedValueOnce({
+        id: 90,
+        siteId: 2,
+        creatorId: 7,
+        cardUUID: 'offline-1',
+        nodeId: 10,
+        priorityId: 20,
+        cardTypeId: 30,
+        preclassifierId: 40,
+        cardCreationDate: '2026-09-23T12:00:00.000Z',
+      })
+      .mockResolvedValueOnce({
+        id: 91,
+        siteId: 2,
+        creatorId: 8,
+        cardUUID: 'offline-2',
+      });
+
+    const result = await service.syncOfflineCards(
+      [
+        createCard({ cardUUID: 'offline-1', creatorId: 999 }),
+        createCard({ cardUUID: 'offline-2', creatorId: 999 }),
+      ],
+      7,
+    );
+
+    expect(result).toEqual({
+      total: 2,
+      succeeded: 1,
+      failed: 1,
+      results: [
+        expect.objectContaining({
+          cardUUID: 'offline-1',
+          success: true,
+          outcome: 'existing',
+        }),
+        expect.objectContaining({
+          cardUUID: 'offline-2',
+          success: false,
+          statusCode: 400,
+        }),
+      ],
+    });
   });
 });
 

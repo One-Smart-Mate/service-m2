@@ -12,6 +12,7 @@ import {
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CardEntity } from './entities/card.entity';
+import { CardCreationPolicy } from './card-creation.policy';
 
 export interface CardEvidenceToPersist {
   type: string;
@@ -111,16 +112,19 @@ export class CardCreationPersistence {
 
   private asIdempotentResult(
     existingCard: CardEntity,
-    input: Pick<PersistCardCreation, 'siteId' | 'creatorId'>,
+    input: Pick<PersistCardCreation, 'siteId' | 'creatorId' | 'card'>,
   ): PersistedCardCreation {
-    if (
-      Number(existingCard.siteId) !== Number(input.siteId) ||
-      Number(existingCard.creatorId) !== Number(input.creatorId)
-    ) {
-      throw new ValidationException(
-        ValidationExceptionType.DUPLICATE_CARD_UUID,
-      );
-    }
+    CardCreationPolicy.assertIdempotentRetry(existingCard, {
+      siteId: input.siteId,
+      creatorId: input.creatorId,
+      nodeId: input.card.nodeId,
+      priorityId: input.card.priorityId,
+      cardTypeId: input.card.cardTypeId,
+      preclassifierId: input.card.preclassifierId,
+      cardCreationDate: input.card.cardCreationDate,
+      cardTypeValue: input.card.cardTypeValue,
+      comments: input.card.commentsAtCardCreation,
+    });
 
     return { card: existingCard, created: false };
   }

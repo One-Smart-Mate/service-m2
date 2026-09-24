@@ -9,6 +9,7 @@ import {
   IsBoolean,
   MaxLength,
   Min,
+  ArrayMaxSize,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -103,6 +104,7 @@ export class CreateCardDTO {
 
   @ApiProperty({ type: [Evidence] })
   @IsArray()
+  @ArrayMaxSize(20)
   @ValidateNested({ each: true })
   @Type(() => Evidence)
   evidences: Evidence[];

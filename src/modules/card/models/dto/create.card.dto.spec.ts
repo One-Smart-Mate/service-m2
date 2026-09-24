@@ -55,4 +55,22 @@ describe('CreateCardDTO', () => {
       expect.arrayContaining(['cardUUID', 'comments', 'evidences']),
     );
   });
+
+  it('limits evidence count for a single offline card', async () => {
+    const errors = await validate(
+      plainToInstance(CreateCardDTO, {
+        ...validRequest,
+        evidences: Array.from({ length: 21 }, (_, index) => ({
+          type: 'IMCR',
+          url: `https://example.com/${index}.jpg`,
+        })),
+      }),
+    );
+
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ property: 'evidences' }),
+      ]),
+    );
+  });
 });

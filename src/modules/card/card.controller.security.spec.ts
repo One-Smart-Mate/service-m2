@@ -154,6 +154,21 @@ describe('CardController create identity', () => {
       creatorId: 7,
     });
   });
+
+  it('uses the effective Fast Password user for an offline batch', async () => {
+    const cardService = {
+      syncOfflineCards: jest.fn().mockResolvedValue({ results: [] }),
+    };
+    const controller = new CardController(cardService as never);
+    const cards = [{ siteId: 2, creatorId: 999 }];
+
+    await controller.syncOfflineCards(
+      { cards } as never,
+      { user: { id: 7, actorId: 3 } },
+    );
+
+    expect(cardService.syncOfflineCards).toHaveBeenCalledWith(cards, 7);
+  });
 });
 
 describe('CardController mutation identity', () => {

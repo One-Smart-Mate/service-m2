@@ -2,6 +2,71 @@ import { ValidationException } from 'src/common/exceptions/types/validation.exce
 import { CardCreationPolicy } from './card-creation.policy';
 
 describe('CardCreationPolicy', () => {
+  const existingCard = {
+    siteId: 2,
+    creatorId: 7,
+    nodeId: 10,
+    priorityId: 20,
+    cardTypeId: 30,
+    preclassifierId: 40,
+    cardCreationDate: '2026-09-23T12:00:00.000Z',
+    cardTypeValue: 'unsafe',
+    commentsAtCardCreation: 'Offline card',
+    deletedAt: null,
+  };
+
+  it('accepts an exact retry of an offline card UUID', () => {
+    expect(() =>
+      CardCreationPolicy.assertIdempotentRetry(existingCard, {
+        siteId: 2,
+        creatorId: 7,
+        nodeId: 10,
+        priorityId: 20,
+        cardTypeId: 30,
+        preclassifierId: 40,
+        cardCreationDate: '2026-09-23T12:00:00.000Z',
+        cardTypeValue: 'unsafe',
+        comments: 'Offline card',
+      }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ['siteId', 3],
+    ['creatorId', 8],
+    ['nodeId', 11],
+    ['priorityId', 21],
+    ['cardTypeId', 31],
+    ['preclassifierId', 41],
+    ['cardCreationDate', '2026-09-24T12:00:00.000Z'],
+    ['cardTypeValue', 'safe'],
+    ['comments', 'Different card'],
+  ])('rejects UUID reuse with a different %s', (field, value) => {
+    expect(() =>
+      CardCreationPolicy.assertIdempotentRetry(existingCard, {
+        siteId: 2,
+        creatorId: 7,
+        nodeId: 10,
+        priorityId: 20,
+        cardTypeId: 30,
+        preclassifierId: 40,
+        cardCreationDate: '2026-09-23T12:00:00.000Z',
+        cardTypeValue: 'unsafe',
+        comments: 'Offline card',
+        [field]: value,
+      }),
+    ).toThrow(ValidationException);
+  });
+
+  it('rejects retrying a UUID whose card was deleted', () => {
+    expect(() =>
+      CardCreationPolicy.assertIdempotentRetry(
+        { ...existingCard, deletedAt: new Date() },
+        { siteId: 2, creatorId: 7 },
+      ),
+    ).toThrow(ValidationException);
+  });
+
   it('calculates the due date from a regular priority', () => {
     const result = CardCreationPolicy.resolveDates({
       cardCreationDate: '2026-09-23T22:30:00.000Z',

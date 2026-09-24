@@ -19,7 +19,84 @@ export interface ResolvedCardDates {
   cardDueDate: Date;
 }
 
+export interface ExistingOfflineCardIdentity {
+  siteId: number;
+  creatorId: number;
+  nodeId: number | null;
+  priorityId: number;
+  cardTypeId: number;
+  preclassifierId: number;
+  cardCreationDate?: string | Date;
+  cardTypeValue?: string | null;
+  commentsAtCardCreation?: string | null;
+  deletedAt?: Date | null;
+}
+
+export interface OfflineCardIdentity {
+  siteId: number;
+  creatorId: number;
+  nodeId?: number | null;
+  priorityId?: number;
+  cardTypeId?: number;
+  preclassifierId?: number;
+  cardCreationDate?: string | Date;
+  cardTypeValue?: string | null;
+  comments?: string | null;
+}
+
 export class CardCreationPolicy {
+  static assertIdempotentRetry(
+    existingCard: ExistingOfflineCardIdentity,
+    retry: OfflineCardIdentity,
+  ): void {
+    const numericFields: Array<
+      keyof Pick<
+        OfflineCardIdentity,
+        | 'siteId'
+        | 'creatorId'
+        | 'nodeId'
+        | 'priorityId'
+        | 'cardTypeId'
+        | 'preclassifierId'
+      >
+    > = [
+      'siteId',
+      'creatorId',
+      'nodeId',
+      'priorityId',
+      'cardTypeId',
+      'preclassifierId',
+    ];
+    const hasDifferentIdentity = numericFields.some(
+      (field) =>
+        retry[field] !== undefined &&
+        Number(existingCard[field]) !== Number(retry[field]),
+    );
+    const hasDifferentClassification =
+      retry.cardTypeValue !== undefined &&
+      (existingCard.cardTypeValue ?? null) !== (retry.cardTypeValue ?? null);
+    const hasDifferentComments =
+      retry.comments !== undefined &&
+      (existingCard.commentsAtCardCreation ?? null) !==
+        (retry.comments ?? null);
+    const hasDifferentCreationDate =
+      retry.cardCreationDate !== undefined &&
+      new Date(existingCard.cardCreationDate as string | Date).getTime() !==
+        new Date(retry.cardCreationDate).getTime();
+
+    if (
+      existingCard.deletedAt ||
+      hasDifferentIdentity ||
+      hasDifferentCreationDate ||
+      hasDifferentClassification ||
+      hasDifferentComments
+    ) {
+      throw new ValidationException(
+        ValidationExceptionType.DUPLICATE_CARD_UUID,
+      );
+    }
+  }
+
   static resolveDates(input: ResolveCardDatesInput): ResolvedCardDates {
     const cardCreationDate = convertToISOFormat(input.cardCreationDate);
     const createdAt = new Date(cardCreationDate);

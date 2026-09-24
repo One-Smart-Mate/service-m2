@@ -25,6 +25,10 @@ describe('CardCreationPersistence', () => {
       siteId: 2,
       creatorId: 7,
       cardUUID: 'offline-uuid',
+      nodeId: 10,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
       evidenceImcr: 1,
     },
     siteId: 2,
@@ -83,6 +87,10 @@ describe('CardCreationPersistence', () => {
       siteId: 2,
       creatorId: 7,
       cardUUID: 'offline-uuid',
+      nodeId: 10,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
     } as CardEntity;
     jest
       .mocked(manager.findOne)
@@ -105,6 +113,10 @@ describe('CardCreationPersistence', () => {
         siteId: 2,
         creatorId: 8,
         cardUUID: 'offline-uuid',
+        nodeId: 10,
+        priorityId: 20,
+        cardTypeId: 30,
+        preclassifierId: 40,
       } as CardEntity);
 
     await expect(persistence.persist(input)).rejects.toBeInstanceOf(
@@ -135,6 +147,10 @@ describe('CardCreationPersistence', () => {
       siteId: 2,
       creatorId: 7,
       cardUUID: 'offline-uuid',
+      nodeId: 10,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
     } as CardEntity;
     jest
       .mocked(dataSource.transaction)
@@ -145,5 +161,23 @@ describe('CardCreationPersistence', () => {
       card: existingCard,
       created: false,
     });
+  });
+
+  it('rejects a concurrent UUID collision with another payload', async () => {
+    jest
+      .mocked(dataSource.transaction)
+      .mockRejectedValueOnce({ code: 'ER_DUP_ENTRY' });
+    jest.mocked(cardRepository.findOneBy).mockResolvedValue({
+      siteId: 2,
+      creatorId: 7,
+      nodeId: 999,
+      priorityId: 20,
+      cardTypeId: 30,
+      preclassifierId: 40,
+    } as CardEntity);
+
+    await expect(persistence.persist(input)).rejects.toBeInstanceOf(
+      ValidationException,
+    );
   });
 });

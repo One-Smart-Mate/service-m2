@@ -19,6 +19,7 @@ import {
 import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
 import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
+import { SyncCardsDTO } from './models/dto/sync.cards.dto';
 
 @Controller('card')
 @UseGuards(AuthGuard)
@@ -183,6 +184,14 @@ export class CardController {
       ...createCardDTO,
       creatorId: req.user.id,
     });
+  }
+
+  @Post('/sync')
+  syncOfflineCards(@Body() syncCardsDTO: SyncCardsDTO, @Request() req) {
+    return this.cardService.syncOfflineCards(
+      syncCardsDTO.cards,
+      req.user.id,
+    );
   }
   
   @Put('/update/definitive-solution')

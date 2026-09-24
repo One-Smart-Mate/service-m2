@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
 import { In, IsNull, Repository, DataSource } from 'typeorm';
@@ -43,7 +47,10 @@ import {
   CardReportStackedDTO,
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
-import { CardCreationPersistence } from './card-creation.persistence';
+import {
+  CardCreationPersistence,
+  PersistedCardCreation,
+} from './card-creation.persistence';
 import { CardCreationPolicy } from './card-creation.policy';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
@@ -52,6 +59,10 @@ import {
   CardListFilterPolicy,
   CardListFilters,
 } from './card-list-filter.policy';
+import {
+  CardSyncItemResult,
+  CardSyncResponse,
+} from './models/card-sync.response';
 
 @Injectable()
 export class CardService {
@@ -2523,20 +2534,66 @@ export class CardService {
    * 5. Only fetch necessary level data
    */
   createOptimized = async (createCardDTO: CreateCardDTO) => {
+    const result = await this.createOptimizedResult(createCardDTO);
+    return result.card;
+  };
+
+  syncOfflineCards = async (
+    cards: CreateCardDTO[],
+    creatorId: number,
+  ): Promise<CardSyncResponse> => {
+    const results: CardSyncItemResult[] = [];
+
+    for (const card of cards) {
+      try {
+        const persisted = await this.createOptimizedResult({
+          ...card,
+          creatorId,
+        });
+        results.push({
+          cardUUID: card.cardUUID,
+          success: true,
+          outcome: persisted.created ? 'created' : 'existing',
+          card: persisted.card,
+        });
+      } catch (error) {
+        const failure = this.toCardSyncFailure(card.cardUUID, error);
+        results.push(failure);
+      }
+    }
+
+    const succeeded = results.filter((result) => result.success).length;
+    return {
+      total: results.length,
+      succeeded,
+      failed: results.length - succeeded,
+      results,
+    };
+  };
+
+  private createOptimizedResult = async (
+    createCardDTO: CreateCardDTO,
+  ): Promise<PersistedCardCreation> => {
     try {
       const existingCard = await this.cardRepository.findOneBy({
         cardUUID: createCardDTO.cardUUID,
       });
       if (existingCard) {
-        if (
-          Number(existingCard.siteId) !== Number(createCardDTO.siteId) ||
-          Number(existingCard.creatorId) !== Number(createCardDTO.creatorId)
-        ) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATE_CARD_UUID,
-          );
-        }
-        return existingCard;
+        CardCreationPolicy.assertIdempotentRetry(
+          existingCard,
+          {
+            siteId: createCardDTO.siteId,
+            creatorId: Number(createCardDTO.creatorId),
+            nodeId: createCardDTO.nodeId,
+            priorityId: createCardDTO.priorityId,
+            cardTypeId: createCardDTO.cardTypeId,
+            preclassifierId: createCardDTO.preclassifierId,
+            cardCreationDate: createCardDTO.cardCreationDate,
+            cardTypeValue: createCardDTO.cardTypeValue,
+            comments: createCardDTO.comments,
+          },
+        );
+        return { card: existingCard, created: false };
       }
 
       // 2. PARALLELIZED VALIDATIONS - All queries run simultaneously
@@ -2742,11 +2799,32 @@ export class CardService {
         });
       }
 
-      return persisted.card;
+      return persisted;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+
+  private toCardSyncFailure(
+    cardUUID: string,
+    error: unknown,
+  ): CardSyncItemResult {
+    if (error instanceof HttpException) {
+      return {
+        cardUUID,
+        success: false,
+        statusCode: error.getStatus(),
+        message: error.message,
+      };
+    }
+
+    return {
+      cardUUID,
+      success: false,
+      statusCode: 500,
+      message: 'Unable to synchronize card',
+    };
+  }
 
   /**
    * Helper method to send notifications in the background
