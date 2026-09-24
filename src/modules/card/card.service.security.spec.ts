@@ -82,8 +82,8 @@ describe('CardService tenant-scoped collections', () => {
 
 describe('CardService create scope', () => {
   const cardRepository = {
-    exists: jest.fn(),
-    findOne: jest.fn(),
+    findOneBy: jest.fn(),
+    create: jest.fn(),
     save: jest.fn(),
   };
   const siteService = { findById: jest.fn() };
@@ -99,6 +99,7 @@ describe('CardService create scope', () => {
     findById: jest.fn(),
     getAccessibleSiteIds: jest.fn(),
   };
+  const cardCreationPersistence = { persist: jest.fn() };
   const service = Reflect.construct(CardService, [
     cardRepository,
     {},
@@ -113,6 +114,7 @@ describe('CardService create scope', () => {
     undefined,
     undefined,
     undefined,
+    cardCreationPersistence,
   ]) as CardService;
 
   const createCard = (overrides: Record<string, unknown> = {}) =>
@@ -131,8 +133,8 @@ describe('CardService create scope', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    cardRepository.exists.mockResolvedValue(false);
-    cardRepository.findOne.mockResolvedValue(null);
+    cardRepository.findOneBy.mockResolvedValue(null);
+    cardRepository.create.mockImplementation((card) => card);
     siteService.findById.mockResolvedValue({
       id: 2,
       status: 'A',
@@ -208,5 +210,36 @@ describe('CardService create scope', () => {
     );
     expect(usersService.getAccessibleSiteIds).toHaveBeenCalledWith(7);
     expect(cardRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('returns an existing offline card without creating or notifying again', async () => {
+    const existingCard = {
+      id: 90,
+      siteId: 2,
+      creatorId: 7,
+      cardUUID: 'mobile-card-uuid',
+    };
+    cardRepository.findOneBy.mockResolvedValue(existingCard);
+
+    await expect(service.createOptimized(createCard())).resolves.toBe(
+      existingCard,
+    );
+
+    expect(siteService.findById).not.toHaveBeenCalled();
+    expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
+  });
+
+  it('rejects an offline UUID that belongs to another creator', async () => {
+    cardRepository.findOneBy.mockResolvedValue({
+      id: 90,
+      siteId: 2,
+      creatorId: 8,
+      cardUUID: 'mobile-card-uuid',
+    });
+
+    await expect(service.createOptimized(createCard())).rejects.toBeInstanceOf(
+      ValidationException,
+    );
+    expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
   });
 });

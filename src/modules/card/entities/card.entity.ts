@@ -1,7 +1,9 @@
 import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('cards')
+@Index('uq_cards_uuid', ['cardUUID'], { unique: true })
+@Index('uq_cards_site_folio', ['siteId', 'siteCardId'], { unique: true })
 export class CardEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;

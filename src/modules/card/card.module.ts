@@ -14,6 +14,7 @@ import { LevelModule } from '../level/level.module';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
+import { CardCreationPersistence } from './card-creation.persistence';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-re
     TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],
   controllers: [CardController],
-  providers: [CardService],
+  providers: [CardService, CardCreationPersistence],
   exports: [CardService],
 })
 export class CardModule {}

@@ -43,6 +43,7 @@ import {
   CardReportStackedDTO,
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
+import { CardCreationPersistence } from './card-creation.persistence';
 
 @Injectable()
 export class CardService {
@@ -66,6 +67,7 @@ export class CardService {
     private readonly amDiscardReasonRepository: Repository<AmDiscardReasonEntity>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly cardCreationPersistence: CardCreationPersistence,
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
@@ -2511,27 +2513,30 @@ export class CardService {
    * OPTIMIZED VERSION: Create a new card with performance improvements
    * Main optimizations:
    * 1. Parallelized validation queries using Promise.all
-   * 2. Optimized UUID generation check
-   * 3. Moved notification sending to background (non-blocking)
-   * 4. Batch evidence creation
+   * 2. Idempotent offline synchronization using the client UUID
+   * 3. Transactional card and evidence persistence
+   * 4. Moved notification sending to background (non-blocking)
    * 5. Only fetch necessary level data
    */
   createOptimized = async (createCardDTO: CreateCardDTO) => {
     try {
-      // 1. OPTIMIZED UUID GENERATION - Check only once instead of while loop
-      let cardUUID = createCardDTO.cardUUID;
-      const uuidExists = await this.cardRepository.exists({
-        where: { cardUUID: cardUUID },
+      const existingCard = await this.cardRepository.findOneBy({
+        cardUUID: createCardDTO.cardUUID,
       });
-
-      if (uuidExists) {
-        cardUUID = randomUUID();
-        // If by rare chance it still exists, let the DB unique constraint handle it
+      if (existingCard) {
+        if (
+          Number(existingCard.siteId) !== Number(createCardDTO.siteId) ||
+          Number(existingCard.creatorId) !== Number(createCardDTO.creatorId)
+        ) {
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATE_CARD_UUID,
+          );
+        }
+        return existingCard;
       }
-      createCardDTO.cardUUID = cardUUID;
 
       // 2. PARALLELIZED VALIDATIONS - All queries run simultaneously
-      const [site, priority, node, cardType, preclassifier, creator, lastInsertedCard] =
+      const [site, priority, node, cardType, preclassifier, creator] =
         await Promise.all([
           this.siteService.findById(createCardDTO.siteId),
           createCardDTO.priorityId && createCardDTO.priorityId !== 0
@@ -2541,10 +2546,6 @@ export class CardService {
           this.cardTypeService.findById(createCardDTO.cardTypeId),
           this.preclassifierService.findById(createCardDTO.preclassifierId),
           this.userService.findById(createCardDTO.creatorId),
-          this.cardRepository.findOne({
-            order: { id: 'DESC' },
-            where: { siteId: createCardDTO.siteId },
-          }),
         ]);
 
       // 3. VALIDATIONS (unchanged for safety)
@@ -2634,9 +2635,8 @@ export class CardService {
       const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
 
       // 5. CREATE CARD ENTITY
-      const card = await this.cardRepository.create({
+      const card = this.cardRepository.create({
         ...createCardDTO,
-        siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
         siteCode: site.siteCode,
         cardTypeColor: cardType.color,
         cardLocation: location,
@@ -2679,67 +2679,58 @@ export class CardService {
         appSo: createCardDTO.appSo,
       });
 
-      // 6. SAVE CARD
-      const savedCard = await this.cardRepository.save(card);
-
-      // 8. OPTIMIZED BATCH EVIDENCE CREATION
-      const evidencePromises = createCardDTO.evidences.map(async (evidence) => {
-        // Update card evidence flags
+      for (const evidence of createCardDTO.evidences) {
         switch (evidence.type) {
           case stringConstants.AUCR:
-            savedCard.evidenceAucr = 1;
+            card.evidenceAucr = 1;
             break;
           case stringConstants.VICR:
-            savedCard.evidenceVicr = 1;
+            card.evidenceVicr = 1;
             break;
           case stringConstants.IMCR:
-            savedCard.evidenceImcr = 1;
+            card.evidenceImcr = 1;
             break;
           case stringConstants.AUCL:
-            savedCard.evidenceAucl = 1;
+            card.evidenceAucl = 1;
             break;
           case stringConstants.VICL:
-            savedCard.evidenceVicl = 1;
+            card.evidenceVicl = 1;
             break;
           case stringConstants.IMCL:
-            savedCard.evidenceImcl = 1;
+            card.evidenceImcl = 1;
             break;
           case stringConstants.IMPS:
-            savedCard.evidenceImps = 1;
+            card.evidenceImps = 1;
             break;
           case stringConstants.AUPS:
-            savedCard.evidenceAups = 1;
+            card.evidenceAups = 1;
             break;
           case stringConstants.VIPS:
-            savedCard.evidenceVips = 1;
+            card.evidenceVips = 1;
             break;
         }
+      }
 
-        // Create evidence entity
-        const evidenceToCreate = this.evidenceRepository.create({
-          evidenceName: evidence.url,
-          evidenceType: evidence.type,
-          cardId: savedCard.id,
-          siteId: site.id,
-          createdAt: createdAt,
+      const persisted = await this.cardCreationPersistence.persist({
+        card,
+        siteId: selectedSiteId,
+        creatorId: creator.id,
+        cardUUID: createCardDTO.cardUUID,
+        createdAt,
+        evidences: createCardDTO.evidences,
+      });
+
+      if (persisted.created) {
+        this.sendCardNotifications(
+          persisted.card,
+          node,
+          createCardDTO.notifyResponsible,
+        ).catch((error) => {
+          console.error('Error sending notifications (non-blocking):', error);
         });
+      }
 
-        return this.evidenceRepository.save(evidenceToCreate);
-      });
-
-      // Wait for all evidences to be created
-      await Promise.all(evidencePromises);
-
-      // 9. SAVE CARD WITH EVIDENCE FLAGS
-      await this.cardRepository.save(savedCard);
-
-      // 10. BACKGROUND NOTIFICATIONS - Don't wait for these to complete
-      // This significantly speeds up the response time
-      this.sendCardNotifications(savedCard, node, createCardDTO.notifyResponsible).catch((error) => {
-        console.error('Error sending notifications (non-blocking):', error);
-      });
-
-      return savedCard;
+      return persisted.card;
     } catch (exception) {
       HandleException.exception(exception);
     }
