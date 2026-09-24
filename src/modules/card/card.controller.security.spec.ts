@@ -155,3 +155,40 @@ describe('CardController create identity', () => {
     });
   });
 });
+
+describe('CardController list identity', () => {
+  it('uses the effective authenticated user for the my cards filter', async () => {
+    const cardService = {
+      findSiteCardsPaginated: jest.fn().mockResolvedValue({ cards: [] }),
+    };
+    const controller = new CardController(cardService as never);
+
+    await controller.findBySiteIdPaginated(
+      2,
+      { user: { id: 7, actorId: 3 } },
+      1,
+      20,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      999,
+      'true',
+    );
+
+    expect(cardService.findSiteCardsPaginated).toHaveBeenCalledWith(
+      2,
+      7,
+      1,
+      20,
+      expect.objectContaining({ myCards: true }),
+    );
+  });
+});

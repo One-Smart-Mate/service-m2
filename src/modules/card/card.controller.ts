@@ -87,10 +87,11 @@ export class CardController {
   @ApiQuery({ name: 'endDate', required: false, description: 'End date (ISO format)' })
   @ApiQuery({ name: 'sortOption', required: false, description: 'Sort option' })
   @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
-  @ApiQuery({ name: 'userId', required: false, description: 'User ID for filtering my cards' })
+  @ApiQuery({ name: 'userId', required: false, deprecated: true, description: 'Ignored. My cards uses the authenticated user.' })
   @ApiQuery({ name: 'myCards', required: false, description: 'Filter cards created by or assigned to user', example: 'true' })
   findBySiteIdPaginated(
     @Param('siteId') siteId: number,
+    @Request() req,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('searchText') searchText?: string,
@@ -104,11 +105,12 @@ export class CardController {
     @Query('endDate') endDate?: string,
     @Query('sortOption') sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '',
     @Query('status') status?: string,
-    @Query('userId') userId?: number,
+    @Query('userId') _userId?: number,
     @Query('myCards') myCards?: string,
   ) {
     return this.cardService.findSiteCardsPaginated(
       siteId,
+      req.user.id,
       page || 1,
       limit || 50,
       {
@@ -123,7 +125,6 @@ export class CardController {
         endDate,
         sortOption,
         status,
-        userId,
         myCards: myCards === 'true',
       }
     );

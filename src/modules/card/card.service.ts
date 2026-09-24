@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Repository, DataSource } from 'typeorm';
+import { In, IsNull, Repository, DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -111,7 +111,9 @@ export class CardService {
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.nodeId = :nodeId', { nodeId: level.id });
+        .where('card.nodeId = :nodeId', { nodeId: level.id })
+        .andWhere('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'
@@ -152,6 +154,9 @@ export class CardService {
       if (card) {
         const cardEvidences = await this.evidenceRepository.findBy({
           cardId: card.id,
+          siteId: card.siteId,
+          status: stringConstants.activeStatus,
+          deletedAt: IsNull(),
         });
         card['levelName'] = card.nodeName;
         card['evidences'] = cardEvidences;
@@ -174,7 +179,8 @@ export class CardService {
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'
@@ -197,10 +203,17 @@ export class CardService {
       const [cards, total] = await queryBuilder.getManyAndCount();
 
       if (cards.length > 0) {
-        const allEvidencesMap = await this.findAllEvidences(siteId);
+        const pageEvidences = await this.evidenceRepository.find({
+          where: {
+            cardId: In(cards.map((card) => card.id)),
+            siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          },
+        });
 
         const cardEvidencesMap = new Map();
-        allEvidencesMap.forEach((evidence) => {
+        pageEvidences.forEach((evidence) => {
           if (!cardEvidencesMap.has(evidence.cardId)) {
             cardEvidencesMap.set(evidence.cardId, []);
           }
@@ -229,6 +242,7 @@ export class CardService {
   // Paginated version for better performance with large datasets
   findSiteCardsPaginated = async (
     siteId: number,
+    requesterId: number,
     page: number = 1,
     limit: number = 50,
     filters?: {
@@ -243,7 +257,6 @@ export class CardService {
       endDate?: string;
       sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '';
       status?: string;
-      userId?: number;
       myCards?: boolean;
     }
   ) => {
@@ -255,7 +268,8 @@ export class CardService {
       }
 
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply base status filtering logic with app_history_days:
       // - Always include status 'A'
@@ -344,9 +358,12 @@ export class CardService {
       // Date range filter
       if (filters?.dateFilterType && filters?.startDate && filters?.endDate) {
         if (filters.dateFilterType === 'creation') {
+          const creationEndDate = /^\d{4}-\d{2}-\d{2}$/.test(filters.endDate)
+            ? `${filters.endDate} 23:59:59`
+            : filters.endDate;
           queryBuilder.andWhere('card.cardCreationDate BETWEEN :startDate AND :endDate', {
             startDate: filters.startDate,
-            endDate: filters.endDate
+            endDate: creationEndDate
           });
         } else if (filters.dateFilterType === 'due') {
           queryBuilder.andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
@@ -357,10 +374,10 @@ export class CardService {
       }
 
       // My Cards filter (created by me OR assigned to me)
-      if (filters?.myCards && filters?.userId) {
+      if (filters?.myCards) {
         queryBuilder.andWhere(
           '(card.creatorId = :userId OR card.mechanicId = :userId)',
-          { userId: filters.userId }
+          { userId: requesterId }
         );
       }
 
@@ -400,7 +417,12 @@ export class CardService {
       if (cards && cards.length > 0) {
         const cardIds = cards.map(card => card.id);
         const evidences = await this.evidenceRepository.find({
-          where: { cardId: In(cardIds) }
+          where: {
+            cardId: In(cardIds),
+            siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          }
         });
 
         const cardEvidencesMap = new Map();
@@ -459,13 +481,21 @@ export class CardService {
   };
   findCardByIDAndGetEvidences = async (cardId: number) => {
     try {
-      const card = await this.cardRepository.findOneBy({ id: cardId });
+      const card = await this.cardRepository.findOneBy({
+        id: cardId,
+        deletedAt: IsNull(),
+      });
       if (card) {
         card['levelName'] = card.nodeName;
       }
-      const evidences = await this.evidenceRepository.findBy({
-        cardId: cardId,
-      });
+      const evidences = card
+        ? await this.evidenceRepository.findBy({
+            cardId,
+            siteId: card.siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          })
+        : [];
 
       return {
         card,
