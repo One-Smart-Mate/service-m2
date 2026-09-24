@@ -34,12 +34,12 @@ export class CatalogController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 200)', example: 200 })
   async getCatalogsPaginated(
     @Param('siteId') siteId: number,
+    @Request() req,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Request() req?,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 200;
+    const pageNum = page ? Number(page) : 1;
+    const limitNum = limit ? Number(limit) : 200;
     return await this.catalogService.getCatalogsPaginated(siteId, req.user.id, pageNum, limitNum);
   }
 }

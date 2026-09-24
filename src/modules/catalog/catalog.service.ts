@@ -8,6 +8,7 @@ import { DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { UsersService } from '../users/users.service';
 import { CatalogSnapshotReader } from './catalog-snapshot.reader';
+import { CatalogPaginationPolicy } from './catalog-pagination.policy';
 
 @Injectable()
 export class CatalogService {
@@ -230,9 +231,12 @@ export class CatalogService {
     }
   };
   getCatalogsPaginated = async (siteId: number, userId: number, page: number = 1, limit: number = 200) => {
+    const pagination = CatalogPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
     siteId = await this.validateSiteAccess(siteId, userId);
     try {
-      const offset = (page - 1) * limit;
+      const offset = pagination.offset;
 
       // Execute all paginated queries and count queries in parallel
       const [
@@ -449,8 +453,10 @@ export class CatalogService {
                  e.evidence_type as evidenceType, e.status, e.created_at as createdAt,
                  e.updated_at as updatedAt, e.deleted_at as deletedAt
           FROM evidences e
-          WHERE e.card_id IN (?) AND e.deleted_at IS NULL
-        `, [cardIds]);
+          WHERE e.card_id IN (?)
+            AND e.site_id = ?
+            AND e.deleted_at IS NULL
+        `, [cardIds, siteId]);
 
         const evidencesMap = new Map();
         evidencesResult.forEach((evidence: any) => {

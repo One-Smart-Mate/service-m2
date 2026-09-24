@@ -68,6 +68,38 @@ describe('CatalogService', () => {
     expect(dataSource.query).toHaveBeenCalledTimes(12);
   });
 
+  it('rejects unsafe pagination before querying access or data', async () => {
+    await expect(
+      service.getCatalogsPaginated(25, 7, 0, 10_000),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(usersService.getAccessibleSiteIds).not.toHaveBeenCalled();
+    expect(dataSource.query).not.toHaveBeenCalled();
+  });
+
+  it('scopes paginated evidences to the requested site', async () => {
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([25]);
+    jest.mocked(dataSource.query).mockImplementation(async (sql) => {
+      const query = String(sql);
+      if (query.includes('FROM cards c')) {
+        return [{ id: 90, nodeName: 'Machine' }];
+      }
+      if (query.includes('COUNT(*) as total FROM cards')) {
+        return [{ total: '1' }];
+      }
+      if (query.includes('COUNT(')) {
+        return [{ total: '0' }];
+      }
+      return [];
+    });
+
+    await service.getCatalogsPaginated(25, 7, 1, 20);
+
+    expect(dataSource.query).toHaveBeenCalledWith(
+      expect.stringContaining('AND e.site_id = ?'),
+      [[90], 25],
+    );
+  });
+
   it('authorizes the offline snapshot before reading it', async () => {
     jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue([25]);
     jest.mocked(snapshotReader.read).mockResolvedValue({
