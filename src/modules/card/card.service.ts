@@ -63,6 +63,7 @@ import {
   CardSyncItemResult,
   CardSyncResponse,
 } from './models/card-sync.response';
+import { CardDeltaSyncReader } from './card-delta-sync.reader';
 
 @Injectable()
 export class CardService {
@@ -89,6 +90,7 @@ export class CardService {
     private readonly cardCreationPersistence: CardCreationPersistence,
     private readonly cardSolutionPersistence: CardSolutionPersistence,
     private readonly cardMutationPersistence: CardMutationPersistence,
+    private readonly cardDeltaSyncReader: CardDeltaSyncReader,
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
@@ -2569,6 +2571,16 @@ export class CardService {
       failed: results.length - succeeded,
       results,
     };
+  };
+
+  syncCardChanges = async (
+    siteId: number,
+    userId: number,
+    cursor?: string,
+    limit?: number,
+  ) => {
+    await this.validateSiteAccess(siteId, userId);
+    return this.cardDeltaSyncReader.read(siteId, cursor, limit);
   };
 
   private createOptimizedResult = async (

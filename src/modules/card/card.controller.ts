@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
 import { CardService } from './card.service';
 import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
@@ -165,6 +165,33 @@ export class CardController {
   @ApiParam({ name: 'siteId', description: 'Site ID' })
   countCards(@Param('siteId') siteId: number, @Request() req) {
     return this.cardService.countSiteCards(siteId, req.user.id);
+  }
+
+  @Get('/sync/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Opaque cursor returned by the previous synchronization',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Changes per page (default: 200, maximum: 500)',
+    example: 200,
+  })
+  syncCardChanges(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Request() req,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string | number,
+  ) {
+    return this.cardService.syncCardChanges(
+      siteId,
+      req.user.id,
+      cursor,
+      limit === undefined ? undefined : Number(limit),
+    );
   }
 
   @Get('/:cardId')

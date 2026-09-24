@@ -169,6 +169,27 @@ describe('CardController create identity', () => {
 
     expect(cardService.syncOfflineCards).toHaveBeenCalledWith(cards, 7);
   });
+
+  it('uses the effective Fast Password user for delta synchronization', async () => {
+    const cardService = {
+      syncCardChanges: jest.fn().mockResolvedValue({ changes: [] }),
+    };
+    const controller = new CardController(cardService as never);
+
+    await controller.syncCardChanges(
+      25,
+      { user: { id: 7, actorId: 3 } },
+      'opaque-cursor',
+      '50',
+    );
+
+    expect(cardService.syncCardChanges).toHaveBeenCalledWith(
+      25,
+      7,
+      'opaque-cursor',
+      50,
+    );
+  });
 });
 
 describe('CardController mutation identity', () => {

@@ -17,6 +17,7 @@ import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-re
 import { CardCreationPersistence } from './card-creation.persistence';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
+import { CardDeltaSyncReader } from './card-delta-sync.reader';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { CardMutationPersistence } from './card-mutation.persistence';
     CardCreationPersistence,
     CardSolutionPersistence,
     CardMutationPersistence,
+    CardDeltaSyncReader,
   ],
   exports: [CardService],
 })
