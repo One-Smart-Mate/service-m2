@@ -37,18 +37,20 @@ export class DiscardCardDto {
   discardReason?: string;
 
   @ApiProperty({
-    description: 'The ID of the manager who is discarding the card.',
+    description: 'Deprecated and ignored. The authenticated user is used.',
     example: 123,
     required: false,
+    deprecated: true,
   })
   @IsOptional()
   @IsInt()
   managerId?: number;
 
   @ApiProperty({
-    description: 'The name of the manager who is discarding the card.',
+    description: 'Deprecated and ignored. The authenticated user is used.',
     example: 'John Smith',
     required: false,
+    deprecated: true,
     maxLength: 100,
   })
   @IsOptional()
@@ -75,4 +77,4 @@ export class DiscardCardDto {
   @IsString()
   @MaxLength(200)
   commentsManagerAtCardClose?: string;
-} 
+}

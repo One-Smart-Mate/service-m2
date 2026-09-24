@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 
 enum EvidenceType {
@@ -36,9 +36,14 @@ export class UpdateDefinitiveSolutionDTO {
   @IsNumber()
   userDefinitiveSolutionId: number;
 
-  @ApiProperty({ description: 'The user app provisional Id', required: true })
+  @ApiProperty({
+    description: 'Deprecated and ignored. The authenticated user is used.',
+    required: false,
+    deprecated: true,
+  })
+  @IsOptional()
   @IsNumber()
-  userAppDefinitiveSolutionId: number;
+  userAppDefinitiveSolutionId?: number;
 
   @ApiProperty({ required: false })
   @IsString()

@@ -156,6 +156,78 @@ describe('CardController create identity', () => {
   });
 });
 
+describe('CardController mutation identity', () => {
+  const effectiveSession = { user: { id: 7, actorId: 3 } };
+
+  it.each([
+    {
+      controllerMethod: 'updateDefinitiveSolution' as const,
+      serviceMethod: 'updateDefinitivesolution',
+      dto: {
+        cardId: 1,
+        userDefinitiveSolutionId: 8,
+        userAppDefinitiveSolutionId: 999,
+        comments: 'done',
+        evidences: [],
+      },
+    },
+    {
+      controllerMethod: 'updateProvisionalSolution' as const,
+      serviceMethod: 'updateProvisionalSolution',
+      dto: {
+        cardId: 1,
+        userProvisionalSolutionId: 8,
+        userAppProvisionalSolutionId: 999,
+        comments: 'temporary',
+        evidences: [],
+      },
+    },
+    {
+      controllerMethod: 'updateCardPriority' as const,
+      serviceMethod: 'updateCardPriority',
+      dto: { cardId: 1, priorityId: 2, idOfUpdatedBy: 999 },
+    },
+    {
+      controllerMethod: 'updateCardResponsible' as const,
+      serviceMethod: 'updateCardMechanic',
+      dto: { cardId: 1, mechanicId: 8, idOfUpdatedBy: 999 },
+    },
+    {
+      controllerMethod: 'updateCardCustomDueDate' as const,
+      serviceMethod: 'updateCardCustomDueDate',
+      dto: {
+        cardId: 1,
+        customDueDate: '2026-09-23',
+        idOfUpdatedBy: 999,
+      },
+    },
+    {
+      controllerMethod: 'discardCard' as const,
+      serviceMethod: 'discardCard',
+      dto: {
+        cardId: 1,
+        amDiscardReasonId: 2,
+        managerId: 999,
+        managerName: 'Spoofed user',
+      },
+    },
+  ])(
+    '$controllerMethod uses the effective Fast Password user as actor',
+    async ({ controllerMethod, serviceMethod, dto }) => {
+      const serviceCall = jest.fn().mockResolvedValue({ id: 1 });
+      const cardService = { [serviceMethod]: serviceCall };
+      const controller = new CardController(cardService as never);
+
+      await (controller[controllerMethod] as CallableFunction)(
+        dto,
+        effectiveSession,
+      );
+
+      expect(serviceCall).toHaveBeenCalledWith(dto, 7);
+    },
+  );
+});
+
 describe('CardController list identity', () => {
   it('uses the effective authenticated user for the my cards filter', async () => {
     const cardService = {

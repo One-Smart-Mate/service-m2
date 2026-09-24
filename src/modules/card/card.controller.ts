@@ -194,9 +194,11 @@ export class CardController {
   })
   updateDefinitiveSolution(
     @Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO,
+    @Request() req,
   ) {
     return this.cardService.updateDefinitivesolution(
       updateDefinitiveSolutionDTO,
+      req.user.id,
     );
   }
   @Put('/update/provisional-solution')
@@ -208,9 +210,11 @@ export class CardController {
   })
   updateProvisionalSolution(
     @Body() updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
+    @Request() req,
   ) {
     return this.cardService.updateProvisionalSolution(
       updateProvisionalSolutionDTO,
+      req.user.id,
     );
   }
   @Get('/all/zone/:superiorId/:siteId')
@@ -437,8 +441,14 @@ export class CardController {
     source: 'body',
     requestKey: 'cardId',
   })
-  updateCardPriority(@Body() updateCardPriorityDTO: UpdateCardPriorityDTO) {
-    return this.cardService.updateCardPriority(updateCardPriorityDTO);
+  updateCardPriority(
+    @Body() updateCardPriorityDTO: UpdateCardPriorityDTO,
+    @Request() req,
+  ) {
+    return this.cardService.updateCardPriority(
+      updateCardPriorityDTO,
+      req.user.id,
+    );
   }
 
   @Post('/update/mechanic')
@@ -450,8 +460,12 @@ export class CardController {
   })
   updateCardResponsible(
     @Body() updateCardResponsibleDTO: UpdateCardMechanicDTO,
+    @Request() req,
   ) {
-    return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
+    return this.cardService.updateCardMechanic(
+      updateCardResponsibleDTO,
+      req.user.id,
+    );
   }
 
   @Post('/update/custom-due-date')
@@ -462,9 +476,10 @@ export class CardController {
     requestKey: 'cardId',
   })
   updateCardCustomDueDate(
-    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }
+    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy?: number },
+    @Request() req,
   ) {
-    return this.cardService.updateCardCustomDueDate(body);
+    return this.cardService.updateCardCustomDueDate(body, req.user.id);
   }
 
   @Get()
@@ -544,8 +559,8 @@ export class CardController {
     requestKey: 'cardId',
   })
   @ApiBody({ type: DiscardCardDto })
-  discardCard(@Body() dto: DiscardCardDto) {
-    return this.cardService.discardCard(dto);
+  discardCard(@Body() dto: DiscardCardDto, @Request() req) {
+    return this.cardService.discardCard(dto, req.user.id);
   }
 
   @Get('/site/calendar/:siteId')

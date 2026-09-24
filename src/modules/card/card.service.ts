@@ -702,6 +702,7 @@ export class CardService {
   };
   updateDefinitivesolution = async (
     updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO,
+    actorId: number,
   ) => {
     try {
       const card = await this.cardRepository.findOneBy({
@@ -720,7 +721,7 @@ export class CardService {
         updateDefinitivesolutionDTO.userDefinitiveSolutionId,
       );
       const userAppDefinitiveSolution = await this.userService.findById(
-        updateDefinitivesolutionDTO.userAppDefinitiveSolutionId,
+        actorId,
       );
 
       if (!userAppDefinitiveSolution || !userDefinitiveSolution) {
@@ -818,6 +819,7 @@ export class CardService {
   };
   updateProvisionalSolution = async (
     updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
+    actorId: number,
   ) => {
     try {
       const card = await this.cardRepository.findOneBy({
@@ -837,7 +839,7 @@ export class CardService {
         updateProvisionalSolutionDTO.userProvisionalSolutionId,
       );
       const userAppProvisionalSolution = await this.userService.findById(
-        updateProvisionalSolutionDTO.userAppProvisionalSolutionId,
+        actorId,
       );
 
       if (!userProvisionalSolution || !userAppProvisionalSolution) {
@@ -1571,7 +1573,10 @@ export class CardService {
     }
   };
 
-  updateCardPriority = async (updateCardPriorityDTO: UpdateCardPriorityDTO) => {
+  updateCardPriority = async (
+    updateCardPriorityDTO: UpdateCardPriorityDTO,
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: updateCardPriorityDTO.cardId },
@@ -1593,7 +1598,7 @@ export class CardService {
       }
 
       const user = await this.userService.findOneById(
-        updateCardPriorityDTO.idOfUpdatedBy,
+        actorId,
       );
 
       if (!user) {
@@ -1621,7 +1626,10 @@ export class CardService {
     }
   };
 
-  updateCardMechanic = async (updateCardMechanicDTO: UpdateCardMechanicDTO) => {
+  updateCardMechanic = async (
+    updateCardMechanicDTO: UpdateCardMechanicDTO,
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: updateCardMechanicDTO.cardId },
@@ -1642,7 +1650,7 @@ export class CardService {
       );
 
       const user = await this.userService.findOneById(
-        updateCardMechanicDTO.idOfUpdatedBy,
+        actorId,
       );
 
       if (!userMechanic || !user) {
@@ -1683,7 +1691,10 @@ export class CardService {
     }
   };
 
-  updateCardCustomDueDate = async (body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }) => {
+  updateCardCustomDueDate = async (
+    body: { cardId: number; customDueDate: string; idOfUpdatedBy?: number },
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: body.cardId },
@@ -1693,7 +1704,7 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
 
-      const user = await this.userService.findOneById(body.idOfUpdatedBy);
+      const user = await this.userService.findOneById(actorId);
 
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
@@ -1943,7 +1954,7 @@ export class CardService {
     }
   };
 
-  async discardCard(dto: DiscardCardDto) {
+  async discardCard(dto: DiscardCardDto, actorId: number) {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: dto.cardId },
@@ -1963,11 +1974,16 @@ export class CardService {
         );
       }
 
+      const manager = await this.userService.findOneById(actorId);
+      if (!manager) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+
       card.status = stringConstants.DISCARDED;
       card.amDiscardReasonId = dto.amDiscardReasonId;
       card.discardReason = dto.discardReason;
-      card.managerId = dto.managerId || null;
-      card.managerName = dto.managerName || null;
+      card.managerId = manager.id;
+      card.managerName = manager.name;
       card.cardManagerCloseDate = dto.cardManagerCloseDate || null;
       card.commentsManagerAtCardClose = dto.commentsManagerAtCardClose || null;
       card.updatedAt = new Date();
