@@ -6,6 +6,7 @@ import { CardEntity } from './entities/card.entity';
 import { CardService } from './card.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { ValidationException } from 'src/common/exceptions/types/validation.exception';
+import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
 
 describe('CardService tenant-scoped collections', () => {
   const cardRepository = {
@@ -259,5 +260,148 @@ describe('CardService create scope', () => {
       ValidationException,
     );
     expect(cardCreationPersistence.persist).not.toHaveBeenCalled();
+  });
+});
+
+describe('CardService mutation scope', () => {
+  const cardRepository = { findOne: jest.fn() };
+  const priorityService = { findById: jest.fn() };
+  const usersService = {
+    findOneById: jest.fn(),
+    getAccessibleSiteIds: jest.fn(),
+    getUserToken: jest.fn(),
+  };
+  const firebaseService = { sendMultipleMessage: jest.fn() };
+  const discardReasonRepository = { findOne: jest.fn() };
+  const cardMutationPersistence = {
+    updatePriority: jest.fn(),
+    updateMechanic: jest.fn(),
+    updateCustomDueDate: jest.fn(),
+    discard: jest.fn(),
+  };
+  const service = Reflect.construct(CardService, [
+    cardRepository,
+    {},
+    {},
+    undefined,
+    undefined,
+    priorityService,
+    undefined,
+    undefined,
+    usersService,
+    firebaseService,
+    undefined,
+    discardReasonRepository,
+    undefined,
+    undefined,
+    undefined,
+    cardMutationPersistence,
+  ]) as CardService;
+
+  const activeUser = { id: 7, name: 'Operator', status: 'A' };
+  const card = {
+    id: 12,
+    siteId: 2,
+    priorityId: 4,
+    priorityCode: 'P1',
+    createdAt: new Date('2026-09-23T12:00:00.000Z'),
+    cardCreationDate: '2026-09-23T12:00:00.000Z',
+    mechanicId: null,
+  } as CardEntity;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    cardRepository.findOne.mockResolvedValue({ ...card });
+    usersService.findOneById.mockResolvedValue(activeUser);
+    usersService.getAccessibleSiteIds.mockResolvedValue([2]);
+    usersService.getUserToken.mockResolvedValue([]);
+  });
+
+  it('rejects a priority that belongs to another site', async () => {
+    priorityService.findById.mockResolvedValue({
+      id: 5,
+      siteId: 3,
+      status: 'A',
+      deletedAt: null,
+    });
+
+    await expect(
+      service.updateCardPriority({ cardId: 12, priorityId: 5 }, 7),
+    ).rejects.toBeInstanceOf(NotFoundCustomException);
+    expect(cardMutationPersistence.updatePriority).not.toHaveBeenCalled();
+  });
+
+  it('rejects assigning a user without access to the card site', async () => {
+    usersService.findOneById
+      .mockResolvedValueOnce({ id: 8, name: 'Mechanic', status: 'A' })
+      .mockResolvedValueOnce(activeUser);
+    usersService.getAccessibleSiteIds.mockResolvedValue([3]);
+
+    await expect(
+      service.updateCardMechanic({ cardId: 12, mechanicId: 8 }, 7),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(cardMutationPersistence.updateMechanic).not.toHaveBeenCalled();
+  });
+
+  it('accepts an IH_sis_admin as a globally accessible assignee', async () => {
+    usersService.findOneById
+      .mockResolvedValueOnce({ id: 8, name: 'Platform Admin', status: 'A' })
+      .mockResolvedValueOnce(activeUser);
+    usersService.getAccessibleSiteIds.mockResolvedValue(null);
+    cardMutationPersistence.updateMechanic.mockResolvedValue({
+      card,
+      changed: true,
+      note: { id: 20 },
+    });
+
+    await service.updateCardMechanic({ cardId: 12, mechanicId: 8 }, 7);
+
+    expect(cardMutationPersistence.updateMechanic).toHaveBeenCalled();
+  });
+
+  it('rejects custom due dates for a regular priority', async () => {
+    await expect(
+      service.updateCardCustomDueDate(
+        { cardId: 12, customDueDate: '2026-10-01' },
+        7,
+      ),
+    ).rejects.toBeInstanceOf(ValidationException);
+    expect(cardMutationPersistence.updateCustomDueDate).not.toHaveBeenCalled();
+  });
+
+  it('rejects calendar-overflow dates for a wildcard priority', async () => {
+    cardRepository.findOne.mockResolvedValue({
+      ...card,
+      priorityCode: 'XX',
+    });
+
+    await expect(
+      service.updateCardCustomDueDate(
+        { cardId: 12, customDueDate: '2026-02-30' },
+        7,
+      ),
+    ).rejects.toBeInstanceOf(ValidationException);
+    expect(cardMutationPersistence.updateCustomDueDate).not.toHaveBeenCalled();
+  });
+
+  it('accepts a site-global discard reason', async () => {
+    discardReasonRepository.findOne.mockResolvedValue({ id: 3, siteId: null });
+    cardMutationPersistence.discard.mockResolvedValue({
+      ...card,
+      status: 'D',
+    });
+
+    await service.discardCard(
+      { cardId: 12, amDiscardReasonId: 3 },
+      7,
+    );
+
+    expect(discardReasonRepository.findOne).toHaveBeenCalledWith({
+      where: expect.arrayContaining([
+        expect.objectContaining({ id: 3, siteId: 2 }),
+        expect.objectContaining({ id: 3 }),
+      ]),
+    });
+    expect(cardMutationPersistence.discard).toHaveBeenCalled();
   });
 });

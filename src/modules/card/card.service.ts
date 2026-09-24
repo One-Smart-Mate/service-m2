@@ -46,6 +46,7 @@ import {
 import { CardCreationPersistence } from './card-creation.persistence';
 import { CardCreationPolicy } from './card-creation.policy';
 import { CardSolutionPersistence } from './card-solution.persistence';
+import { CardMutationPersistence } from './card-mutation.persistence';
 
 @Injectable()
 export class CardService {
@@ -71,6 +72,7 @@ export class CardService {
     private readonly dataSource: DataSource,
     private readonly cardCreationPersistence: CardCreationPersistence,
     private readonly cardSolutionPersistence: CardSolutionPersistence,
+    private readonly cardMutationPersistence: CardMutationPersistence,
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
@@ -1487,6 +1489,14 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
       }
 
+      if (
+        Number(priority.siteId) !== Number(card.siteId) ||
+        priority.status !== stringConstants.activeStatus ||
+        priority.deletedAt != null
+      ) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+
       const user = await this.userService.findOneById(
         actorId,
       );
@@ -1494,23 +1504,18 @@ export class CardService {
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      if (user.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioLaPrioridadDe} <${card.priorityCode} - ${card.priorityDescription}> ${stringConstants.a} <${priority.priorityCode} - ${priority.priorityDescription}>`;
-      note.createdAt = new Date();
+      const result = await this.cardMutationPersistence.updatePriority({
+        cardId: card.id,
+        actor: user,
+        priority,
+        dueDate: addDaysToDate(card.createdAt, priority.priorityDays),
+      });
 
-      card.priorityId = priority.id;
-      card.priorityCode = priority.priorityCode;
-      card.priorityDescription = priority.priorityDescription;
-
-      // Set due date based on priority days
-      card.cardDueDate = addDaysToDate(card.createdAt, priority.priorityDays);
-
-      await this.cardRepository.save(card);
-
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1547,18 +1552,32 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const oldMechanicName = card.mechanicName || stringConstants.noResponsible;
+      if (
+        userMechanic.status !== stringConstants.activeStatus ||
+        user.status !== stringConstants.activeStatus
+      ) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      card.mechanicId = userMechanic.id;
-      card.mechanicName = userMechanic.name;
+      const mechanicSiteIds = await this.userService.getAccessibleSiteIds(
+        userMechanic.id,
+      );
+      if (
+        mechanicSiteIds !== null &&
+        !mechanicSiteIds.includes(Number(card.siteId))
+      ) {
+        throw new UnauthorizedException();
+      }
 
-      await this.cardRepository.save(card);
+      const result = await this.cardMutationPersistence.updateMechanic({
+        cardId: card.id,
+        actor: user,
+        mechanic: userMechanic,
+      });
 
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElMecanicoDe} <${oldMechanicName}> ${stringConstants.a} <${userMechanic.name}>`;
-      note.createdAt = new Date();
+      if (!result.changed) {
+        return;
+      }
 
       const tokens = await this.userService.getUserToken(userMechanic.id);
       if (tokens && tokens.length > 0) {
@@ -1575,7 +1594,7 @@ export class CardService {
         );
       }
 
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1599,23 +1618,29 @@ export class CardService {
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      if (user.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+      if (card.priorityCode?.trim().toUpperCase() !== 'XX') {
+        throw new ValidationException(
+          ValidationExceptionType.CUSTOM_DUE_DATE_NOT_ALLOWED,
+        );
+      }
 
-      // Fix timezone issue by creating date in local timezone
-      // Split the date string and create date with explicit components
-      const [year, month, day] = body.customDueDate.split('-').map(Number);
-      const newDate = new Date(year, month - 1, day); // month is 0-indexed in JS
+      const { cardDueDate } = CardCreationPolicy.resolveDates({
+        cardCreationDate: card.cardCreationDate,
+        priorityCode: card.priorityCode,
+        priorityDays: 0,
+        customDueDate: body.customDueDate,
+      });
+      const result = await this.cardMutationPersistence.updateCustomDueDate({
+        cardId: card.id,
+        actor: user,
+        dueDate: cardDueDate,
+        dueDateText: body.customDueDate,
+      });
 
-      card.cardDueDate = newDate;
-
-      await this.cardRepository.save(card);
-
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> estableció fecha de vencimiento personalizada: <${body.customDueDate}>`;
-      note.createdAt = new Date();
-
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1855,7 +1880,10 @@ export class CardService {
       }
 
       const discardReason = await this.amDiscardReasonRepository.findOne({
-        where: { id: dto.amDiscardReasonId, siteId: card.siteId },
+        where: [
+          { id: dto.amDiscardReasonId, siteId: card.siteId },
+          { id: dto.amDiscardReasonId, siteId: IsNull() },
+        ],
       });
 
       if (!discardReason) {
@@ -1868,17 +1896,17 @@ export class CardService {
       if (!manager) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      if (manager.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      card.status = stringConstants.DISCARDED;
-      card.amDiscardReasonId = dto.amDiscardReasonId;
-      card.discardReason = dto.discardReason;
-      card.managerId = manager.id;
-      card.managerName = manager.name;
-      card.cardManagerCloseDate = dto.cardManagerCloseDate || null;
-      card.commentsManagerAtCardClose = dto.commentsManagerAtCardClose || null;
-      card.updatedAt = new Date();
-
-      return await this.cardRepository.save(card);
+      return await this.cardMutationPersistence.discard({
+        cardId: card.id,
+        actor: manager,
+        discardReasonId: discardReason.id,
+        discardReason: dto.discardReason,
+        comments: dto.commentsManagerAtCardClose,
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

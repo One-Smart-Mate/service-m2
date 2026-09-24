@@ -16,6 +16,7 @@ import { FirebaseModule } from '../firebase/firebase.module';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
 import { CardCreationPersistence } from './card-creation.persistence';
 import { CardSolutionPersistence } from './card-solution.persistence';
+import { CardMutationPersistence } from './card-mutation.persistence';
 
 @Module({
   imports: [
@@ -29,7 +30,12 @@ import { CardSolutionPersistence } from './card-solution.persistence';
     TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],
   controllers: [CardController],
-  providers: [CardService, CardCreationPersistence, CardSolutionPersistence],
+  providers: [
+    CardService,
+    CardCreationPersistence,
+    CardSolutionPersistence,
+    CardMutationPersistence,
+  ],
   exports: [CardService],
 })
 export class CardModule {}

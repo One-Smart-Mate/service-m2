@@ -59,9 +59,10 @@ export class DiscardCardDto {
   managerName?: string;
 
   @ApiProperty({
-    description: 'The date when the manager closed/discarded the card.',
+    description: 'Deprecated and ignored. The server commit time is used.',
     example: '2024-01-15T10:30:00Z',
     required: false,
+    deprecated: true,
   })
   @IsOptional()
   @IsDateString()
