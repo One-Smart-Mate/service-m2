@@ -13,7 +13,7 @@ import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { In } from 'typeorm';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
-import { OplTypes } from '../oplTypes/entities/oplTypes.entity';
+import { OplMasterPersistence } from './opl-master.persistence';
 
 @Injectable()
 export class OplMstrService {
@@ -24,8 +24,7 @@ export class OplMstrService {
     private readonly oplLevelsRepository: Repository<OplLevelsEntity>,
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
-    @InjectRepository(OplTypes)
-    private readonly oplTypesRepository: Repository<OplTypes>,
+    private readonly oplMasterPersistence: OplMasterPersistence,
   ) {}
 
   findAll = async () => {
@@ -125,20 +124,9 @@ export class OplMstrService {
     }
   };
 
-  create = async (createOplDto: CreateOplMstrDTO) => {
+  create = async (createOplDto: CreateOplMstrDTO, creatorId: number) => {
     try {
-      const opl = this.oplRepository.create(createOplDto);
-      if (createOplDto.oplTypeId) {
-        const oplType = await this.oplTypesRepository.findOneBy({
-          id: createOplDto.oplTypeId,
-        });
-        if (!oplType) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_TYPE);
-        }
-        opl.oplType = oplType.documentType;
-        opl.oplTypeId = oplType.id;
-      }
-      return await this.oplRepository.save(opl);
+      return await this.oplMasterPersistence.create(createOplDto, creatorId);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -146,25 +134,7 @@ export class OplMstrService {
 
   update = async (updateOplDto: UpdateOplMstrDTO) => {
     try {
-      const opl = await this.oplRepository.findOneBy({
-        id: updateOplDto.id,
-      });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-
-      Object.assign(opl, updateOplDto);
-      if (updateOplDto.oplTypeId) {
-        const oplType = await this.oplTypesRepository.findOneBy({
-          id: updateOplDto.oplTypeId,
-        });
-        if (!oplType) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_TYPE);
-        }
-        opl.oplType = oplType.documentType;
-        opl.oplTypeId = oplType.id;
-      }
-      return await this.oplRepository.save(opl);
+      return await this.oplMasterPersistence.update(updateOplDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -172,36 +142,7 @@ export class OplMstrService {
 
   updateOrder = async (updateOrderDto: UpdateOplMstrOrderDTO) => {
     try {
-      // Find the detail to update
-      const oplToUpdate = await this.oplRepository.findOneBy({
-        id: updateOrderDto.oplId,
-      });
-      if (!oplToUpdate) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-
-      // Find the detail that currently has the new order
-      const detailWithNewOrder = await this.oplDetailsRepository.findOne({
-        where: {
-          oplId: oplToUpdate.id,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (detailWithNewOrder) {
-        // Swap orders
-        const oldOrder = oplToUpdate.order;
-        oplToUpdate.order = updateOrderDto.newOrder;
-        detailWithNewOrder.order = oldOrder;
-
-        // Save both details
-        await this.oplDetailsRepository.save(detailWithNewOrder);
-        return await this.oplDetailsRepository.save(oplToUpdate);
-      } else {
-        // If no detail has the new order, just update the order
-        oplToUpdate.order = updateOrderDto.newOrder;
-        return await this.oplDetailsRepository.save(oplToUpdate);
-      }
+      return await this.oplMasterPersistence.updateOrder(updateOrderDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -220,4 +161,4 @@ export class OplMstrService {
       HandleException.exception(exception);
     }
   };
-} 
+}

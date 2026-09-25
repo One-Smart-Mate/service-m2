@@ -128,8 +128,8 @@ export class CiltMstrController {
   @RequireSiteAccess()
   @ApiOperation({ summary: 'Create a new CILT' })
   @ApiBody({ type: CreateCiltMstrDTO })
-  async create(@Body() createCiltDto: CreateCiltMstrDTO) {
-    return await this.ciltMstrService.create(createCiltDto);
+  async create(@Body() createCiltDto: CreateCiltMstrDTO, @Request() req: any) {
+    return await this.ciltMstrService.create(createCiltDto, req.user.id);
   }
 
   @Put("/update")
@@ -170,8 +170,8 @@ export class CiltMstrController {
   })
   @ApiOperation({ summary: 'Clone a CILT master with its sequences' })
   @ApiParam({ name: 'id', type: 'number', description: 'CILT Master ID to clone' })
-  async cloneCiltMaster(@Param('id') id: number) {
-    return await this.ciltMstrService.cloneCiltMaster(id);
+  async cloneCiltMaster(@Param('id') id: number, @Request() req: any) {
+    return await this.ciltMstrService.cloneCiltMaster(id, req.user.id);
   }
 
   @Delete('/delete/:id')

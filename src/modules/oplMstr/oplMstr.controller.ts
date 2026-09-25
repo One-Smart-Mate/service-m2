@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { OplMstrService } from './oplMstr.service';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
@@ -78,8 +78,8 @@ export class OplMstrController {
   })
   @ApiOperation({ summary: 'Create a new OPL' })
   @ApiResponse({ status: 201, description: 'OPL created successfully'})
-  async create(@Body() createOplDto: CreateOplMstrDTO) {
-    return await this.oplMstrService.create(createOplDto);
+  async create(@Body() createOplDto: CreateOplMstrDTO, @Request() req: any) {
+    return await this.oplMstrService.create(createOplDto, req.user.id);
   }
 
   @Put("/update")

@@ -35,14 +35,15 @@ export class CreateCiltMstrDTO {
   @Length(1, 500)
   ciltDescription?: string;
 
-  @ApiProperty({ required: false, description: 'Creator ID', example: 10 })
+  @ApiProperty({ required: false, deprecated: true, description: 'Ignored. Derived from the authenticated session.', example: 10 })
   @IsOptional()
   @IsNumber()
   creatorId?: number;
 
   @ApiProperty({
     required: false,
-    description: 'Creator name',
+    description: 'Ignored. Derived from the authenticated session.',
+    deprecated: true,
     maxLength: 100,
     example: 'John Doe',
   })
