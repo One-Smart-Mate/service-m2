@@ -10,15 +10,14 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
+import { OplDetailPersistence } from './opl-detail.persistence';
 
 @Injectable()
 export class OplDetailsService {
   constructor(
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
-    @InjectRepository(OplMstr)
-    private readonly oplMstrRepository: Repository<OplMstr>,
+    private readonly oplDetailPersistence: OplDetailPersistence,
   ) {}
 
   findAll = async () => {
@@ -60,27 +59,7 @@ export class OplDetailsService {
 
   create = async (createOplDetailsDto: CreateOplDetailsDTO) => {
     try {
-      const opl = await this.oplMstrRepository.findOneBy({
-        id: createOplDetailsDto.oplId,
-      });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-      createOplDetailsDto.siteId = opl.siteId;
-
-      // Buscar detalles existentes del mismo OPL
-      const existingDetails = await this.oplDetailsRepository.find({
-        where: { oplId: createOplDetailsDto.oplId },
-        order: { order: 'DESC' },
-        take: 1
-      });
-
-      // Asignar el siguiente número de orden
-      const nextOrder = existingDetails.length > 0 ? existingDetails[0].order + 1 : 1;
-      createOplDetailsDto.order = nextOrder;
-
-      const detail = this.oplDetailsRepository.create(createOplDetailsDto);
-      return await this.oplDetailsRepository.save(detail);
+      return await this.oplDetailPersistence.create(createOplDetailsDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -88,27 +67,7 @@ export class OplDetailsService {
 
   update = async (updateOplDetailsDto: UpdateOplDetailsDTO) => {
     try {
-      const detail = await this.oplDetailsRepository.findOneBy({
-        id: updateOplDetailsDto.id,
-      });
-      if (!detail) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
-      }
-
-      if (updateOplDetailsDto.oplId) {
-        const opl = await this.oplMstrRepository.findOneBy({
-          id: updateOplDetailsDto.oplId,
-        });
-        if (!opl) {
-          throw new NotFoundCustomException(
-            NotFoundCustomExceptionType.OPL_MSTR,
-          );
-        }
-        detail.siteId = opl.siteId;
-      }
-
-      Object.assign(detail, updateOplDetailsDto);
-      return await this.oplDetailsRepository.save(detail);
+      return await this.oplDetailPersistence.update(updateOplDetailsDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -116,36 +75,7 @@ export class OplDetailsService {
 
   updateOrder = async (updateOrderDto: UpdateOplDetailOrderDTO) => {
     try {
-      // Find the detail to update
-      const detailToUpdate = await this.oplDetailsRepository.findOneBy({
-        id: updateOrderDto.detailId,
-      });
-      if (!detailToUpdate) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
-      }
-
-      // Find the detail that currently has the new order
-      const detailWithNewOrder = await this.oplDetailsRepository.findOne({
-        where: {
-          oplId: detailToUpdate.oplId,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (detailWithNewOrder) {
-        // Swap orders
-        const oldOrder = detailToUpdate.order;
-        detailToUpdate.order = updateOrderDto.newOrder;
-        detailWithNewOrder.order = oldOrder;
-
-        // Save both details
-        await this.oplDetailsRepository.save(detailWithNewOrder);
-        return await this.oplDetailsRepository.save(detailToUpdate);
-      } else {
-        // If no detail has the new order, just update the order
-        detailToUpdate.order = updateOrderDto.newOrder;
-        return await this.oplDetailsRepository.save(detailToUpdate);
-      }
+      return await this.oplDetailPersistence.updateOrder(updateOrderDto);
     } catch (exception) {
       HandleException.exception(exception);
     }

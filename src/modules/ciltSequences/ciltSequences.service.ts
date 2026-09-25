@@ -10,92 +10,15 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from '../../common/exceptions/types/notFound.exception';
-import { SiteEntity } from '../site/entities/site.entity';
-import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
-import { CiltFrequenciesEntity } from '../ciltFrequencies/entities/ciltFrequencies.entity';
-import { CiltTypesEntity } from '../ciltTypes/entities/ciltTypes.entity';
-import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
+import { CiltSequencePersistence } from './cilt-sequence.persistence';
 
 @Injectable()
 export class CiltSequencesService {
   constructor(
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
-    @InjectRepository(SiteEntity)
-    private readonly siteRepository: Repository<SiteEntity>,
-    @InjectRepository(CiltMstrEntity)
-    private readonly ciltMstrRepository: Repository<CiltMstrEntity>,
-    @InjectRepository(CiltFrequenciesEntity)
-    private readonly ciltFrequenciesRepository: Repository<CiltFrequenciesEntity>,
-    @InjectRepository(CiltTypesEntity)
-    private readonly ciltTypeRepository: Repository<CiltTypesEntity>,
-    @InjectRepository(OplMstr)
-    private readonly oplMstrRepository: Repository<OplMstr>,
+    private readonly ciltSequencePersistence: CiltSequencePersistence,
   ) {}
-
-  private async validateRelatedEntities(
-    dto: CreateCiltSequenceDTO | UpdateCiltSequenceDTO,
-  ) {
-    if (dto.siteId) {
-      const site = await this.siteRepository.findOneBy({ id: dto.siteId });
-      if (!site) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      }
-    }
-
-    if (dto.ciltMstrId) {
-      const ciltMstr = await this.ciltMstrRepository.findOneBy({
-        id: dto.ciltMstrId,
-      });
-      if (!ciltMstr) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_MSTR,
-        );
-      }
-    }
-
-    if (dto.frecuencyId) {
-      const frequency = await this.ciltFrequenciesRepository.findOneBy({
-        id: dto.frecuencyId,
-      });
-      if (!frequency) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_FREQUENCIES,
-        );
-      }
-    }
-
-    if (dto.ciltTypeId) {
-      const ciltType = await this.ciltTypeRepository.findOneBy({
-        id: dto.ciltTypeId,
-      });
-      if (!ciltType) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_TYPES,
-        );
-      }
-    }
-    if (dto.referenceOplSopId) {
-      const referenceOplSop = await this.oplMstrRepository.findOneBy({
-        id: dto.referenceOplSopId,
-      });
-      if (!referenceOplSop) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.OPL_MSTR,
-        );
-      }
-    }
-    if (dto.remediationOplSopId) {
-      const remediationOplSop = await this.oplMstrRepository.findOneBy({
-        id: dto.remediationOplSopId,
-      });
-      if (!remediationOplSop) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.OPL_MSTR,
-        );
-      }
-    }
-  }
 
   findAll = async () => {
     try {
@@ -148,21 +71,7 @@ export class CiltSequencesService {
 
   create = async (dto: CreateCiltSequenceDTO) => {
     try {
-      await this.validateRelatedEntities(dto);
-
-      // Found existing sequences for the same cilt master
-      const existingSequences = await this.ciltSequencesRepository.find({
-        where: { ciltMstrId: dto.ciltMstrId },
-        order: { order: 'DESC' },
-        take: 1
-      });
-
-      // Assign the next order number
-      const nextOrder = existingSequences.length > 0 ? existingSequences[0].order + 1 : 1;
-      dto.order = nextOrder;
-
-      const sequence = this.ciltSequencesRepository.create(dto);
-      return await this.ciltSequencesRepository.save(sequence);
+      return await this.ciltSequencePersistence.create(dto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -170,10 +79,7 @@ export class CiltSequencesService {
 
   update = async (updateDTO: UpdateCiltSequenceDTO) => {
     try {
-      const sequence = await this.findById(updateDTO.id);
-      await this.validateRelatedEntities(updateDTO);
-      Object.assign(sequence, updateDTO);
-      return await this.ciltSequencesRepository.save(sequence);
+      return await this.ciltSequencePersistence.update(updateDTO);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -181,38 +87,7 @@ export class CiltSequencesService {
 
   updateOrder = async (updateOrderDto: UpdateSequenceOrderDTO) => {
     try {
-      // Find the sequence to update
-      const sequenceToUpdate = await this.ciltSequencesRepository.findOneBy({
-        id: updateOrderDto.sequenceId,
-      });
-      if (!sequenceToUpdate) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SEQUENCES,
-        );
-      }
-
-      // Find the sequence that currently has the new order
-      const sequenceWithNewOrder = await this.ciltSequencesRepository.findOne({
-        where: {
-          ciltMstrId: sequenceToUpdate.ciltMstrId,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (sequenceWithNewOrder) {
-        // Swap orders
-        const oldOrder = sequenceToUpdate.order;
-        sequenceToUpdate.order = updateOrderDto.newOrder;
-        sequenceWithNewOrder.order = oldOrder;
-
-        // Save both sequences
-        await this.ciltSequencesRepository.save(sequenceWithNewOrder);
-        return await this.ciltSequencesRepository.save(sequenceToUpdate);
-      } else {
-        // If no sequence has the new order, just update the order
-        sequenceToUpdate.order = updateOrderDto.newOrder;
-        return await this.ciltSequencesRepository.save(sequenceToUpdate);
-      }
+      return await this.ciltSequencePersistence.updateOrder(updateOrderDto);
     } catch (exception) {
       HandleException.exception(exception);
     }

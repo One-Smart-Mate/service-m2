@@ -5,6 +5,7 @@ import { OplDetailsService } from './oplDetails.service';
 import { OplDetailsController } from './oplDetails.controller';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { SiteEntity } from '../site/entities/site.entity';
+import { OplDetailPersistence } from './opl-detail.persistence';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { SiteEntity } from '../site/entities/site.entity';
     ])
   ],
   controllers: [OplDetailsController],
-  providers: [OplDetailsService],
+  providers: [OplDetailsService, OplDetailPersistence],
   exports: [OplDetailsService],
 })
-export class OplDetailsModule {} 
+export class OplDetailsModule {}
