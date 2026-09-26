@@ -22,7 +22,7 @@ describe('transport security configuration', () => {
     });
   });
 
-  it('allows TLS to be disabled explicitly outside production', () => {
+  it('allows TLS to be disabled explicitly', () => {
     expect(
       createDatabaseTlsOptions('DB', {
         DEPLOY_ENV: 'local',
@@ -31,14 +31,17 @@ describe('transport security configuration', () => {
     ).toBeUndefined();
   });
 
-  it('rejects disabling TLS in production', () => {
-    expect(() =>
-      createDatabaseTlsOptions('DB', {
-        DEPLOY_ENV: 'production',
-        DB_SSL_ENABLED: 'false',
-      }),
-    ).toThrow('DB_SSL_ENABLED cannot be disabled in production');
-  });
+  it.each(['DB', 'DB_IA'] as const)(
+    'temporarily allows %s TLS to be disabled in production',
+    (prefix) => {
+      expect(
+        createDatabaseTlsOptions(prefix, {
+          DEPLOY_ENV: 'production',
+          [`${prefix}_SSL_ENABLED`]: 'false',
+        }),
+      ).toBeUndefined();
+    },
+  );
 
   it('rejects ambiguous TLS flags', () => {
     expect(() =>

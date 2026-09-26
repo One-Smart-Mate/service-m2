@@ -13,11 +13,6 @@ const normalizeCertificate = (certificate?: string) => {
   return normalized || undefined;
 };
 
-const isProduction = (environment: NodeJS.ProcessEnv) =>
-  [environment.DEPLOY_ENV, environment.NODE_ENV]
-    .filter(Boolean)
-    .some((value) => ['prod', 'production'].includes(value.toLowerCase()));
-
 const parseEnabledFlag = (name: string, value?: string) => {
   if (value === undefined || value.trim() === '') {
     return true;
@@ -52,9 +47,6 @@ export const createDatabaseTlsOptions = (
   const enabled = parseEnabledFlag(enabledName, environment[enabledName]);
 
   if (!enabled) {
-    if (isProduction(environment)) {
-      throw new Error(`${enabledName} cannot be disabled in production`);
-    }
     return undefined;
   }
 

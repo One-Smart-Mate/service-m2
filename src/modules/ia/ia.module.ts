@@ -3,7 +3,7 @@ import { IaController } from './ia.controller';
 import { IaService } from './ia.service';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createDatabaseTlsOptions } from 'src/config/transport-security.config';
 
 @Module({
@@ -11,13 +11,17 @@ import { createDatabaseTlsOptions } from 'src/config/transport-security.config';
     ConfigModule,
     TypeOrmModule.forRootAsync({
       name: 'iaConnection',
-      useFactory: () => ({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
         type: 'mysql',
-        host: process.env.DB_HOST_IA,
-        port: parseInt(process.env.DB_PORT_IA),
-        username: process.env.DB_USERNAME_IA,
-        password: process.env.DB_PASSWORD_IA?.replace(/^"(.*)"$/, '$1'),
-        database: process.env.DB_NAME_IA,
+        host: configService.get<string>('DB_HOST_IA'),
+        port: Number(configService.get<string>('DB_PORT_IA')),
+        username: configService.get<string>('DB_USERNAME_IA'),
+        password: configService
+          .get<string>('DB_PASSWORD_IA')
+          ?.replace(/^"(.*)"$/, '$1'),
+        database: configService.get<string>('DB_NAME_IA'),
         entities: [],
         synchronize: false,
         autoLoadEntities: true,
@@ -26,7 +30,11 @@ import { createDatabaseTlsOptions } from 'src/config/transport-security.config';
           multipleStatements: false,
         },
         logging: false,
-        ssl: createDatabaseTlsOptions('DB_IA'),
+        ssl: createDatabaseTlsOptions('DB_IA', {
+          ...process.env,
+          DB_IA_SSL_ENABLED: configService.get<string>('DB_IA_SSL_ENABLED'),
+          DB_IA_SSL_CA: configService.get<string>('DB_IA_SSL_CA'),
+        }),
       }),
     }),
   ],
