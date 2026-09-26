@@ -39,7 +39,11 @@ export class OplMstr {
   @Column("varchar", { name: "reviewer_name", nullable: true, length: 100 })
   reviewerName: string | null;
 
-  @Column("int", { name: "opl_type_id", nullable: true })
+  @Column("int", {
+    name: "opl_type_id",
+    nullable: true,
+    unsigned: true,
+  })
   oplTypeId: number | null;
 
   @Column("varchar", { name: "opl_type", nullable: true, length: 50 })
