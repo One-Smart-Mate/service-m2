@@ -1,6 +1,7 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createDatabaseTlsOptions } from './transport-security.config';
+import { shouldSynchronizeDatabase } from './database-synchronize.config';
 
 const typeOrmConfig = TypeOrmModule.forRootAsync({
   imports: [ConfigModule],
@@ -13,7 +14,12 @@ const typeOrmConfig = TypeOrmModule.forRootAsync({
     database: configService.get<string>('DB_NAME'),
     host: configService.get<string>('DB_HOST'),
     entities: [__dirname + '//*.entity{.ts,.js}'],
-    synchronize: false,
+    synchronize: shouldSynchronizeDatabase({
+      ...process.env,
+      DEPLOY_ENV: configService.get<string>('DEPLOY_ENV'),
+      NODE_ENV: configService.get<string>('NODE_ENV'),
+      DB_SYNCHRONIZE: configService.get<string>('DB_SYNCHRONIZE'),
+    }),
     autoLoadEntities: true,
     ssl: createDatabaseTlsOptions('DB', {
       ...process.env,
