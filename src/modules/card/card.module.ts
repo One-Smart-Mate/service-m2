@@ -18,6 +18,7 @@ import { CardCreationPersistence } from './card-creation.persistence';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
 import { CardDeltaSyncReader } from './card-delta-sync.reader';
+import { R2CardEvidenceService } from './r2-card-evidence.service';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { CardDeltaSyncReader } from './card-delta-sync.reader';
     CardSolutionPersistence,
     CardMutationPersistence,
     CardDeltaSyncReader,
+    R2CardEvidenceService,
   ],
   exports: [CardService],
 })

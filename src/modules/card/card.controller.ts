@@ -1,6 +1,28 @@
-import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request, ParseIntPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  Request,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { CardService } from './card.service';
-import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/guard/auth.guard';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
@@ -20,13 +42,26 @@ import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.d
 import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
 import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
 import { SyncCardsDTO } from './models/dto/sync.cards.dto';
+import {
+  CardEvidenceUploadType,
+  UploadCardEvidenceDto,
+} from './models/dto/upload-card-evidence.dto';
+import {
+  ALLOWED_AUDIO_TYPES,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  R2CardEvidenceService,
+} from './r2-card-evidence.service';
 
 @Controller('card')
 @UseGuards(AuthGuard)
 @ApiTags('card')
 @ApiBearerAuth()
 export class CardController {
-  constructor(private readonly cardService: CardService) {}
+  constructor(
+    private readonly cardService: CardService,
+    private readonly cardEvidenceStorage: R2CardEvidenceService,
+  ) {}
 
   @Get('/all/level-machine/:siteId/:levelMachineId')
   @ApiParam({ name: 'siteId' })
@@ -220,7 +255,68 @@ export class CardController {
       req.user.id,
     );
   }
-  
+
+  @Post('/evidence/:siteId/upload')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  @ApiParam({ name: 'siteId', description: 'Site that owns the card evidence' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['cardUUID', 'evidenceId', 'evidenceType', 'file'],
+      properties: {
+        cardUUID: { type: 'string', example: '2e805731-bc22-43f6-8737-43ec80fd03fc' },
+        evidenceId: { type: 'string', example: 'a1ee9d76-5bf1-4b03-a228-56621fb4288c' },
+        evidenceType: {
+          type: 'string',
+          enum: Object.values(CardEvidenceUploadType),
+        },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 25 * 1024 * 1024,
+        files: 1,
+        fields: 3,
+        parts: 4,
+        fieldNameSize: 100,
+        fieldSize: 1_024,
+      },
+      fileFilter: (_request, file, callback) => {
+        const allowed =
+          ALLOWED_IMAGE_TYPES.has(file.mimetype) ||
+          ALLOWED_VIDEO_TYPES.has(file.mimetype) ||
+          ALLOWED_AUDIO_TYPES.has(file.mimetype);
+        callback(
+          allowed ? null : new BadRequestException('Unsupported evidence file type'),
+          allowed,
+        );
+      },
+    }),
+  )
+  uploadEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Body() body: UploadCardEvidenceDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Evidence file is required');
+    return this.cardEvidenceStorage.uploadCardEvidence(
+      siteId,
+      body.cardUUID,
+      body.evidenceId,
+      body.evidenceType,
+      file,
+    );
+  }
+
   @Put('/update/definitive-solution')
   @SiteResourceAccess({
     resource: 'card',
