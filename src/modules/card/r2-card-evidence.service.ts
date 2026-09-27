@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   CardEvidenceUploadType,
 } from './models/dto/upload-card-evidence.dto';
@@ -16,6 +16,13 @@ export interface UploadedCardEvidence {
   key: string;
   contentType: string;
   size: number;
+}
+
+export interface DownloadedCardEvidence {
+  buffer: Buffer;
+  contentType: string;
+  size: number;
+  fileName: string;
 }
 
 @Injectable()
@@ -71,12 +78,74 @@ export class R2CardEvidenceService {
       );
       throw new BadGatewayException('Evidence storage is temporarily unavailable');
     }
+    const token = Buffer.from(key, 'utf8').toString('base64url');
     return {
-      url: `${this.publicUrl}/${key.split('/').map(encodeURIComponent).join('/')}`,
+      // Store a service route instead of an R2 URL. Mobile/web clients never
+      // communicate with Cloudflare directly.
+      url: `/card/evidence/${siteId}/content/${token}`,
       key,
       contentType: file.mimetype,
       size: file.size,
     };
+  }
+
+  async downloadCardEvidence(
+    siteId: number,
+    token: string,
+  ): Promise<DownloadedCardEvidence> {
+    let key: string;
+    try {
+      key = Buffer.from(token, 'base64url').toString('utf8');
+    } catch {
+      throw new BadRequestException('Invalid evidence reference');
+    }
+    this.assertSiteKey(siteId, key);
+    return this.downloadKey(key);
+  }
+
+  async downloadLegacyCardEvidence(
+    siteId: number,
+    reference: string,
+  ): Promise<DownloadedCardEvidence> {
+    const expectedPrefix = `${this.publicUrl}/`;
+    if (!reference.startsWith(expectedPrefix)) {
+      throw new BadRequestException('Unsupported evidence reference');
+    }
+    const key = reference
+      .slice(expectedPrefix.length)
+      .split('/')
+      .map((segment) => decodeURIComponent(segment))
+      .join('/');
+    this.assertSiteKey(siteId, key);
+    return this.downloadKey(key);
+  }
+
+  private async downloadKey(key: string): Promise<DownloadedCardEvidence> {
+    try {
+      const object = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+      if (!object.Body) throw new Error('Cloudflare R2 returned an empty object');
+      const bytes = await object.Body.transformToByteArray();
+      return {
+        buffer: Buffer.from(bytes),
+        contentType: object.ContentType || 'application/octet-stream',
+        size: object.ContentLength ?? bytes.byteLength,
+        fileName: key.substring(key.lastIndexOf('/') + 1),
+      };
+    } catch (error) {
+      this.logger.error(
+        'Cloudflare R2 download failed',
+        error instanceof Error ? error.stack : undefined,
+      );
+      throw new BadGatewayException('Evidence storage is temporarily unavailable');
+    }
+  }
+
+  private assertSiteKey(siteId: number, key: string): void {
+    if (!key.startsWith(`site_${siteId}/cards/`) || key.includes('..')) {
+      throw new BadRequestException('Invalid evidence reference');
+    }
   }
 
   private required(name: string): string {

@@ -9,6 +9,7 @@ import {
   Put,
   Query,
   Request,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -286,7 +287,6 @@ export class CardController {
         fileSize: 25 * 1024 * 1024,
         files: 1,
         fields: 3,
-        parts: 4,
         fieldNameSize: 100,
         fieldSize: 1_024,
       },
@@ -315,6 +315,50 @@ export class CardController {
       body.evidenceType,
       file,
     );
+  }
+
+  @Get('/evidence/:siteId/content/:token')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  async downloadEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Param('token') token: string,
+  ) {
+    const evidence = await this.cardEvidenceStorage.downloadCardEvidence(
+      siteId,
+      token,
+    );
+    return new StreamableFile(evidence.buffer, {
+      type: evidence.contentType,
+      length: evidence.size,
+      disposition: `inline; filename="${evidence.fileName}"`,
+    });
+  }
+
+  @Get('/evidence/:siteId/legacy')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  async downloadLegacyEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Query('reference') reference: string,
+  ) {
+    const evidence = await this.cardEvidenceStorage.downloadLegacyCardEvidence(
+      siteId,
+      reference,
+    );
+    return new StreamableFile(evidence.buffer, {
+      type: evidence.contentType,
+      length: evidence.size,
+      disposition: `inline; filename="${evidence.fileName}"`,
+    });
   }
 
   @Put('/update/definitive-solution')
