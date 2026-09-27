@@ -51,6 +51,10 @@ export class FirebaseService {
         if (tokenObj.type === stringConstants.OS_ANDROID) {
           message = {
             data: notificationDTO.toData(),
+            android: {
+              collapseKey: this.resolveCollapseKey(notificationDTO),
+              priority: 'high' as const,
+            },
             token: tokenObj.token,
           };
         } else if (
@@ -63,6 +67,11 @@ export class FirebaseService {
               body: notificationDTO.notification_description,
             },
             data: notificationDTO.toData(),
+            apns: {
+              headers: {
+                'apns-collapse-id': this.resolveCollapseKey(notificationDTO),
+              },
+            },
             token: tokenObj.token,
           };
         }
@@ -98,4 +107,10 @@ export class FirebaseService {
       return Promise.resolve(false);
     }
   };
+
+  private resolveCollapseKey(notificationDTO: NotificationDTO): string {
+    const data = notificationDTO.toData();
+    const siteId = data.site_id ?? 'global';
+    return `${notificationDTO.notification_type}-${siteId}`.slice(0, 64);
+  }
 }

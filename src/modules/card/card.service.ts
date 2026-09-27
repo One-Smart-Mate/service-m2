@@ -2882,6 +2882,11 @@ export class CardService {
             title: stringConstants.cardsTitle,
             description: `${stringConstants.cardsDescription} ${input.methodologyName}`,
             type: stringConstants.cardsNotificationType,
+            data: {
+              sync_scope: 'cards',
+              site_id: String(input.siteId),
+              card_uuid: input.cardUUID,
+            },
           },
         },
       },
@@ -2899,6 +2904,11 @@ export class CardService {
             title: stringConstants.cardsTitle,
             description: `${stringConstants.cardResponsibleAssignment} ${input.nodeName}: ${input.methodologyName}`,
             type: stringConstants.cardsNotificationType,
+            data: {
+              sync_scope: 'cards',
+              site_id: String(input.siteId),
+              card_uuid: input.cardUUID,
+            },
           },
         },
       });

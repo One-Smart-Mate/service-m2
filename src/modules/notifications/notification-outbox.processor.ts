@@ -104,6 +104,7 @@ export class NotificationOutboxProcessor {
           event.payload.notification.description,
           event.payload.notification.type,
           String(event.id),
+          event.payload.notification.data,
         );
         const delivered = await this.firebaseService.sendMultipleMessage(
           notification,

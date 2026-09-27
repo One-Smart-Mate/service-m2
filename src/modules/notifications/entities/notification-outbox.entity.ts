@@ -21,6 +21,11 @@ export interface NotificationOutboxPayload {
     title: string;
     description: string;
     type: string;
+    /**
+     * Extra FCM data used by clients to perform a targeted synchronization.
+     * Values are strings because Firebase data messages only accept strings.
+     */
+    data?: Record<string, string>;
   };
 }
 
