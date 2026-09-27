@@ -10,6 +10,10 @@ const typeOrmConfig = TypeOrmModule.forRoot({
   entities: [__dirname + '//*.entity{.ts,.js}'],
   synchronize: false,
   autoLoadEntities: true,
+  ssl:
+    process.env.DB_SSL_ENABLED === 'true'
+      ? { rejectUnauthorized: false }
+      : undefined,
   extra: {
     connectionLimit: 10,      
     acquireTimeout: 5000,     

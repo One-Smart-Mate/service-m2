@@ -24,9 +24,10 @@ import { ConfigModule } from '@nestjs/config';
           connectionLimit: 1000,
         },
         logging: true,
-        ssl: {
-          rejectUnauthorized: false
-        }
+        ssl:
+          process.env.DB_IA_SSL_ENABLED === 'true'
+            ? { rejectUnauthorized: false }
+            : undefined,
       }),
     }),
   ],

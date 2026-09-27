@@ -16,6 +16,10 @@ const AppDataSource = new DataSource({
   migrationsTableName: 'migration_table', 
   migrationsRun: false, 
   charset: 'utf8mb4_general_ci', 
+  ssl:
+    process.env.DB_SSL_ENABLED === 'true'
+      ? { rejectUnauthorized: false }
+      : undefined,
 });
 
 export default AppDataSource;
