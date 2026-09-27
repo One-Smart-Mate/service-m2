@@ -5,6 +5,12 @@ export enum CardEvidenceUploadType {
   IMCR = 'IMCR',
   VICR = 'VICR',
   AUCR = 'AUCR',
+  IMPS = 'IMPS',
+  VIPS = 'VIPS',
+  AUPS = 'AUPS',
+  IMCL = 'IMCL',
+  VICL = 'VICL',
+  AUCL = 'AUCL',
 }
 
 export class UploadCardEvidenceDto {
