@@ -1,6 +1,7 @@
 import {
   HttpException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
@@ -62,12 +63,15 @@ import {
 import {
   CardSyncItemResult,
   CardSyncResponse,
+  FailedCardSyncResult,
 } from './models/card-sync.response';
 import { CardDeltaSyncReader } from './card-delta-sync.reader';
 import type { EnqueueNotification } from '../notifications/notification-outbox.service';
 
 @Injectable()
 export class CardService {
+  private readonly logger = new Logger(CardService.name);
+
   constructor(
     @InjectRepository(CardEntity)
     private readonly cardRepository: Repository<CardEntity>,
@@ -620,7 +624,7 @@ export class CardService {
             : null,
         cardTypeValue:
           cardType.cardTypeMethodology === stringConstants.C
-            ? createCardDTO.cardTypeValue
+            ? (createCardDTO.cardTypeValue as 'safe' | 'unsafe')
             : null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
@@ -2561,6 +2565,17 @@ export class CardService {
         });
       } catch (error) {
         const failure = this.toCardSyncFailure(card.cardUUID, error);
+        const logMessage =
+          `Offline card sync failed for UUID ${card.cardUUID} ` +
+          `[${failure.statusCode}]: ${failure.message}`;
+        if (failure.statusCode >= 500) {
+          this.logger.error(
+            logMessage,
+            error instanceof Error ? error.stack : String(error),
+          );
+        } else {
+          this.logger.warn(logMessage);
+        }
         results.push(failure);
       }
     }
@@ -2746,7 +2761,7 @@ export class CardService {
             : null,
         cardTypeValue:
           cardType.cardTypeMethodology === stringConstants.C
-            ? createCardDTO.cardTypeValue
+            ? (createCardDTO.cardTypeValue as 'safe' | 'unsafe')
             : null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
@@ -2814,6 +2829,12 @@ export class CardService {
 
       return persisted;
     } catch (exception) {
+      if (!(exception instanceof HttpException)) {
+        this.logger.error(
+          `Card creation failed for UUID ${createCardDTO.cardUUID}`,
+          exception instanceof Error ? exception.stack : String(exception),
+        );
+      }
       HandleException.exception(exception);
     }
   };
@@ -2821,7 +2842,7 @@ export class CardService {
   private toCardSyncFailure(
     cardUUID: string,
     error: unknown,
-  ): CardSyncItemResult {
+  ): FailedCardSyncResult {
     if (error instanceof HttpException) {
       return {
         cardUUID,

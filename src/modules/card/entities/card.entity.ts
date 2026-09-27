@@ -129,11 +129,11 @@ export class CardEntity {
   @Column({
     type: 'enum',
     enum: ['safe', 'unsafe'],
-    nullable: false,
-    default: 'unsafe',
+    nullable: true,
+    default: null,
     name: 'cardType_value',
   })
-  cardTypeValue: 'safe' | 'unsafe' | '';
+  cardTypeValue: 'safe' | 'unsafe' | null;
 
   @Column({
     type: 'bigint',
