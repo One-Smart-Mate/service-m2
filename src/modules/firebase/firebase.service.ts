@@ -71,6 +71,12 @@ export class FirebaseService {
               headers: {
                 'apns-collapse-id': this.resolveCollapseKey(notificationDTO),
               },
+              payload: {
+                aps: {
+                  contentAvailable: true,
+                  sound: 'default',
+                },
+              },
             },
             token: tokenObj.token,
           };
