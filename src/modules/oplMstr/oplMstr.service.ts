@@ -114,11 +114,11 @@ export class OplMstrService {
         where: { siteId },
         order: { order: 'ASC' }
       });
-      
-      if (!opls || opls.length === 0) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-      return opls;
+
+      // An empty result is a valid state (the site simply has no OPLs yet),
+      // not an error. Return [] so the client renders an empty list instead
+      // of surfacing a 404 as "error loading OPL list".
+      return opls ?? [];
     } catch (exception) {
       HandleException.exception(exception);
     }
