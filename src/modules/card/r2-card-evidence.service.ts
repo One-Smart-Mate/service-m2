@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import sharp from 'sharp';
 import {
   CardEvidenceUploadType,
 } from './models/dto/upload-card-evidence.dto';
@@ -101,6 +102,93 @@ export class R2CardEvidenceService {
     }
     this.assertSiteKey(siteId, key);
     return this.downloadKey(key);
+  }
+
+  // Return a small, compressed thumbnail for an image evidence. The thumbnail is
+  // generated once (on first request) and cached in R2 next to the original, so
+  // list views load fast without re-downloading multi-MB photos. Non-image
+  // evidences (video/audio) fall back to the original object unchanged.
+  async downloadCardEvidenceThumbnail(
+    siteId: number,
+    token: string,
+  ): Promise<DownloadedCardEvidence> {
+    let key: string;
+    try {
+      key = Buffer.from(token, 'base64url').toString('utf8');
+    } catch {
+      throw new BadRequestException('Invalid evidence reference');
+    }
+    this.assertSiteKey(siteId, key);
+
+    // Only images get a thumbnail; anything else streams as-is.
+    if (!/\.(jpe?g|png|webp)$/i.test(key)) {
+      return this.downloadKey(key);
+    }
+
+    const thumbKey = this.thumbnailKeyFor(key);
+
+    // 1) Serve the cached thumbnail if it already exists.
+    try {
+      return await this.downloadKey(thumbKey);
+    } catch {
+      // Not cached yet — generate it below.
+    }
+
+    // 2) Generate from the original, cache it, and return it.
+    try {
+      const original = await this.downloadKey(key);
+      const thumbBuffer = await sharp(original.buffer)
+        .rotate() // respect EXIF orientation
+        .resize({ width: 320, height: 320, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 60 })
+        .toBuffer();
+
+      try {
+        await this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: thumbKey,
+            Body: thumbBuffer,
+            ContentType: 'image/jpeg',
+            ContentLength: thumbBuffer.byteLength,
+            CacheControl: 'public, max-age=31536000, immutable',
+          }),
+        );
+      } catch (error) {
+        // Caching is best-effort; still return the generated thumbnail.
+        this.logger.warn(
+          `Thumbnail cache write failed for ${thumbKey}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      return {
+        buffer: thumbBuffer,
+        contentType: 'image/jpeg',
+        size: thumbBuffer.byteLength,
+        fileName: thumbKey.substring(thumbKey.lastIndexOf('/') + 1),
+      };
+    } catch (error) {
+      // If thumbnail generation fails, degrade gracefully to the original.
+      this.logger.warn(
+        `Thumbnail generation failed for ${key}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.downloadKey(key);
+    }
+  }
+
+  // Derive the thumbnail object key for an image key:
+  // site_x/cards/<uuid>/images/IMCR_<id>.jpg
+  //   -> site_x/cards/<uuid>/images/thumbs/IMCR_<id>.jpg
+  private thumbnailKeyFor(key: string): string {
+    const slash = key.lastIndexOf('/');
+    const dir = key.substring(0, slash);
+    const file = key.substring(slash + 1);
+    const base = file.replace(/\.[^.]+$/, '');
+    return `${dir}/thumbs/${base}.jpg`;
   }
 
   async downloadLegacyCardEvidence(
