@@ -103,7 +103,12 @@ export class FirebaseService {
         `Batch completed. Successes: ${successCount} | Failures: ${failureCount}`,
       );
 
-      return Promise.resolve(failureCount === 0);
+      // Treat the batch as delivered when at least one recipient received it.
+      // A dead/expired token among several must NOT fail the whole batch, or the
+      // outbox keeps retrying and re-sends the push to the still-valid tokens,
+      // which the user sees as the same notification looping. Only a total
+      // failure (no recipient at all) is a real failure worth retrying.
+      return Promise.resolve(successCount > 0);
     } catch (exception) {
       this.logger.logException(
         'FirebaseService',
