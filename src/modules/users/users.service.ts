@@ -770,7 +770,32 @@ export class UsersService {
         default:
           throw new Error('OS no reconocido');
       }
-  
+
+      // A device that re-registers gets a fresh FCM token; the previous one can
+      // linger in a different platform column, so the same physical device ends
+      // up with two live tokens and receives every push twice. Drop the
+      // just-registered token from the OTHER columns of this user so a single
+      // device never holds more than one entry.
+      const registeredToken = setAppTokenDTO.appToken;
+      if (
+        setAppTokenDTO.osName !== stringConstants.OS_ANDROID &&
+        user.androidToken === registeredToken
+      ) {
+        user.androidToken = null;
+      }
+      if (
+        setAppTokenDTO.osName !== stringConstants.OS_IOS &&
+        user.iosToken === registeredToken
+      ) {
+        user.iosToken = null;
+      }
+      if (
+        setAppTokenDTO.osName !== stringConstants.OS_WEB &&
+        user.webToken === registeredToken
+      ) {
+        user.webToken = null;
+      }
+
       user.updatedAt = new Date();
   
       return await this.userRepository.save(user);
