@@ -2869,6 +2869,15 @@ export class CardService {
     responsibleId?: number | null;
     notifyResponsible: boolean;
   }): EnqueueNotification[] {
+    // When the responsible gets a dedicated "assigned" notification, exclude
+    // them from the site-wide broadcast too. Otherwise the responsible is in
+    // both audiences and receives the same card push twice.
+    const notifiesResponsible = Boolean(
+      input.notifyResponsible && input.responsibleId,
+    );
+    const alsoExcludedUserIds = notifiesResponsible
+      ? [Number(input.responsibleId)]
+      : [];
     const notifications: EnqueueNotification[] = [
       {
         deduplicationKey: `card-created:${input.cardUUID}:site`,
@@ -2877,6 +2886,7 @@ export class CardService {
             type: 'site-except-user' as const,
             siteId: input.siteId,
             excludedUserId: input.creatorId,
+            alsoExcludedUserIds,
           },
           notification: {
             title: stringConstants.cardsTitle,

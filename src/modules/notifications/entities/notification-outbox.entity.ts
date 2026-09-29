@@ -12,7 +12,15 @@ export type NotificationAudience =
   | { type: 'user'; userId: number }
   | { type: 'users'; userIds: number[] }
   | { type: 'site'; siteId: number; excludeWeb?: boolean }
-  | { type: 'site-except-user'; siteId: number; excludedUserId: number }
+  | {
+      type: 'site-except-user';
+      siteId: number;
+      excludedUserId: number;
+      // Additional users to exclude from the site broadcast (e.g. the
+      // responsible, who already gets a dedicated "assigned" notification).
+      // Prevents the same person receiving the card push twice.
+      alsoExcludedUserIds?: number[];
+    }
   | { type: 'all-users' };
 
 export interface NotificationOutboxPayload {

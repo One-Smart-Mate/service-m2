@@ -151,6 +151,7 @@ export class NotificationOutboxProcessor {
           await this.usersService.getSiteUsersTokensExcludingOwnerUser(
             audience.siteId,
             audience.excludedUserId,
+            audience.alsoExcludedUserIds ?? [],
           );
         break;
       case 'all-users': {

@@ -350,12 +350,16 @@ export class UsersService {
   getSiteUsersTokensExcludingOwnerUser = async (
     siteId: number,
     userId: number,
+    alsoExcludedUserIds: number[] = [],
   ) => {
     try {
+      const excludedIds = Array.from(
+        new Set([userId, ...alsoExcludedUserIds]),
+      );
       const users = await this.userRepository.find({
         where: {
           userHasSites: { site: { id: siteId } },
-          id: Not(userId),
+          id: Not(In(excludedIds)),
         },
         select: ['androidToken', 'iosToken', 'webToken'],
       });

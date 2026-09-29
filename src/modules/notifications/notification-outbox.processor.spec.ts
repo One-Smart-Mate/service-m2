@@ -77,7 +77,7 @@ describe('NotificationOutboxProcessor', () => {
     expect(queryBuilder.setOnLocked).toHaveBeenCalledWith('skip_locked');
     expect(
       usersService.getSiteUsersTokensExcludingOwnerUser,
-    ).toHaveBeenCalledWith(2, 7);
+    ).toHaveBeenCalledWith(2, 7, []);
     expect(firebaseService.sendMultipleMessage).toHaveBeenCalledWith(
       expect.objectContaining({ notification_id: '11' }),
       [{ token: 'device-token', type: 'ANDROID' }],
