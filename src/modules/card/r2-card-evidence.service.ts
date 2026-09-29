@@ -171,12 +171,14 @@ export class R2CardEvidenceService {
       };
     } catch (error) {
       // If thumbnail generation fails, degrade gracefully to the original.
-      this.logger.warn(
-        `Thumbnail generation failed for ${key}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      return this.downloadKey(key);
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Thumbnail generation failed for ${key}: ${msg}`);
+      const fallback = await this.downloadKey(key);
+      // TEMP DEBUG: surface the sharp error via the filename header.
+      return {
+        ...fallback,
+        fileName: `THUMBERR_${msg.slice(0, 80).replace(/[^a-zA-Z0-9_.-]/g, '_')}`,
+      };
     }
   }
 
