@@ -324,14 +324,23 @@ export class CardController {
     source: 'params',
     requestKey: 'siteId',
   })
+  @ApiQuery({
+    name: 'thumb',
+    required: false,
+    description: 'When "1", returns a small cached JPEG thumbnail (images only).',
+  })
   async downloadEvidence(
     @Param('siteId', ParseIntPipe) siteId: number,
     @Param('token') token: string,
+    @Query('thumb') thumb?: string,
   ) {
-    const evidence = await this.cardEvidenceStorage.downloadCardEvidence(
-      siteId,
-      token,
-    );
+    const evidence =
+      thumb === '1' || thumb === 'true'
+        ? await this.cardEvidenceStorage.downloadCardEvidenceThumbnail(
+            siteId,
+            token,
+          )
+        : await this.cardEvidenceStorage.downloadCardEvidence(siteId, token);
     return new StreamableFile(evidence.buffer, {
       type: evidence.contentType,
       length: evidence.size,
