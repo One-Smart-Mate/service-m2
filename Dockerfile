@@ -2,6 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# Build deps for sharp/libvips on Alpine (musl).
+RUN apk add --no-cache vips-dev build-base python3
+
 # Copiamos package.json y lockfile
 COPY package*.json ./
 
@@ -11,10 +14,10 @@ ENV HUSKY=0
 # Instala todas las dependencias (incluidas dev)
 RUN npm ci
 
-# sharp necesita su binario nativo para Alpine (musl). El lockfile se generó en
-# otra plataforma y omite @img/sharp-linuxmusl-*, así que lo instalamos aquí
-# explícitamente para que la generación de miniaturas funcione en runtime.
-RUN npm install --no-save --os=linux --libc=musl --cpu=x64 sharp
+# Ensure sharp's Alpine/musl native binary is present (the lockfile, generated
+# on another platform, omits @img/sharp-linuxmusl-*). Without this sharp falls
+# back silently and thumbnails return the original full-size image.
+RUN npm install --cpu=x64 --os=linux --libc=musl sharp
 
 # Copiamos el resto del proyecto
 COPY . .
@@ -28,6 +31,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HUSKY=0
+
+# libvips runtime for sharp on Alpine (musl).
+RUN apk add --no-cache vips
 
 # Copiamos solo lo necesario desde builder
 COPY --from=builder /app/node_modules ./node_modules
