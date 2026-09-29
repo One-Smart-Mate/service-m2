@@ -11,6 +11,11 @@ ENV HUSKY=0
 # Instala todas las dependencias (incluidas dev)
 RUN npm ci
 
+# sharp necesita su binario nativo para Alpine (musl). El lockfile se generó en
+# otra plataforma y omite @img/sharp-linuxmusl-*, así que lo instalamos aquí
+# explícitamente para que la generación de miniaturas funcione en runtime.
+RUN npm install --no-save --os=linux --libc=musl --cpu=x64 sharp
+
 # Copiamos el resto del proyecto
 COPY . .
 
