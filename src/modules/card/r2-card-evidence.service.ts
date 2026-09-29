@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import sharp from 'sharp';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+import sharp = require('sharp');
 import {
   CardEvidenceUploadType,
 } from './models/dto/upload-card-evidence.dto';
@@ -171,14 +172,12 @@ export class R2CardEvidenceService {
       };
     } catch (error) {
       // If thumbnail generation fails, degrade gracefully to the original.
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Thumbnail generation failed for ${key}: ${msg}`);
-      const fallback = await this.downloadKey(key);
-      // TEMP DEBUG: surface the sharp error via the filename header.
-      return {
-        ...fallback,
-        fileName: `THUMBERR_${msg.slice(0, 80).replace(/[^a-zA-Z0-9_.-]/g, '_')}`,
-      };
+      this.logger.warn(
+        `Thumbnail generation failed for ${key}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return this.downloadKey(key);
     }
   }
 
