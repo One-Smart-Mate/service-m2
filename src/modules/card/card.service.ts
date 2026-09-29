@@ -2730,10 +2730,21 @@ export class CardService {
     notifyResponsible: boolean,
   ): Promise<void> {
     try {
+      // When the responsible gets a dedicated "assigned" notification, exclude
+      // them from the site-wide broadcast too. Otherwise the responsible is in
+      // both audiences and receives the same card push twice.
+      const notifiesResponsible = Boolean(
+        notifyResponsible && node.notify === 1 && node.responsibleId,
+      );
+      const alsoExcludedUserIds = notifiesResponsible
+        ? [Number(node.responsibleId)]
+        : [];
+
       // Send general notification to all site users (excluding creator)
       const tokens = await this.userService.getSiteUsersTokensExcludingOwnerUser(
         card.siteId,
         card.creatorId,
+        alsoExcludedUserIds,
       );
 
       if (tokens && tokens.length > 0) {
