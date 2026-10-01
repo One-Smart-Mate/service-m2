@@ -1,5 +1,19 @@
-import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { OplLevelsService } from './oplLevels.service';
 import { CreateOplLevelsDTO } from './models/create-opl-levels.dto';
 import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
@@ -46,8 +60,11 @@ export class OplLevelsController {
   })
   @ApiOperation({ summary: 'Get all OPLs by level ID' })
   @ApiParam({ name: 'levelId', type: 'number', description: 'Level ID' })
-  @ApiResponse({ status: 200, description: 'List of OPLs associated with the level'})
-  async findByLevelId(@Param('levelId') levelId: number) {
+  @ApiResponse({
+    status: 200,
+    description: 'List of OPLs associated with the level',
+  })
+  async findByLevelId(@Param('levelId', ParseIntPipe) levelId: number) {
     return await this.oplLevelsService.findOplMstrByLevelId(levelId);
   }
 

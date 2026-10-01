@@ -1,10 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { OplLevelsEntity } from './entities/oplLevels.entity';
 import { CreateOplLevelsDTO } from './models/create-opl-levels.dto';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
-import { NotFoundCustomException, NotFoundCustomExceptionType } from 'src/common/exceptions/types/notFound.exception';
+import {
+  NotFoundCustomException,
+  NotFoundCustomExceptionType,
+} from 'src/common/exceptions/types/notFound.exception';
 import { OplMstr } from 'src/modules/oplMstr/entities/oplMstr.entity';
 import { OplDetailsEntity } from 'src/modules/oplDetails/entities/oplDetails.entity';
 import { LevelEntity } from 'src/modules/level/entities/level.entity';
@@ -34,9 +37,14 @@ export class OplLevelsService {
       if (!level) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
+      if (Number(opl.siteId) !== Number(level.siteId)) {
+        throw new BadRequestException(
+          'The OPL and level must belong to the same site',
+        );
+      }
 
       const oplLevels = this.oplLevelsRepository.create({
-        siteId: opl.siteId ?? level.siteId,
+        siteId: opl.siteId,
         oplId: createOplLevelsDTO.oplId,
         levelId: createOplLevelsDTO.levelId,
       });
@@ -48,28 +56,58 @@ export class OplLevelsService {
 
   async findOplMstrByLevelId(levelId: number): Promise<any[]> {
     try {
+      const level = await this.levelRepository.findOne({
+        where: { id: levelId, deletedAt: IsNull() },
+      });
+      if (!level) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+
       const oplLevels = await this.oplLevelsRepository.find({
-        where: { levelId, deletedAt: null },
-        relations: ['opl'],
+        where: { levelId, deletedAt: IsNull() },
       });
 
       if (!oplLevels || oplLevels.length === 0) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPLLEVELS);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.OPLLEVELS,
+        );
       }
 
-      const oplIds = oplLevels.map(oplLevel => oplLevel.opl?.id).filter(id => id != null);
-      
-      if (oplIds.length === 0) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR); 
+      const relationOplIds = [
+        ...new Set(
+          oplLevels
+            .filter(
+              (oplLevel) =>
+                oplLevel.siteId == null ||
+                Number(oplLevel.siteId) === Number(level.siteId),
+            )
+            .map((oplLevel) => oplLevel.oplId),
+        ),
+      ];
+
+      if (relationOplIds.length === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
       }
 
       const opls = await this.oplMstrRepository.find({
-        where: { id: In(oplIds), deletedAt: null }
+        where: {
+          id: In(relationOplIds),
+          siteId: level.siteId,
+          deletedAt: IsNull(),
+        },
       });
 
+      const oplIds = opls.map((opl) => opl.id);
+      if (oplIds.length === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+
       const details = await this.oplDetailsRepository.find({
-        where: { oplId: In(oplIds) },
-        order: { order: 'ASC' }
+        where: [
+          { oplId: In(oplIds), siteId: level.siteId, deletedAt: IsNull() },
+          { oplId: In(oplIds), siteId: IsNull(), deletedAt: IsNull() },
+        ],
+        order: { order: 'ASC' },
       });
 
       // Update direct usage counters for OPLs accessed from menu
@@ -78,16 +116,27 @@ export class OplLevelsService {
       }
 
       const oplLevelMap = new Map();
-      oplLevels.forEach(oplLevel => {
-        if (oplLevel.opl?.id) {
-          oplLevelMap.set(oplLevel.opl.id, oplLevel.id);
+      oplLevels.forEach((oplLevel) => {
+        if (oplIds.includes(oplLevel.oplId)) {
+          oplLevelMap.set(oplLevel.oplId, oplLevel.id);
         }
       });
 
-      return opls.map(opl => ({
+      return opls.map((opl) => ({
         ...opl,
         oplLevelId: oplLevelMap.get(opl.id),
-        details: details.filter(detail => detail.oplId === opl.id)
+        details: details.filter((detail) => detail.oplId === opl.id),
+        levels: [
+          {
+            oplLevelId: oplLevelMap.get(opl.id),
+            id: level.id,
+            name: level.name,
+            description: level.description,
+            levelMachineId: level.levelMachineId,
+            level: level.level,
+            superiorId: level.superiorId,
+          },
+        ],
       }));
     } catch (exception) {
       HandleException.exception(exception);
@@ -100,9 +149,11 @@ export class OplLevelsService {
         where: { id },
       });
       if (!oplLevels) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPLLEVELS);
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.OPLLEVELS,
+        );
       }
-      
+
       oplLevels.deletedAt = new Date();
       await this.oplLevelsRepository.save(oplLevels);
     } catch (exception) {
@@ -124,7 +175,7 @@ export class OplLevelsService {
         .update(OplMstr)
         .set({
           directUsageCount: () => 'COALESCE(direct_usage_count, 0) + 1',
-          lastUsedAt: currentTime
+          lastUsedAt: currentTime,
         })
         .whereInIds(oplIds)
         .execute();
