@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, IsNull, QueryFailedError, Repository } from 'typeorm';
 import { OplMstr } from './entities/oplMstr.entity';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
 import { UpdateOplMstrDTO } from './models/dto/updateOplMstr.dto';
@@ -11,12 +11,13 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
-import { LevelEntity } from '../level/entities/level.entity';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 import { OplMasterPersistence } from './opl-master.persistence';
 
 @Injectable()
 export class OplMstrService {
+  private readonly logger = new Logger(OplMstrService.name);
+
   constructor(
     @InjectRepository(OplMstr)
     private readonly oplRepository: Repository<OplMstr>,
@@ -103,17 +104,17 @@ export class OplMstrService {
         .leftJoin(
           OplLevelsEntity,
           'oplLevel',
-          `oplLevel.oplId = opl.id
-            AND oplLevel.deletedAt IS NULL
-            AND (oplLevel.siteId IS NULL OR oplLevel.siteId = :siteId)`,
+          [
+            'oplLevel.oplId = opl.id',
+            'oplLevel.deletedAt IS NULL',
+            '(oplLevel.siteId IS NULL OR oplLevel.siteId = :siteId)',
+          ].join(' AND '),
           { siteId },
         )
         .leftJoin(
-          LevelEntity,
+          'oplLevel.level',
           'level',
-          `level.id = oplLevel.levelId
-            AND level.deletedAt IS NULL
-            AND level.siteId = :siteId`,
+          'level.deletedAt IS NULL AND level.siteId = :siteId',
           { siteId },
         )
         .where('opl.siteId = :siteId', { siteId })
@@ -142,6 +143,26 @@ export class OplMstrService {
 
       return await this.attachDetailsAndLevels(opls, siteId);
     } catch (exception) {
+      if (exception instanceof QueryFailedError) {
+        const driverError = exception.driverError as {
+          code?: string;
+          sqlState?: string;
+          sqlMessage?: string;
+        };
+        // Keep the underlying SQL cause in server logs, not in the API response.
+        // Bound search parameters are intentionally omitted.
+        this.logger.error(
+          {
+            message: 'OPL search database query failed',
+            siteId,
+            code: driverError.code,
+            sqlState: driverError.sqlState,
+            detail: driverError.sqlMessage ?? exception.message,
+            sql: exception.query,
+          },
+          exception.stack,
+        );
+      }
       HandleException.exception(exception);
     }
   };
