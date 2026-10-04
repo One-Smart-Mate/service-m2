@@ -1,15 +1,39 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MinLength, Matches, MaxLength } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MinLength,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 
 export class FastLoginDTO {
   @ApiProperty({
+    description: 'Active site shared by the actor and target user',
+    required: false,
+  })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  siteId?: number;
+
+  @ApiProperty({
     description: 'The password of the user',
     example: 'AaDb',
   })
-  @IsString({ message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
-  @MinLength(4, { message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
-  @MaxLength(4, { message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters })
+  @IsString({
+    message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters,
+  })
+  @MinLength(4, {
+    message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters,
+  })
+  @MaxLength(4, {
+    message: stringConstants.passwordMustBeLongerThanOrEqualTo4Characters,
+  })
   fastPassword: string;
 
   @ApiProperty({
@@ -20,7 +44,8 @@ export class FastLoginDTO {
   @IsOptional()
   @IsString()
   @Matches(/^([A-Z][a-zA-Z]*\/[A-Za-z_\/\-]+|UTC|GMT[+-]?\d{1,2}(:\d{2})?)$/, {
-    message: 'timezone must be a valid IANA timezone format (e.g., America/Mexico_City, UTC, GMT+5)',
+    message:
+      'timezone must be a valid IANA timezone format (e.g., America/Mexico_City, UTC, GMT+5)',
   })
   timezone?: string;
 
@@ -45,4 +70,4 @@ export class FastLoginDTO {
     'app',
   ])
   platform: string = stringConstants.OS_WEB;
-} 
+}

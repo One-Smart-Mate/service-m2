@@ -12,4 +12,5 @@ export interface AuthTokenPayload {
   sessionType: typeof PRIMARY_SESSION | typeof FAST_SESSION;
   jti: string;
   actorId?: number;
+  fastSiteId?: number;
 }

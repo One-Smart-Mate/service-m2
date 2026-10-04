@@ -5,8 +5,7 @@ import { PositionEntity } from './entities/position.entity';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
 import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
-import { LevelService } from '../level/level.service';
-import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
+import { PositionPersistence } from './position.persistence';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
@@ -18,9 +17,7 @@ export class PositionService {
   constructor(
     @InjectRepository(PositionEntity)
     private readonly positionRepository: Repository<PositionEntity>,
-    @InjectRepository(UsersPositionsEntity)
-    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
-    private readonly levelService: LevelService,
+    private readonly positionPersistence: PositionPersistence,
   ) {}
 
   findAll = async () => {
@@ -83,7 +80,18 @@ export class PositionService {
       return await this.positionRepository
         .createQueryBuilder('position')
         .innerJoin('users_positions', 'up', 'up.position_id = position.id')
+        .innerJoin(
+          'user_has_sites',
+          'membership',
+          'membership.user_id = up.user_id AND membership.site_id = position.site_id',
+        )
+        .innerJoin('sites', 'site', 'site.id = position.site_id')
         .where('up.user_id = :userId', { userId })
+        .andWhere('up.deleted_at IS NULL')
+        .andWhere('position.deleted_at IS NULL')
+        .andWhere('membership.status = :active AND membership.deleted_at IS NULL', { active: 'A' })
+        .andWhere('site.status = :active AND site.deleted_at IS NULL', { active: 'A' })
+        .distinct(true)
         .orderBy('position.order', 'ASC')
         .getMany();
     } catch (exception) {
@@ -106,40 +114,7 @@ export class PositionService {
 
   create = async (createPositionDto: CreatePositionDto) => {
     try {
-      const lastLevel = await this.levelService.findLastLevelFromNode(createPositionDto.levelId);
-      createPositionDto.areaId = lastLevel.area_id;
-      createPositionDto.areaName = lastLevel.area_name;
-
-      // Found existing positions for the same site
-      const existingPositions = await this.positionRepository.find({
-        where: { siteId: createPositionDto.siteId },
-        order: { order: 'DESC' },
-        take: 1
-      });
-
-      // Assign the next order number
-      const nextOrder = existingPositions.length > 0 ? existingPositions[0].order + 1 : 1;
-      createPositionDto.order = nextOrder;
-
-      const position = this.positionRepository.create({
-        ...createPositionDto,
-        createdAt: new Date(),
-      });
-
-      const savedPosition = await this.positionRepository.save(position);
-
-      if (createPositionDto.userIds) {
-        const userPositions = createPositionDto.userIds.map((userId) => {
-          const userPosition = this.usersPositionsRepository.create({
-            user: { id: userId }, 
-            position: savedPosition,
-          });
-          return userPosition;
-        });
-        await this.usersPositionsRepository.save(userPositions); 
-      }
-
-      return savedPosition;
+      return await this.positionPersistence.create(createPositionDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -147,32 +122,7 @@ export class PositionService {
 
   update = async (updatePositionDto: UpdatePositionDto) => {
     try {
-      const position = await this.positionRepository.findOneBy({ id: updatePositionDto.id });
-      if (!position) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-      }
-
-      const lastLevel = await this.levelService.findLastLevelFromNode(updatePositionDto.levelId);
-      updatePositionDto.areaId = lastLevel.area_id;
-      updatePositionDto.areaName = lastLevel.area_name;
-
-      Object.assign(position, updatePositionDto);
-      position.updatedAt = new Date();
-
-      const updatedPosition = await this.positionRepository.save(position);
-
-      if (updatePositionDto.userIds) {
-        await this.usersPositionsRepository.delete({ position: updatedPosition });
-        const userPositions = updatePositionDto.userIds.map((userId) => {
-          return this.usersPositionsRepository.create({
-            user: { id: userId },
-            position: updatedPosition,
-          });
-        });
-        await this.usersPositionsRepository.save(userPositions); 
-      }
-
-      return updatedPosition;
+      return await this.positionPersistence.update(updatePositionDto);
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -1,4 +1,4 @@
-import { In, Not, Repository, DataSource } from 'typeorm';
+import { In, IsNull, Not, Repository, DataSource } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
@@ -38,6 +38,8 @@ import { UserUpdatePersistence } from './user-update.persistence';
 import { PasswordResetPersistence } from './password-reset.persistence';
 import { UserLogoutPersistence } from './user-logout.persistence';
 import { UserAdministrationActor, UserAdministrationPolicy } from 'src/common/auth/user-administration.policy';
+import { PositionEntity } from '../position/entities/position.entity';
+import { getActiveSiteMemberships } from 'src/common/auth/active-site-membership.policy';
 
 @Injectable()
 export class UsersService {
@@ -114,8 +116,25 @@ export class UsersService {
 
   findUsersByPositionId = async (positionId: number) => {
     try {
+      const position = await this.dataSource.getRepository(PositionEntity).findOne({
+        where: { id: positionId, deletedAt: IsNull() },
+      });
+      if (!position) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
+      }
+      if (!position.siteId) return [];
+      const siteId = Number(position.siteId);
       const users = await this.userRepository.find({
-        where: { usersPositions: { position: { id: positionId } } },
+        where: {
+          status: stringConstants.activeStatus,
+          deletedAt: IsNull(),
+          usersPositions: { position: { id: positionId }, deletedAt: IsNull() },
+          userHasSites: {
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+            site: { id: siteId, status: stringConstants.activeStatus, deletedAt: IsNull() },
+          },
+        },
         relations: { userRoles: { role: true }, usersPositions: { position: true } },
       });
 
@@ -127,10 +146,12 @@ export class UsersService {
           id: userRole.role.id,
           name: userRole.role.name,
         })),
-        positions: user.usersPositions.map((usersPosition) => ({
-          id: usersPosition.position.id,
-          name: usersPosition.position.name,
-        })),
+        positions: user.usersPositions
+          .filter((assignment) =>
+            !assignment.deletedAt && assignment.position &&
+            !assignment.position.deletedAt && Number(assignment.position.siteId) === siteId,
+          )
+          .map(({ position }) => ({ id: position.id, name: position.name })),
       }));
 
       return transformedUsers;
@@ -160,7 +181,11 @@ export class UsersService {
       user.resetCodeExpiration = new Date(
         Date.now() + UsersService.RESET_CODE_TTL_MS,
       );
-      await this.userRepository.save(user);
+      const result = await this.userRepository.update(
+        { id: user.id, email: normalizedEmail },
+        { resetCode: user.resetCode, resetCodeExpiration: user.resetCodeExpiration },
+      );
+      if (result.affected === 0) return;
 
       if (!email.endsWith('@fakeosm.com')) {
         await this.mailService.sendResetPasswordCode(user, resetCode, translation);
@@ -763,26 +788,37 @@ export class UsersService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
   
+      const tokenFields: Partial<Pick<UserEntity,
+        'androidToken' | 'androidVersion' | 'iosToken' | 'iosVersion' |
+        'webToken' | 'webVersion' | 'updatedAt'
+      >> = { updatedAt: new Date() };
+
       switch (setAppTokenDTO.osName) {
         case stringConstants.OS_ANDROID:
-          user.androidToken = setAppTokenDTO.appToken;
-          user.androidVersion = setAppTokenDTO.osVersion;
+          tokenFields.androidToken = setAppTokenDTO.appToken;
+          tokenFields.androidVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_IOS:
-          user.iosToken = setAppTokenDTO.appToken;
-          user.iosVersion = setAppTokenDTO.osVersion;
+          tokenFields.iosToken = setAppTokenDTO.appToken;
+          tokenFields.iosVersion = setAppTokenDTO.osVersion;
           break;
         case stringConstants.OS_WEB:
-          user.webToken = setAppTokenDTO.appToken;
-          user.webVersion = setAppTokenDTO.osVersion;
+          tokenFields.webToken = setAppTokenDTO.appToken;
+          tokenFields.webVersion = setAppTokenDTO.osVersion;
           break;
         default:
           throw new Error('OS no reconocido');
       }
   
-      user.updatedAt = new Date();
-  
-      return await this.userRepository.save(user);
+      const result = await this.userRepository.update(user.id, tokenFields);
+      if (result.affected === 0) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      const updatedUser = await this.userRepository.findOneBy({ id: user.id });
+      if (!updatedUser) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      return updatedUser;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -862,8 +898,15 @@ export class UsersService {
   }
   findPositionsByUserId = async (userId: number) => {
     try {
+      const user = await this.findByIdWithSites(userId);
+      const siteIds = getActiveSiteMemberships(user).map(({ site }) => Number(site.id));
+      if (siteIds.length === 0) return [];
       const userPositions = await this.usersPositionsRepository.find({
-        where: { user: { id: userId } },
+        where: {
+          user: { id: userId },
+          deletedAt: IsNull(),
+          position: { siteId: In(siteIds), deletedAt: IsNull() },
+        },
         relations: { position: true },
       });
   
@@ -951,8 +994,14 @@ export class UsersService {
   findOneByFastPassword = (fastPassword: string, siteId: number) => {
     return this.userRepository.findOne({
       where: {
+        status: stringConstants.activeStatus,
+        deletedAt: IsNull(),
         fastPasswordDigest: digestFastPassword(fastPassword),
-        userHasSites: { site: { id: siteId } },
+        userHasSites: {
+          status: stringConstants.activeStatus,
+          deletedAt: IsNull(),
+          site: { id: siteId, status: stringConstants.activeStatus, deletedAt: IsNull() },
+        },
       },
       relations: { userHasSites: { site: true } },
     });

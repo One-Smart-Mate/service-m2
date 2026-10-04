@@ -27,6 +27,7 @@ import {
   PRIMARY_SESSION,
 } from './models/auth-token.payload';
 import { randomUUID } from 'crypto';
+import { getActiveSiteMemberships } from 'src/common/auth/active-site-membership.policy';
 import {
   AuthSessionService,
   CreateAuthSession,
@@ -160,18 +161,26 @@ export class AuthService {
   ): Promise<UserResponse> => {
     try {
       const authUser = await this.usersSevice.findByIdWithSites(userId);
-      if (!authUser || !authUser.userHasSites?.length) {
+      const actorMemberships = getActiveSiteMemberships(authUser);
+      const actorMembership = data.siteId !== undefined
+        ? actorMemberships.find(({ site }) => Number(site.id) === data.siteId)
+        : actorMemberships[0];
+      if (!actorMembership) {
         throw new UnauthorizedException();
       }
 
-      const siteId = authUser.userHasSites[0].site.id;
+      const siteId = Number(actorMembership.site.id);
 
       const user = await this.usersSevice.findOneByFastPassword(
         data.fastPassword,
         siteId,
       );
 
-      if (!user) {
+      const targetMemberships = getActiveSiteMemberships(user);
+      const targetMembership = targetMemberships.find(
+        ({ site }) => Number(site.id) === siteId,
+      );
+      if (!targetMembership) {
         throw new UnauthorizedException();
       }
 
@@ -206,6 +215,7 @@ export class AuthService {
         timezone: data.timezone,
         sessionType: FAST_SESSION,
         actorId: userId,
+        fastSiteId: siteId,
       };
 
       const access_token = await this.issueToken(
@@ -215,17 +225,23 @@ export class AuthService {
       );
 
       const companyName = await this.siteService.getCompanyName(
-        user.userHasSites[0].site.companyId,
+        targetMembership.site.companyId,
       );
 
-      const site = user.userHasSites[0].site;
+      const site = targetMembership.site;
       const dueDate = new Date(site.dueDate);
       const today = new Date();
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       return new UserResponse(
-        user,
+        {
+          ...user,
+          userHasSites: [
+            targetMembership,
+            ...targetMemberships.filter(({ site }) => Number(site.id) !== siteId),
+          ],
+        },
         access_token,
         roles,
         companyName,

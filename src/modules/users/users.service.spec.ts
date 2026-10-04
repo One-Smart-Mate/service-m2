@@ -23,6 +23,7 @@ describe('UsersService', () => {
     findOne: jest.fn(),
     findOneBy: jest.fn(),
     save: jest.fn(),
+    update: jest.fn(),
   } as unknown as Repository<UserEntity>;
 
   const mailService = {
@@ -443,7 +444,11 @@ describe('UsersService', () => {
         name: 'User',
       } as UserEntity;
       jest.mocked(userRepository.findOneBy).mockResolvedValue(user);
-      jest.mocked(userRepository.save).mockResolvedValue(user);
+      jest.mocked(userRepository.update).mockResolvedValue({
+        affected: 1,
+        raw: {},
+        generatedMaps: [],
+      });
       jest.mocked(mailService.sendResetPasswordCode).mockResolvedValue();
 
       await service.sendCodeToEmail(' USER@example.com ');

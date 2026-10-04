@@ -9,6 +9,7 @@ import { UsersModule } from '../users/users.module';
 import { SiteEntity } from '../site/entities/site.entity';
 import { LevelEntity } from '../level/entities/level.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { PositionPersistence } from './position.persistence';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { UserEntity } from '../users/entities/user.entity';
     UsersModule
   ],
   controllers: [PositionController],
-  providers: [PositionService],
+  providers: [PositionService, PositionPersistence],
   exports: [PositionService],
 })
 export class PositionModule {}

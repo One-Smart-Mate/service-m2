@@ -10,8 +10,9 @@ import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from 'src/common/decorators/public.decorator';
 import { AuthSessionService } from 'src/modules/auth-session/auth-session.service';
 import { UsersService } from 'src/modules/users/users.service';
-import { AuthTokenPayload } from '../models/auth-token.payload';
+import { AuthTokenPayload, FAST_SESSION } from '../models/auth-token.payload';
 import { stringConstants } from 'src/utils/string.constant';
+import { hasActiveSiteMembership } from 'src/common/auth/active-site-membership.policy';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -43,12 +44,15 @@ export class AuthGuard implements CanActivate {
         throw new UnauthorizedException();
       }
 
+      const isFastSession = payload.sessionType === FAST_SESSION;
+      const loadUser = (id: number) =>
+        isFastSession
+          ? this.usersService.findByIdWithSites(id)
+          : this.usersService.findById(id);
       const [sessionActive, user, actor] = await Promise.all([
         this.authSessionService.isSessionActive(payload.jti, payload.id),
-        this.usersService.findById(payload.id),
-        payload.actorId
-          ? this.usersService.findById(payload.actorId)
-          : Promise.resolve(null),
+        loadUser(payload.id),
+        payload.actorId ? loadUser(payload.actorId) : Promise.resolve(null),
       ]);
       const isActive = (candidate: { status?: string }) =>
         candidate?.status !== stringConstants.inactiveStatus &&
@@ -59,6 +63,19 @@ export class AuthGuard implements CanActivate {
       }
       if (payload.actorId && (!actor || !isActive(actor))) {
         throw new UnauthorizedException();
+      }
+      if (
+        isFastSession &&
+        (!Number.isSafeInteger(payload.fastSiteId) ||
+          payload.fastSiteId <= 0 ||
+          !Number.isSafeInteger(payload.actorId) ||
+          payload.actorId <= 0 ||
+          !hasActiveSiteMembership(user, payload.fastSiteId) ||
+          !hasActiveSiteMembership(actor, payload.fastSiteId))
+      ) {
+        throw new UnauthorizedException(
+          'Fast session site access is no longer active',
+        );
       }
 
       request['user'] = payload;
