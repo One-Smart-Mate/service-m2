@@ -19,6 +19,7 @@ import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.ent
 import { CiltSequencesExecutionsEvidencesModule } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 import { CardEntity } from '../card/entities/card.entity';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CiltExecutionPersistence } from './cilt-execution.persistence';
 
 @Module({
   imports: [
@@ -42,7 +43,7 @@ import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities
     CiltSequencesExecutionsEvidencesModule,
   ],
   controllers: [CiltSequencesExecutionsController],
-  providers: [CiltSequencesExecutionsService, CustomLoggerService],
+  providers: [CiltSequencesExecutionsService, CiltExecutionPersistence, CustomLoggerService],
   exports: [CiltSequencesExecutionsService],
 })
 export class CiltSequencesExecutionsModule {}

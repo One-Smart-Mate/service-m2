@@ -1,9 +1,11 @@
+import { sanitizeExecutionRelations } from '../../CiltSequencesExecutions/cilt-execution-relations.policy';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull, Between } from 'typeorm';
 import { CiltSequencesExecutionsEntity } from 'src/modules/CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CiltSequencesEntity } from 'src/modules/ciltSequences/entities/ciltSequences.entity';
 import { CiltMstrPositionLevelsEntity } from 'src/modules/ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CiltExecutionPersistence } from '../../CiltSequencesExecutions/cilt-execution.persistence';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 export interface ScheduleDetails {
@@ -23,6 +25,7 @@ export class CiltExecutionService {
     @InjectRepository(CiltSequencesExecutionsEntity)
     private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
     private readonly logger: CustomLoggerService,
+    private readonly executionPersistence: CiltExecutionPersistence,
   ) {}
 
   /**
@@ -141,7 +144,7 @@ export class CiltExecutionService {
     });
 
     this.logger.logProcess('RETRIEVED CILT EXECUTIONS', { count: executions.length, userId });
-    return executions;
+    return executions.map(sanitizeExecutionRelations);
   }
 
   /**
@@ -173,92 +176,40 @@ export class CiltExecutionService {
     scheduleDetails?: ScheduleDetails,
     levelPaths?: Array<{ ciltMstrId: number; levelId: number; route: string }>
   ): Promise<void> {
-    const existing = await this.ciltSequencesExecutionsRepository.findOne({
-      where: {
-        ciltId: cpl.ciltMstrId,
-        ciltSecuenceId: seq.id,
-        userId,
-        secuenceSchedule: executionDate,
-        deletedAt: IsNull(),
-      }
-    });
+    const route = levelPaths?.find(lp => lp.ciltMstrId === cpl.ciltMstrId && lp.levelId === cpl.levelId)?.route;
 
-    if (existing) {
-      if (existing.secuenceStart && existing.secuenceStop) {
-        this.logger.logProcess('SKIPPING COMPLETED EXECUTION', { 
-          id: existing.id, 
-          secuenceStart: existing.secuenceStart, 
-          secuenceStop: existing.secuenceStop 
-        });
-        return;
-      }
-      
-      await this.ciltSequencesExecutionsRepository.save(existing);
-      this.logger.logProcess('UPDATED CILT SEQUENCES EXECUTION', { id: existing.id });
-    } else {
-      // Get the next execution ID in real time
-      const nextSiteExecutionId = await this.getNextSiteExecutionId(cpl.siteId);
-      const route = levelPaths?.find(lp => lp.levelId === cpl.levelId)?.route;
+    const dto: Partial<CiltSequencesExecutionsEntity> = {
+      siteId: cpl.siteId,
+      positionId: cpl.positionId,
+      ciltId: cpl.ciltMstrId,
+      ciltSecuenceId: seq.id,
+      userId,
+      userWhoExecutedId: userId,
+      secuenceSchedule: executionDate,
+      standardOk: seq.standardOk,
+      referencePoint: seq.referencePoint,
+      secuenceList: seq.secuenceList,
+      secuenceColor: seq.secuenceColor,
+      ciltTypeId: seq.ciltTypeId,
+      ciltTypeName: seq.ciltTypeName,
+      referenceOplSopId: seq.referenceOplSopId && seq.referenceOplSopId > 0 ? seq.referenceOplSopId : null,
+      remediationOplSopId: seq.remediationOplSopId && Number(seq.remediationOplSopId) > 0 ? Number(seq.remediationOplSopId) : null,
+      toolsRequiered: seq.toolsRequired,
+      selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
+      status: 'A',
+      stoppageReason: Boolean(seq.stoppageReason),
+      machineStopped: Boolean(seq.machineStopped),
+      duration: seq.standardTime,
+      levelId: cpl.levelId,
+      route,
+      allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
+      allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
+      toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
+      toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
+      allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
+      specialWarning: seq.specialWarning,
+    };
 
-      const dto: Partial<CiltSequencesExecutionsEntity> = {
-        siteId: cpl.siteId,
-        siteExecutionId: nextSiteExecutionId,
-        positionId: cpl.positionId,
-        ciltId: cpl.ciltMstrId,
-        ciltSecuenceId: seq.id,
-        userId,
-        userWhoExecutedId: userId,
-        secuenceSchedule: executionDate,
-        standardOk: seq.standardOk,
-        referencePoint: seq.referencePoint,
-        secuenceList: seq.secuenceList,
-        secuenceColor: seq.secuenceColor,
-        ciltTypeId: seq.ciltTypeId,
-        ciltTypeName: seq.ciltTypeName,
-        referenceOplSopId: seq.referenceOplSopId && seq.referenceOplSopId > 0 ? seq.referenceOplSopId : null,
-        remediationOplSopId: seq.remediationOplSopId && Number(seq.remediationOplSopId) > 0 ? Number(seq.remediationOplSopId) : null,
-        toolsRequiered: seq.toolsRequired,
-        selectableWithoutProgramming: Boolean(seq.selectableWithoutProgramming),
-        status: 'A',
-        stoppageReason: Boolean(seq.stoppageReason),
-        machineStopped: Boolean(seq.machineStopped),
-        duration: seq.standardTime,
-        levelId: cpl.levelId,
-        route,
-        allowExecuteBefore: Boolean(scheduleDetails?.allowExecuteBefore),
-        allowExecuteBeforeMinutes: scheduleDetails?.allowExecuteBeforeMinutes || null,
-        toleranceBeforeMinutes: scheduleDetails?.toleranceBeforeMinutes || null,
-        toleranceAfterMinutes: scheduleDetails?.toleranceAfterMinutes || null,
-        allowExecuteAfterDue: Boolean(scheduleDetails?.allowExecuteAfterDue),
-        specialWarning: seq.specialWarning,
-      };
-
-      const created = await this.ciltSequencesExecutionsRepository.save(dto as CiltSequencesExecutionsEntity);
-      this.logger.logProcess('CREATED CILT SEQUENCES EXECUTION', { id: created.id });
-    }
+    await this.executionPersistence.create(dto, true);
   }
-
-  /**
-   * Search for the last site_execution_id for a specific site at the time of insertion
-   */
-  private async getNextSiteExecutionId(siteId: number): Promise<number> {
-    this.logger.logProcess('GETTING NEXT SITE EXECUTION ID', { siteId });
-    
-    // Search for the last site_execution_id for this site
-    const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
-      where: { siteId },
-      order: { siteExecutionId: 'DESC' },
-      select: ['siteExecutionId']
-    });
-    
-    const nextId = lastExecution ? lastExecution.siteExecutionId + 1 : 1;
-    
-    this.logger.logProcess('CALCULATED NEXT SITE EXECUTION ID', { 
-      siteId, 
-      lastId: lastExecution?.siteExecutionId || 0,
-      nextId 
-    });
-    
-    return nextId;
-  }
-} 
+}

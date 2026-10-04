@@ -98,7 +98,7 @@ export class FileUploadService {
 
       const jsonData = await parseUserImportWorkbook(file.buffer);
 
-      const result = await this.validateAndTransformUsersData(jsonData, siteId);
+      const result = await this.validateAndTransformUsersData(jsonData, siteId, requesterId);
 
       return {
         message:
@@ -115,6 +115,7 @@ export class FileUploadService {
   private validateAndTransformUsersData = async (
     data: ImportedUserRow[],
     siteId: number,
+    requesterId: number,
   ) => {
     const existingEmailsInFile = new Set();
     const usersToCreate: CreateUsersDTO[] = [];
@@ -251,6 +252,7 @@ export class FileUploadService {
     }
 
     const savedUsers = await this.userImportPersistence.persist({
+      actor: await this.userService.getAdministrationActor(requesterId),
       newUsers: usersToCreate,
       existingAssignments,
       rolesByEmail: roleAssignments,

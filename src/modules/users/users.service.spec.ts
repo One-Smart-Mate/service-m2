@@ -74,6 +74,7 @@ describe('UsersService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(service, 'getAdministrationActor').mockResolvedValue({ id: 1, roles: ['ih_sis_admin'], siteIds: null });
   });
 
   describe('findOneByEmail', () => {
@@ -120,7 +121,7 @@ describe('UsersService', () => {
           uploadCardEvidenceWithDataNet: 0,
           roles: [1, 999],
           translation: 'ES',
-        }),
+        }, 1),
       ).rejects.toBeInstanceOf(NotFoundCustomException);
       expect(userCreationPersistence.persist).not.toHaveBeenCalled();
     });
@@ -161,7 +162,7 @@ describe('UsersService', () => {
         roles: [1],
         status: stringConstants.activeStatus,
         translation: stringConstants.LANG_ES,
-      });
+      }, 1);
 
       expect(generateFastPassword).not.toHaveBeenCalled();
       expect(userUpdatePersistence.persist).toHaveBeenCalledWith(
@@ -197,7 +198,7 @@ describe('UsersService', () => {
           roles: [1, 999],
           status: stringConstants.activeStatus,
           translation: stringConstants.LANG_ES,
-        }),
+        }, 1),
       ).rejects.toBeInstanceOf(NotFoundCustomException);
       expect(userUpdatePersistence.persist).not.toHaveBeenCalled();
     });
@@ -218,7 +219,7 @@ describe('UsersService', () => {
         email: ' UPDATED@example.com ',
         phoneNumber: '521234567890',
         translation: stringConstants.LANG_EN,
-      });
+      }, 1);
 
       expect(userUpdatePersistence.persistPartial).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -253,7 +254,7 @@ describe('UsersService', () => {
       await service.updateUserPartial({
         id: 7,
         password: 'new-password',
-      });
+      }, 1);
 
       const input = jest.mocked(userUpdatePersistence.persistPartial).mock
         .calls[0][0];
@@ -330,6 +331,7 @@ describe('UsersService', () => {
           2, 3,
         ]);
         expect(userUpdatePersistence.persistPartial).toHaveBeenCalledWith({
+          actor: { id: user.id, roles: [], siteIds: [] },
           userId: user.id,
           update: {},
           fastPasswordDigest: expect.any(String),

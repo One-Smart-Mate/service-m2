@@ -120,6 +120,7 @@ describe('OPL read tenant isolation', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as never,
     );
 
     const result = await service.searchByTitleOrLevelName(7, 'Hydraulic');

@@ -1,15 +1,20 @@
 import {
   BadGatewayException,
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
-  CardEvidenceUploadType,
-} from './models/dto/upload-card-evidence.dto';
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { createHash } from 'crypto';
+import { CardEvidenceUploadType } from './models/dto/upload-card-evidence.dto';
 
 export interface UploadedCardEvidence {
   url: string;
@@ -36,7 +41,10 @@ export class R2CardEvidenceService {
     const accessKeyId = this.required('CLOUDFLARE_R2_ACCESS_KEY');
     const secretAccessKey = this.required('CLOUDFLARE_R2_SECRET_KEY');
     this.bucket = this.required('CLOUDFLARE_R2_BUCKET_NAME');
-    this.publicUrl = this.required('CLOUDFLARE_R2_PUBLIC_URL').replace(/\/+$/, '');
+    this.publicUrl = this.required('CLOUDFLARE_R2_PUBLIC_URL').replace(
+      /\/+$/,
+      '',
+    );
     this.client = new S3Client({
       region: 'auto',
       endpoint: this.required('CLOUDFLARE_R2_ENDPOINT').replace(/\/+$/, ''),
@@ -51,15 +59,14 @@ export class R2CardEvidenceService {
     evidenceType: CardEvidenceUploadType,
     file: Express.Multer.File,
   ): Promise<UploadedCardEvidence> {
-    const expectedMedia = evidenceType.slice(0, 2);
-    const fileMedia = this.mediaCode(file.mimetype);
-    if (expectedMedia !== fileMedia) {
-      throw new BadRequestException('Evidence type does not match the uploaded file');
-    }
-    const folder = this.folderFor(fileMedia);
-    const extension = this.extensionFor(file.mimetype);
-    // Stable keys make background retries idempotent and avoid duplicate objects.
-    const key = `site_${siteId}/cards/${cardUUID}/${folder}/${evidenceType}_${evidenceId}${extension}`;
+    const key = this.buildKey(
+      siteId,
+      cardUUID,
+      evidenceId,
+      evidenceType,
+      file.mimetype,
+    );
+    const hash = createHash('sha256').update(file.buffer).digest('hex');
     try {
       await this.client.send(
         new PutObjectCommand({
@@ -67,26 +74,70 @@ export class R2CardEvidenceService {
           Key: key,
           Body: file.buffer,
           ContentType: file.mimetype,
-          ContentLength: file.size,
+          ContentLength: file.buffer.length,
           CacheControl: 'public, max-age=31536000, immutable',
+          IfNoneMatch: '*',
+          Metadata: { sha256: hash },
         }),
       );
     } catch (error) {
-      this.logger.error(
-        `Cloudflare R2 upload failed for site ${siteId}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      throw new BadGatewayException('Evidence storage is temporarily unavailable');
+      const status = error?.$metadata?.httpStatusCode;
+      if (
+        status === 412 ||
+        status === 409 ||
+        error?.name === 'PreconditionFailed'
+      ) {
+        const object = await this.client
+          .send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }))
+          .catch(() => {
+            throw new BadGatewayException(
+              'Evidence storage is temporarily unavailable',
+            );
+          });
+        if (
+          object.Metadata?.sha256 !== hash ||
+          object.ContentType !== file.mimetype ||
+          object.ContentLength !== file.buffer.length
+        ) {
+          throw new ConflictException('Evidence is immutable');
+        }
+      } else {
+        this.logger.error(
+          `Cloudflare R2 upload failed for site ${siteId}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+        throw new BadGatewayException(
+          'Evidence storage is temporarily unavailable',
+        );
+      }
     }
     const token = Buffer.from(key, 'utf8').toString('base64url');
     return {
-      // Store a service route instead of an R2 URL. Mobile/web clients never
-      // communicate with Cloudflare directly.
       url: `/card/evidence/${siteId}/content/${token}`,
       key,
       contentType: file.mimetype,
-      size: file.size,
+      size: file.buffer.length,
     };
+  }
+
+  buildKey(
+    siteId: number,
+    cardUUID: string,
+    evidenceId: string,
+    evidenceType: CardEvidenceUploadType,
+    mimeType: string,
+  ): string {
+    const expectedMedia = evidenceType.slice(0, 2);
+    const fileMedia = this.mediaCode(mimeType);
+    if (expectedMedia !== fileMedia) {
+      throw new BadRequestException(
+        'Evidence type does not match the uploaded file',
+      );
+    }
+    const folder = this.folderFor(fileMedia);
+    const extension = this.extensionFor(mimeType);
+    // Stable keys make background retries idempotent and avoid duplicate objects.
+    return `site_${siteId}/cards/${cardUUID}/${folder}/${evidenceType}_${evidenceId}${extension}`;
   }
 
   async downloadCardEvidence(
@@ -125,7 +176,8 @@ export class R2CardEvidenceService {
       const object = await this.client.send(
         new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       );
-      if (!object.Body) throw new Error('Cloudflare R2 returned an empty object');
+      if (!object.Body)
+        throw new Error('Cloudflare R2 returned an empty object');
       const bytes = await object.Body.transformToByteArray();
       return {
         buffer: Buffer.from(bytes),
@@ -138,7 +190,9 @@ export class R2CardEvidenceService {
         'Cloudflare R2 download failed',
         error instanceof Error ? error.stack : undefined,
       );
-      throw new BadGatewayException('Evidence storage is temporarily unavailable');
+      throw new BadGatewayException(
+        'Evidence storage is temporarily unavailable',
+      );
     }
   }
 
@@ -171,7 +225,8 @@ export class R2CardEvidenceService {
 
   private extensionFor(mimeType: string): string {
     const extension = MIME_EXTENSIONS[mimeType];
-    if (!extension) throw new BadRequestException('Unsupported evidence file type');
+    if (!extension)
+      throw new BadRequestException('Unsupported evidence file type');
     return extension;
   }
 }

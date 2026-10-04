@@ -47,6 +47,7 @@ describe('UserImportPersistence', () => {
 
   it('writes users, site assignments and new-user roles in one transaction', async () => {
     const savedUsers = await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       newUsers: [newUserData],
       existingAssignments: [{ user: existingUser }],
       rolesByEmail: new Map([[newUser.email, role]]),
@@ -82,6 +83,7 @@ describe('UserImportPersistence', () => {
 
     await expect(
       persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
         newUsers: [newUserData],
         existingAssignments: [],
         rolesByEmail: new Map([[newUser.email, role]]),

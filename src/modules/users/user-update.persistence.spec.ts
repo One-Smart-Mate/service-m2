@@ -45,6 +45,7 @@ describe('UserUpdatePersistence', () => {
 
   it('updates roles by user id even when the email changes', async () => {
     const result = await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       userId: user.id,
       siteId: 3,
       update: { email: 'new@example.com', name: 'Updated' },
@@ -72,6 +73,7 @@ describe('UserUpdatePersistence', () => {
 
   it('preserves Fast Password and sessions when no replacement is provided', async () => {
     const result = await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       userId: user.id,
       siteId: 3,
       update: { email: user.email, name: 'Updated' },
@@ -96,6 +98,7 @@ describe('UserUpdatePersistence', () => {
 
     await expect(
       persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
         userId: user.id,
         siteId: 3,
         update: { email: user.email },
@@ -110,6 +113,7 @@ describe('UserUpdatePersistence', () => {
 
   it('revokes primary and acting sessions when credentials change', async () => {
     await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       userId: user.id,
       siteId: 3,
       update: { email: user.email, password: 'new-password-hash' },
@@ -136,6 +140,7 @@ describe('UserUpdatePersistence', () => {
     ]);
 
     const result = await persistence.persistPartial({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       userId: user.id,
       update: {
         email: 'new@example.com',
@@ -182,6 +187,7 @@ describe('UserUpdatePersistence', () => {
     ]);
 
     const result = await persistence.persistPartial({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       userId: user.id,
       update: { name: 'Updated' },
       fastPasswordDigest: 'new-fast-password-digest',

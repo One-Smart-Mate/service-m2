@@ -1,3 +1,4 @@
+import { OplAccessPersistence } from './opl-access.persistence';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OplMstr } from './entities/oplMstr.entity';
@@ -14,7 +15,7 @@ import { OplMasterPersistence } from './opl-master.persistence';
 @Module({
   imports: [TypeOrmModule.forFeature([OplMstr, OplLevelsEntity, LevelEntity, OplDetailsEntity, OplTypes, OplUserAccessEntity, UserEntity])],
   controllers: [OplMstrController],
-  providers: [OplMstrService, OplMasterPersistence],
+  providers: [OplMstrService, OplMasterPersistence, OplAccessPersistence],
   exports: [OplMstrService],
 })
 export class OplMstrModule {}

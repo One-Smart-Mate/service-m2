@@ -115,11 +115,11 @@ export class CiltQueryBuilderService {
     });
 
     const executionsWithLevelInfo = allExecutions.map(exec => {
-      const levelInfo = levelPaths.find(lp => lp.ciltMstrId === exec.ciltId);
+      const levelInfo = levelPaths.find(lp => lp.ciltMstrId === exec.ciltId && lp.levelId === exec.levelId);
       return {
         ...exec,
-        levelId: levelInfo?.levelId,
-        route: levelInfo?.route
+        levelId: exec.levelId,
+        route: exec.route ?? levelInfo?.route
       };
     });
 
@@ -232,10 +232,10 @@ export class CiltQueryBuilderService {
     levelPaths: LevelPathInfo[]
   ): CiltMasterWithSequences | null {
     const master = cpl.ciltMstr;
-    const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id);
+    const levelInfo = levelPaths.find(lp => lp.ciltMstrId === master.id && lp.levelId === cpl.levelId);
     
     const sequencesWithExecutions = (sequencesByMaster.get(master.id) ?? [])
-      .map(seq => this.buildSequenceWithExecutions(seq, executionsBySequence))
+      .map(seq => this.buildSequenceWithExecutions(seq, executionsBySequence, cpl))
       .filter(seq => seq !== null);
 
     // Only include masters that have sequences with executions
@@ -246,7 +246,7 @@ export class CiltQueryBuilderService {
     return {
       ...master,
       sequences: sequencesWithExecutions,
-      levelId: levelInfo?.levelId,
+      levelId: cpl.levelId,
       route: levelInfo?.route
     };
   }
@@ -256,10 +256,11 @@ export class CiltQueryBuilderService {
    */
   private buildSequenceWithExecutions(
     seq: CiltSequencesEntity,
-    executionsBySequence: Map<number, CiltSequencesExecutionsEntity[]>
+    executionsBySequence: Map<number, CiltSequencesExecutionsEntity[]>,
+    assignment: CiltMstrPositionLevelsEntity
   ): SequenceWithExecutions | null {
     // Get executions (already sorted by secuenceSchedule in groupSequencesAndExecutions)
-    const executions = executionsBySequence.get(seq.id) ?? [];
+    const executions = (executionsBySequence.get(seq.id) ?? []).filter(exec => exec.levelId === assignment.levelId && exec.positionId === assignment.positionId);
     
     // Exclude sequences that don't have executions
     if (executions.length === 0) {

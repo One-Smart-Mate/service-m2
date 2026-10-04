@@ -1,3 +1,4 @@
+import { OplAccessPersistence } from './opl-access.persistence';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, QueryFailedError, Repository } from 'typeorm';
@@ -32,6 +33,7 @@ export class OplMstrService {
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
     private readonly oplMasterPersistence: OplMasterPersistence,
+    private readonly oplAccessPersistence: OplAccessPersistence,
   ) {}
 
   findAll = async () => {
@@ -100,35 +102,7 @@ export class OplMstrService {
    * direct_usage_count on the OPL so the list "times used" reflects every open.
    */
   private async recordUserAccess(userId: number, opl: OplMstr): Promise<void> {
-    const now = new Date();
-    const existing = await this.oplUserAccessRepository.findOne({
-      where: { userId, oplId: opl.id },
-    });
-
-    if (existing) {
-      existing.accessCount = Number(existing.accessCount ?? 0) + 1;
-      existing.lastAccessAt = now;
-      await this.oplUserAccessRepository.save(existing);
-    } else {
-      const row = this.oplUserAccessRepository.create({
-        userId,
-        oplId: opl.id,
-        siteId: opl.siteId ?? null,
-        accessCount: 1,
-        lastAccessAt: now,
-      });
-      await this.oplUserAccessRepository.save(row);
-    }
-
-    await this.oplRepository
-      .createQueryBuilder()
-      .update(OplMstr)
-      .set({
-        directUsageCount: () => 'COALESCE(direct_usage_count, 0) + 1',
-        lastUsedAt: now,
-      })
-      .where('id = :id', { id: opl.id })
-      .execute();
+    await this.oplAccessPersistence.record(userId, opl.id);
   }
 
   /**

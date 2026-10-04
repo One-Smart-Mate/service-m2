@@ -74,8 +74,8 @@ export class UsersController {
 
   @Post('/create')
   @RequireRoles(...SITE_ADMIN_ROLES)
-  create(@Body() createUserDTO: CreateUserDTO) {
-    return this.usersService.create(createUserDTO);
+  create(@Body() createUserDTO: CreateUserDTO, @Request() req) {
+    return this.usersService.create(createUserDTO, req.user.id);
   }
 
   @Public()
@@ -146,8 +146,8 @@ export class UsersController {
     source: 'body',
     requestKey: 'id',
   })
-  update(@Body() updateUserDTO: UpdateUserDTO) {
-    return this.usersService.updateUser(updateUserDTO);
+  update(@Body() updateUserDTO: UpdateUserDTO, @Request() req) {
+    return this.usersService.updateUser(updateUserDTO, req.user.id);
   }
 
   @Put('/update-partial')
@@ -166,8 +166,8 @@ export class UsersController {
     summary: 'Update user partially (name, email, password, fastPassword)',
   })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
-  updatePartial(@Body() updateUserPartialDTO: UpdateUserPartialDTO) {
-    return this.usersService.updateUserPartial(updateUserPartialDTO);
+  updatePartial(@Body() updateUserPartialDTO: UpdateUserPartialDTO, @Request() req) {
+    return this.usersService.updateUserPartial(updateUserPartialDTO, req.user.id);
   }
 
   @Post('/app-token')

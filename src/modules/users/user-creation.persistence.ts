@@ -1,11 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, DeepPartial, IsNull } from 'typeorm';
+import { DataSource, DeepPartial } from 'typeorm';
 import {
   ValidationException,
   ValidationExceptionType,
 } from 'src/common/exceptions/types/validation.exception';
-import { AuthSessionEntity } from '../auth-session/entities/auth-session.entity';
+import {
+  UserAdministrationActor,
+  UserAdministrationPolicy,
+} from 'src/common/auth/user-administration.policy';
 import { RoleEntity } from '../roles/entities/role.entity';
 import { UserRoleEntity } from '../roles/entities/user-role.entity';
 import { SiteEntity } from '../site/entities/site.entity';
@@ -13,6 +16,7 @@ import { UserEntity } from './entities/user.entity';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
 
 export interface PersistUserCreation {
+  actor: UserAdministrationActor;
   email: string;
   newUser: DeepPartial<UserEntity> & {
     email: string;
@@ -41,12 +45,14 @@ export class UserCreationPersistence {
     input: PersistUserCreation,
   ): Promise<PersistedUserCreation> => {
     return this.dataSource.transaction(async (manager) => {
+      UserAdministrationPolicy.assertRoles(input.actor, input.roles);
+      UserAdministrationPolicy.assertSite(input.actor, input.site.id);
       let user = await manager.findOne(UserEntity, {
         where: { email: input.email },
         lock: { mode: 'pessimistic_write' },
       });
       const isNewUser = !user;
-      let fastPasswordChanged = false;
+      const fastPasswordChanged = false;
 
       if (!user) {
         user = manager.create(UserEntity, input.newUser);
@@ -61,6 +67,11 @@ export class UserCreationPersistence {
         );
         await manager.save(UserRoleEntity, userRoles);
       } else {
+        await UserAdministrationPolicy.assertTarget(
+          manager,
+          input.actor,
+          user.id,
+        );
         const alreadyAssigned = await manager.exists(UserHasSitesEntity, {
           where: {
             user: { id: user.id },
@@ -70,23 +81,6 @@ export class UserCreationPersistence {
         if (alreadyAssigned) {
           throw new ValidationException(
             ValidationExceptionType.DUPLICATED_USER,
-          );
-        }
-
-        fastPasswordChanged =
-          user.fastPasswordDigest !== input.newUser.fastPasswordDigest;
-        if (fastPasswordChanged) {
-          user.fastPasswordDigest = input.newUser.fastPasswordDigest;
-          user.updatedAt = input.createdAt;
-          user = await manager.save(UserEntity, user);
-          await manager.update(
-            AuthSessionEntity,
-            {
-              userId: user.id,
-              sessionType: 'fast',
-              revokedAt: IsNull(),
-            },
-            { revokedAt: input.createdAt },
           );
         }
       }

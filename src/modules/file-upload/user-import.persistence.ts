@@ -7,12 +7,17 @@ import { SiteEntity } from '../site/entities/site.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
 import { CreateUsersDTO } from './dto/create.users.dto';
+import {
+  UserAdministrationActor,
+  UserAdministrationPolicy,
+} from 'src/common/auth/user-administration.policy';
 
 export interface ExistingUserSiteAssignment {
   user: UserEntity;
 }
 
 export interface PersistUserImport {
+  actor: UserAdministrationActor;
   newUsers: CreateUsersDTO[];
   existingAssignments: ExistingUserSiteAssignment[];
   rolesByEmail: ReadonlyMap<string, RoleEntity>;
@@ -29,6 +34,17 @@ export class UserImportPersistence {
 
   persist = async (input: PersistUserImport): Promise<UserEntity[]> => {
     return this.dataSource.transaction(async (manager) => {
+      UserAdministrationPolicy.assertRoles(input.actor, [
+        ...input.rolesByEmail.values(),
+      ]);
+      UserAdministrationPolicy.assertSite(input.actor, input.site.id);
+      for (const { user } of input.existingAssignments) {
+        await UserAdministrationPolicy.assertTarget(
+          manager,
+          input.actor,
+          user.id,
+        );
+      }
       const newUserEntities = input.newUsers.map((user) =>
         manager.create(UserEntity, user),
       );

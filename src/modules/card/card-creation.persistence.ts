@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { assertEvidenceReceipts } from './card-evidence.policy';
+import { CardEvidenceUploadEntity } from './entities/card-evidence-upload.entity';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, DeepPartial, EntityManager } from 'typeorm';
 import {
@@ -63,6 +65,26 @@ export class CardCreationPersistence {
           return this.asIdempotentResult(existingCard, input);
         }
 
+        const reservation = await manager.findOne(CardEvidenceUploadEntity, {
+          where: { cardUUID: input.cardUUID },
+        });
+        if (
+          reservation &&
+          (Number(reservation.ownerId) !== input.creatorId ||
+            Number(reservation.siteId) !== input.siteId)
+        ) {
+          throw new ForbiddenException(
+            'Offline card belongs to another user or site',
+          );
+        }
+        await assertEvidenceReceipts(
+          manager,
+          input.siteId,
+          input.cardUUID,
+          input.creatorId,
+          input.evidences,
+        );
+
         const lastSiteCard = await manager.findOne(CardEntity, {
           where: { siteId: input.siteId },
           order: { siteCardId: 'DESC' },
@@ -117,9 +139,7 @@ export class CardCreationPersistence {
         return this.asIdempotentResult(existingCard, input);
       }
 
-      throw new ValidationException(
-        ValidationExceptionType.DUPLICATE_RECORD,
-      );
+      throw new ValidationException(ValidationExceptionType.DUPLICATE_RECORD);
     }
   };
 

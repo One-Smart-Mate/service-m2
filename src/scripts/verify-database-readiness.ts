@@ -4,6 +4,7 @@ import AppDataSource from '../config/data-source';
 interface IndexRequirement {
   table: string;
   columns: string[];
+  unique?: boolean;
 }
 
 const REQUIRED_MIGRATIONS = [
@@ -11,9 +12,38 @@ const REQUIRED_MIGRATIONS = [
   'EnsureCardSyncIdempotency1790160000000',
   'CreateNotificationOutbox1790332800000',
   'OptimizeMobileCriticalQueries1790419200000',
+  'CreateOplUserAccess1791072000000',
+  'HardenCiltExecutionIdentity1791072000001',
+  'ReserveCardEvidenceUploads1791072000002',
 ];
 
 const REQUIRED_INDEXES: IndexRequirement[] = [
+  { table: 'opl_user_access', columns: ['user_id', 'opl_id'], unique: true },
+  { table: 'opl_user_access', columns: ['user_id'] },
+  {
+    table: 'card_evidence_uploads',
+    columns: ['site_id', 'card_uuid', 'evidence_type', 'evidence_id'],
+    unique: true,
+  },
+  { table: 'card_evidence_uploads', columns: ['object_key'], unique: true },
+  {
+    table: 'cilt_sequences_executions',
+    columns: ['site_id', 'site_execution_id'],
+    unique: true,
+  },
+  {
+    table: 'cilt_sequences_executions',
+    columns: [
+      'site_id',
+      'cilt_id',
+      'cilt_secuence_id',
+      'user_id',
+      'level_id',
+      'position_id',
+      'secuence_schedule',
+    ],
+    unique: true,
+  },
   { table: 'cards', columns: ['card_UUID'] },
   { table: 'cards', columns: ['site_id', 'site_card_id'] },
   { table: 'cards', columns: ['site_id', 'sync_changed_at', 'id'] },
@@ -75,10 +105,17 @@ async function verifyDatabaseReadiness(): Promise<void> {
           SELECT TABLE_NAME AS tableName, ENGINE AS engine
           FROM information_schema.TABLES
           WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME IN ('cards', 'evidences', 'notification_outbox')
+            AND TABLE_NAME IN ('cards', 'evidences', 'notification_outbox', 'opl_user_access', 'card_evidence_uploads', 'cilt_sequences_executions')
         `,
       );
-    for (const tableName of ['cards', 'evidences', 'notification_outbox']) {
+    for (const tableName of [
+      'cards',
+      'evidences',
+      'notification_outbox',
+      'opl_user_access',
+      'card_evidence_uploads',
+      'cilt_sequences_executions',
+    ]) {
       const table = engines.find((item) => item.tableName === tableName);
       if (!table) {
         throw new Error(`Required table ${tableName} is missing`);
@@ -122,21 +159,25 @@ async function verifyDatabaseReadiness(): Promise<void> {
       indexName: string;
       columnName: string;
       sequence: number;
+      nonUnique: number;
     }> = await AppDataSource.query(
       `
         SELECT
           TABLE_NAME AS tableName,
           INDEX_NAME AS indexName,
           COLUMN_NAME AS columnName,
-          SEQ_IN_INDEX AS sequence
+          SEQ_IN_INDEX AS sequence,
+          NON_UNIQUE AS nonUnique
         FROM information_schema.STATISTICS
         WHERE TABLE_SCHEMA = DATABASE()
         ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
       `,
     );
     const indexes = new Map<string, string[]>();
+    const uniqueIndexes = new Set<string>();
     for (const row of indexRows) {
       const key = `${row.tableName}:${row.indexName}`;
+      if (Number(row.nonUnique) === 0) uniqueIndexes.add(key);
       const columns = indexes.get(key) ?? [];
       columns.push(row.columnName);
       indexes.set(key, columns);
@@ -145,9 +186,10 @@ async function verifyDatabaseReadiness(): Promise<void> {
       const found = [...indexes.entries()].some(
         ([key, columns]) =>
           key.startsWith(`${required.table}:`) &&
-          required.columns.every(
-            (column, index) => columns[index] === column,
-          ),
+          (!required.unique ||
+            (uniqueIndexes.has(key) &&
+              columns.length === required.columns.length)) &&
+          required.columns.every((column, index) => columns[index] === column),
       );
       if (!found) {
         throw new Error(

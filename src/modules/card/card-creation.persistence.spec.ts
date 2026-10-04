@@ -52,6 +52,7 @@ describe('CardCreationPersistence', () => {
       .mocked(manager.findOne)
       .mockResolvedValueOnce({ id: 2 } as SiteEntity)
       .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ siteCardId: 14 } as CardEntity);
     jest
       .mocked(manager.save)
@@ -112,6 +113,7 @@ describe('CardCreationPersistence', () => {
     jest
       .mocked(manager.findOne)
       .mockResolvedValueOnce({ id: 2 } as SiteEntity)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
     jest
@@ -179,6 +181,7 @@ describe('CardCreationPersistence', () => {
     jest
       .mocked(manager.findOne)
       .mockResolvedValueOnce({ id: 2 } as SiteEntity)
+      .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
     jest

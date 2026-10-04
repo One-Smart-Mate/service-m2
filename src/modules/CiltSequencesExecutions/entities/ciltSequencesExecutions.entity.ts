@@ -26,6 +26,8 @@ import { CiltSequencesExecutionsEvidencesEntity } from '../../CiltSequencesExecu
 @Index("fk_cilt_executions_site_id_idx", ["siteId"])
 @Index("fk_cilt_executions_user_id_idx", ["userId"])
 @Index("fk_cilt_executions_user_who_executed_id_idx", ["userWhoExecutedId"])
+@Index('uq_cilt_execution_schedule', ['siteId', 'ciltId', 'ciltSecuenceId', 'userId', 'levelId', 'positionId', 'secuenceSchedule'], { unique: true })
+@Index('uq_cilt_execution_folio', ['siteId', 'siteExecutionId'], { unique: true })
 export class CiltSequencesExecutionsEntity {
   @PrimaryGeneratedColumn({ type: "int", name: "id", unsigned: true })
   id: number;

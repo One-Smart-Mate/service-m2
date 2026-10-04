@@ -14,8 +14,13 @@ import { RoleEntity } from '../roles/entities/role.entity';
 import { UserRoleEntity } from '../roles/entities/user-role.entity';
 import { UserEntity } from './entities/user.entity';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
+import {
+  UserAdministrationActor,
+  UserAdministrationPolicy,
+} from 'src/common/auth/user-administration.policy';
 
 export interface PersistUserUpdate {
+  actor: UserAdministrationActor;
   userId: number;
   siteId: number;
   update: DeepPartial<UserEntity>;
@@ -26,6 +31,7 @@ export interface PersistUserUpdate {
 }
 
 export interface PersistUserPartialUpdate {
+  actor: UserAdministrationActor;
   userId: number;
   update: DeepPartial<UserEntity>;
   fastPasswordDigest?: string;
@@ -44,10 +50,10 @@ export class UserUpdatePersistence {
     private readonly dataSource: DataSource,
   ) {}
 
-  persist = async (
-    input: PersistUserUpdate,
-  ): Promise<PersistedUserUpdate> => {
+  persist = async (input: PersistUserUpdate): Promise<PersistedUserUpdate> => {
     return this.dataSource.transaction(async (manager) => {
+      UserAdministrationPolicy.assertRoles(input.actor, input.roles);
+      UserAdministrationPolicy.assertSite(input.actor, input.siteId);
       let user = await manager.findOne(UserEntity, {
         where: { id: input.userId },
         lock: { mode: 'pessimistic_write' },
@@ -55,6 +61,11 @@ export class UserUpdatePersistence {
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      await UserAdministrationPolicy.assertTarget(
+        manager,
+        input.actor,
+        user.id,
+      );
 
       const duplicateEmail = await manager.exists(UserEntity, {
         where: {
@@ -75,13 +86,15 @@ export class UserUpdatePersistence {
           },
         });
         if (duplicateFastPassword) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
+          throw new ValidationException(
+            ValidationExceptionType.DUPLICATED_USER,
+          );
         }
       }
 
       const fastPasswordChanged = Boolean(
         input.fastPasswordDigest &&
-          user.fastPasswordDigest !== input.fastPasswordDigest,
+        user.fastPasswordDigest !== input.fastPasswordDigest,
       );
       user = manager.merge(UserEntity, user, input.update, {
         ...(input.fastPasswordDigest
@@ -150,6 +163,7 @@ export class UserUpdatePersistence {
     input: PersistUserPartialUpdate,
   ): Promise<PersistedUserUpdate> => {
     return this.dataSource.transaction(async (manager) => {
+      UserAdministrationPolicy.assertActor(input.actor);
       let user = await manager.findOne(UserEntity, {
         where: { id: input.userId },
         lock: { mode: 'pessimistic_write' },
@@ -157,6 +171,12 @@ export class UserUpdatePersistence {
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      await UserAdministrationPolicy.assertTarget(
+        manager,
+        input.actor,
+        user.id,
+        true,
+      );
 
       if (typeof input.update.email === 'string') {
         const duplicateEmail = await manager.exists(UserEntity, {
@@ -197,7 +217,7 @@ export class UserUpdatePersistence {
       const passwordChanged = typeof input.update.password === 'string';
       const fastPasswordChanged = Boolean(
         input.fastPasswordDigest &&
-          user.fastPasswordDigest !== input.fastPasswordDigest,
+        user.fastPasswordDigest !== input.fastPasswordDigest,
       );
       user = manager.merge(UserEntity, user, input.update, {
         ...(input.fastPasswordDigest

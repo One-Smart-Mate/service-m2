@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { UsersService } from '../users/users.service';
+import { MailService } from '../mail/mail.service';
 import {
   NotificationAudience,
   NotificationOutboxEntity,
@@ -29,6 +30,7 @@ export class NotificationOutboxProcessor {
     private readonly dataSource: DataSource,
     private readonly usersService: UsersService,
     private readonly firebaseService: FirebaseService,
+    private readonly mailService: MailService,
   ) {}
 
   @Interval(5_000)
@@ -39,7 +41,11 @@ export class NotificationOutboxProcessor {
 
     this.processing = true;
     try {
-      for (let index = 0; index < NotificationOutboxProcessor.BATCH_SIZE; index++) {
+      for (
+        let index = 0;
+        index < NotificationOutboxProcessor.BATCH_SIZE;
+        index++
+      ) {
         const event = await this.claimNext();
         if (!event) {
           return;
@@ -55,8 +61,7 @@ export class NotificationOutboxProcessor {
     return this.dataSource.transaction(async (manager) => {
       const now = new Date();
       const staleBefore = new Date(
-        now.getTime() -
-          NotificationOutboxProcessor.STALE_LOCK_MILLISECONDS,
+        now.getTime() - NotificationOutboxProcessor.STALE_LOCK_MILLISECONDS,
       );
       const event = await manager
         .createQueryBuilder(NotificationOutboxEntity, 'outbox')
@@ -97,6 +102,19 @@ export class NotificationOutboxProcessor {
 
   private async processEvent(event: NotificationOutboxEntity): Promise<void> {
     try {
+      if (event.payload.email) {
+        const email = event.payload.email;
+        const user = await this.usersService.findById(email.userId);
+        if (!user || user.status !== 'A')
+          throw new Error('Notification recipient is unavailable');
+        await this.mailService.sendCiltStoppageNotification(
+          user,
+          email.positionName,
+          email.translation,
+        );
+        await this.markSent(event.id);
+        return;
+      }
       const tokens = await this.resolveTokens(event.payload.audience);
       if (tokens.length > 0) {
         const notification = new NotificationDTO(
@@ -147,11 +165,10 @@ export class NotificationOutboxProcessor {
         );
         break;
       case 'site-except-user':
-        tokens =
-          await this.usersService.getSiteUsersTokensExcludingOwnerUser(
-            audience.siteId,
-            audience.excludedUserId,
-          );
+        tokens = await this.usersService.getSiteUsersTokensExcludingOwnerUser(
+          audience.siteId,
+          audience.excludedUserId,
+        );
         break;
       case 'all-users': {
         const users = await this.usersService.findAllUsers();
@@ -163,9 +180,7 @@ export class NotificationOutboxProcessor {
       }
     }
 
-    return [
-      ...new Map(tokens.map((token) => [token.token, token])).values(),
-    ];
+    return [...new Map(tokens.map((token) => [token.token, token])).values()];
   }
 
   private markSent(id: number): Promise<unknown> {

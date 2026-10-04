@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { assertEvidenceReceipts } from './card-evidence.policy';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import {
@@ -45,6 +46,13 @@ export class CardSolutionPersistence {
 
       this.assertSolutionIsNotApplied(card, input.type);
 
+      await assertEvidenceReceipts(
+        manager,
+        card.siteId,
+        card.cardUUID,
+        input.actor.id,
+        input.evidences,
+      );
       const now = new Date();
       this.applySolution(card, input, now);
       this.applyEvidenceFlags(card, input.evidences);
@@ -79,6 +87,15 @@ export class CardSolutionPersistence {
     card: CardEntity,
     type: CardSolutionType,
   ): void {
+    if (
+      ![stringConstants.A, stringConstants.P, stringConstants.V].includes(
+        card.status,
+      )
+    ) {
+      throw new ConflictException(
+        'Solutions can only be applied to open cards',
+      );
+    }
     if (type === 'definitive' && card.userDefinitiveSolutionId !== null) {
       throw new ValidationException(
         ValidationExceptionType.OVERWRITE_DEFINITIVE_SOLUTION,

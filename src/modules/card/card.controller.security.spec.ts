@@ -139,7 +139,7 @@ describe('CardController create identity', () => {
     const cardService = {
       createOptimized: jest.fn().mockResolvedValue({ id: 1 }),
     };
-    const controller = new CardController(cardService as never, {} as never);
+    const controller = new CardController(cardService as never, {} as never, {} as never);
 
     await controller.create(
       {
@@ -159,7 +159,7 @@ describe('CardController create identity', () => {
     const cardService = {
       syncOfflineCards: jest.fn().mockResolvedValue({ results: [] }),
     };
-    const controller = new CardController(cardService as never, {} as never);
+    const controller = new CardController(cardService as never, {} as never, {} as never);
     const cards = [{ siteId: 2, creatorId: 999 }];
 
     await controller.syncOfflineCards(
@@ -174,7 +174,7 @@ describe('CardController create identity', () => {
     const cardService = {
       syncCardChanges: jest.fn().mockResolvedValue({ changes: [] }),
     };
-    const controller = new CardController(cardService as never, {} as never);
+    const controller = new CardController(cardService as never, {} as never, {} as never);
 
     await controller.syncCardChanges(
       25,
@@ -252,7 +252,7 @@ describe('CardController mutation identity', () => {
     async ({ controllerMethod, serviceMethod, dto }) => {
       const serviceCall = jest.fn().mockResolvedValue({ id: 1 });
       const cardService = { [serviceMethod]: serviceCall };
-      const controller = new CardController(cardService as never, {} as never);
+      const controller = new CardController(cardService as never, {} as never, {} as never);
 
       await (controller[controllerMethod] as CallableFunction)(
         dto,
@@ -269,7 +269,7 @@ describe('CardController list identity', () => {
     const cardService = {
       findSiteCardsPaginated: jest.fn().mockResolvedValue({ cards: [] }),
     };
-    const controller = new CardController(cardService as never, {} as never);
+    const controller = new CardController(cardService as never, {} as never, {} as never);
 
     await controller.findBySiteIdPaginated(
       2,
@@ -304,7 +304,7 @@ describe('CardController list identity', () => {
     const cardService = {
       findSiteCardsPaginated: jest.fn().mockResolvedValue({ cards: [] }),
     };
-    const controller = new CardController(cardService as never, {} as never);
+    const controller = new CardController(cardService as never, {} as never, {} as never);
 
     await controller.findBySiteIdPaginated(
       2,

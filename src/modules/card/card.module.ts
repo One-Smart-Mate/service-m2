@@ -18,6 +18,8 @@ import { CardCreationPersistence } from './card-creation.persistence';
 import { CardSolutionPersistence } from './card-solution.persistence';
 import { CardMutationPersistence } from './card-mutation.persistence';
 import { CardDeltaSyncReader } from './card-delta-sync.reader';
+import { CardEvidenceUploadEntity } from './entities/card-evidence-upload.entity';
+import { CardEvidenceUploadService } from './card-evidence-upload.service';
 import { R2CardEvidenceService } from './r2-card-evidence.service';
 
 @Module({
@@ -29,7 +31,7 @@ import { R2CardEvidenceService } from './r2-card-evidence.service';
     UsersModule,
     forwardRef(() => LevelModule),
     FirebaseModule,
-    TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
+    TypeOrmModule.forFeature([CardEntity, CardEvidenceUploadEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],
   controllers: [CardController],
   providers: [
@@ -39,6 +41,7 @@ import { R2CardEvidenceService } from './r2-card-evidence.service';
     CardMutationPersistence,
     CardDeltaSyncReader,
     R2CardEvidenceService,
+    CardEvidenceUploadService,
   ],
   exports: [CardService],
 })

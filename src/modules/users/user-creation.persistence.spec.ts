@@ -6,7 +6,6 @@ import { SiteEntity } from '../site/entities/site.entity';
 import { UserCreationPersistence } from './user-creation.persistence';
 import { UserEntity } from './entities/user.entity';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
-import { AuthSessionEntity } from '../auth-session/entities/auth-session.entity';
 
 describe('UserCreationPersistence', () => {
   const manager = {
@@ -45,6 +44,7 @@ describe('UserCreationPersistence', () => {
 
   it('creates the user, roles and site assignment atomically', async () => {
     const result = await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       email: newUserData.email,
       newUser: newUserData,
       roles: [role],
@@ -77,6 +77,7 @@ describe('UserCreationPersistence', () => {
 
     await expect(
       persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
         email: newUserData.email,
         newUser: newUserData,
         roles: [role],
@@ -87,7 +88,7 @@ describe('UserCreationPersistence', () => {
     expect(manager.save).not.toHaveBeenCalled();
   });
 
-  it('updates an existing fast password without duplicating global roles', async () => {
+  it('preserves existing credentials and global roles when linking another site', async () => {
     const existingUser = {
       id: 9,
       email: newUserData.email,
@@ -96,6 +97,7 @@ describe('UserCreationPersistence', () => {
     manager.findOne.mockResolvedValue(existingUser);
 
     const result = await persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
       email: newUserData.email,
       newUser: newUserData,
       roles: [role],
@@ -103,16 +105,10 @@ describe('UserCreationPersistence', () => {
       createdAt,
     });
 
-    expect(result.fastPasswordChanged).toBe(true);
-    expect(existingUser.fastPasswordDigest).toBe(
-      newUserData.fastPasswordDigest,
-    );
-    expect(manager.save).toHaveBeenCalledWith(UserEntity, existingUser);
-    expect(manager.update).toHaveBeenCalledWith(
-      AuthSessionEntity,
-      expect.objectContaining({ userId: existingUser.id, sessionType: 'fast' }),
-      { revokedAt: createdAt },
-    );
+    expect(result.fastPasswordChanged).toBe(false);
+    expect(existingUser.fastPasswordDigest).toBe('old-digest');
+    expect(manager.save).not.toHaveBeenCalledWith(UserEntity, expect.anything());
+    expect(manager.update).not.toHaveBeenCalled();
     expect(manager.save).not.toHaveBeenCalledWith(
       UserRoleEntity,
       expect.anything(),
@@ -133,6 +129,7 @@ describe('UserCreationPersistence', () => {
 
     await expect(
       persistence.persist({
+      actor: { id: 1, roles: ['ih_sis_admin'], siteIds: null },
         email: newUserData.email,
         newUser: newUserData,
         roles: [role],

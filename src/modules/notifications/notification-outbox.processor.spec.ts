@@ -41,14 +41,17 @@ describe('NotificationOutboxProcessor', () => {
   } as unknown as DataSource;
   const usersService = {
     getSiteUsersTokensExcludingOwnerUser: jest.fn(),
+    findById: jest.fn().mockResolvedValue({ id: 9, status: 'A' }),
   } as unknown as UsersService;
   const firebaseService = {
     sendMultipleMessage: jest.fn(),
   } as unknown as FirebaseService;
+  const mailService = { sendCiltStoppageNotification: jest.fn() };
   const processor = new NotificationOutboxProcessor(
     dataSource,
     usersService,
     firebaseService,
+    mailService as never,
   );
 
   beforeEach(() => {
@@ -108,4 +111,14 @@ describe('NotificationOutboxProcessor', () => {
       }),
     );
   });
+  it('delivers durable CILT email events and retries a mail failure', async () => {
+    const emailEvent = { ...event, payload: { ...event.payload, email: { type: 'cilt-stoppage', userId: 9, positionName: 'Press', translation: 'ES' } } };
+    queryBuilder.getOne.mockResolvedValueOnce(emailEvent).mockResolvedValueOnce(null);
+    mailService.sendCiltStoppageNotification.mockRejectedValueOnce(new Error('mail unavailable'));
+    await processor.processPending();
+    expect(mailService.sendCiltStoppageNotification).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }), 'Press', 'ES');
+    expect(repository.update).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: NotificationOutboxStatus.FAILED }));
+    expect(firebaseService.sendMultipleMessage).not.toHaveBeenCalled();
+  });
+
 });

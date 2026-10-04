@@ -37,6 +37,7 @@ import { UserCreationPersistence } from './user-creation.persistence';
 import { UserUpdatePersistence } from './user-update.persistence';
 import { PasswordResetPersistence } from './password-reset.persistence';
 import { UserLogoutPersistence } from './user-logout.persistence';
+import { UserAdministrationActor, UserAdministrationPolicy } from 'src/common/auth/user-administration.policy';
 
 @Injectable()
 export class UsersService {
@@ -463,7 +464,15 @@ export class UsersService {
     }
   };
 
-  create = async (createUserDTO: CreateUserDTO) => {
+  getAdministrationActor = async (requesterId: number): Promise<UserAdministrationActor> => {
+    const actor = { id: Number(requesterId), roles: [], siteIds: [] } as UserAdministrationActor;
+    UserAdministrationPolicy.assertActor(actor);
+    actor.roles = await this.getUserRoles(actor.id);
+    actor.siteIds = await this.getAccessibleSiteIds(actor.id);
+    return actor;
+  };
+
+  create = async (createUserDTO: CreateUserDTO, requesterId: number) => {
     try {
       const [site, roles] = await Promise.all([
         this.siteService.findById(createUserDTO.siteId),
@@ -487,8 +496,10 @@ export class UsersService {
       }
 
       const createdAt = new Date();
+      const actor = await this.getAdministrationActor(requesterId);
       const fastPasswordDigest = digestFastPassword(fastPassword);
       const result = await this.userCreationPersistence.persist({
+        actor,
         email: normalizedEmail,
         newUser: {
           name: createUserDTO.name,
@@ -543,7 +554,7 @@ export class UsersService {
     }
   };
   
-  updateUser = async (updateUserDTO: UpdateUserDTO) => {
+  updateUser = async (updateUserDTO: UpdateUserDTO, requesterId: number) => {
     try {
       this.logger.logProcess(`[UPDATE_USER] Starting update for user_id: ${updateUserDTO.id}`);
 
@@ -592,6 +603,7 @@ export class UsersService {
         updateUserDTO.status === stringConstants.inactiveStatus ||
         updateUserDTO.status === stringConstants.cancelledStatus;
       const result = await this.userUpdatePersistence.persist({
+        actor: await this.getAdministrationActor(requesterId),
         userId: updateUserDTO.id,
         siteId: site.id,
         update: updatePayload,
@@ -648,7 +660,7 @@ export class UsersService {
     }
   };
 
-  updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO) => {
+  updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO, requesterId: number) => {
     try {
       const updatedAt = new Date();
       const updatePayload: Partial<UserEntity> = {};
@@ -687,6 +699,7 @@ export class UsersService {
       }
 
       const result = await this.userUpdatePersistence.persistPartial({
+        actor: await this.getAdministrationActor(requesterId),
         userId: updateUserPartialDTO.id,
         update: updatePayload,
         fastPasswordDigest,
@@ -971,6 +984,8 @@ export class UsersService {
 
     const fastPassword = await this.generateUniqueFastPassword(siteIds);
     const result = await this.userUpdatePersistence.persistPartial({
+      // Recovery has already identified the account through its registered phone.
+      actor: { id: Number(user.id), roles: [], siteIds: [] },
       userId: user.id,
       update: {},
       fastPasswordDigest: digestFastPassword(fastPassword),

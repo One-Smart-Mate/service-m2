@@ -1,3 +1,4 @@
+import { sanitizeExecutionRelations } from './cilt-execution-relations.policy';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between } from 'typeorm';
@@ -7,11 +8,7 @@ import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequenc
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { HandleException } from '../../common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from '../../common/exceptions/types/notFound.exception';
-import { PositionEntity } from '../position/entities/position.entity';
 import { UsersService } from '../users/users.service';
-import { MailService } from '../mail/mail.service';
-import { FirebaseService } from '../firebase/firebase.service';
-import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { stringConstants } from '../../utils/string.constant';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
@@ -24,17 +21,14 @@ import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
 import { CardEntity } from '../card/entities/card.entity';
 import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { CustomLoggerService } from '../../common/logger/logger.service';
+import { CiltExecutionPersistence } from './cilt-execution.persistence';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
   constructor(
     @InjectRepository(CiltSequencesExecutionsEntity)
     private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
-    @InjectRepository(PositionEntity)
-    private readonly positionRepository: Repository<PositionEntity>,
     private readonly usersService: UsersService,
-    private readonly mailService: MailService,
-    private readonly firebaseService: FirebaseService,
     @InjectRepository(CiltSequencesEntity)
     private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     @InjectRepository(CiltMstrPositionLevelsEntity)
@@ -43,6 +37,7 @@ export class CiltSequencesExecutionsService {
     @InjectRepository(CardEntity)
     private readonly cardRepository: Repository<CardEntity>,
     private readonly logger: CustomLoggerService,
+    private readonly executionPersistence: CiltExecutionPersistence,
   ) {}
 
   findAll = async () => {
@@ -157,8 +152,7 @@ export class CiltSequencesExecutionsService {
 
   create = async (createDTO: CreateCiltSequencesExecutionDTO) => {
     try {
-      const execution = this.ciltSequencesExecutionsRepository.create(createDTO);
-      return await this.ciltSequencesExecutionsRepository.save(execution);
+      return await this.executionPersistence.create(createDTO as any);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -166,38 +160,7 @@ export class CiltSequencesExecutionsService {
 
   update = async (updateDTO: UpdateCiltSequencesExecutionDTO) => {
     try {
-      const execution = await this.findById(updateDTO.id);
-      Object.assign(execution, updateDTO);
-      const updatedExecution = await this.ciltSequencesExecutionsRepository.save(execution);
-
-      if (updateDTO.stoppageReason === true) {
-        const position = await this.positionRepository.findOneBy({ nodeResponsableId: execution.positionId });
-        if (position) {
-          const tokens = await this.usersService.getUserToken(position.nodeResponsableId);
-          
-          if (tokens.length > 0) {
-            await this.firebaseService.sendMultipleMessage(
-              new NotificationDTO(
-                stringConstants.ciltTitle,
-                `La posición ${position.name} ha reportado una condición de paro`,
-                stringConstants.ciltNotificationType,
-              ),
-              tokens,
-            );
-          }
-          const user = await this.usersService.findById(position.nodeResponsableId);
-
-          if (user && user.email) {
-            await this.mailService.sendCiltStoppageNotification(
-              user,
-              position.name,
-              stringConstants.LANG_ES,
-            );
-          }
-        }
-      }
-
-      return updatedExecution;
+      return await this.executionPersistence.update(updateDTO as any);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -294,8 +257,7 @@ export class CiltSequencesExecutionsService {
       });
 
 
-      await this.ciltSequencesExecutionsRepository.update(execution.id, execution);
-      
+      await this.executionPersistence.update(execution);
       return this.findById(execution.id);
     } catch (exception) {
       HandleException.exception(exception);
@@ -555,7 +517,7 @@ export class CiltSequencesExecutionsService {
       // Obtener amTagIds de las mismas executions que ya se filtraron
       const amTagQuery = this.ciltSequencesExecutionsRepository
         .createQueryBuilder('execution')
-        .select(['execution.amTagId', 'DATE(execution.secuenceSchedule) as date'])
+        .select(['execution.id', 'execution.amTagId', 'execution.siteId', 'DATE(execution.secuenceSchedule) as date'])
         .where('execution.deletedAt IS NULL')
         .andWhere('execution.secuenceStart IS NOT NULL')
         .andWhere('execution.amTagId IS NOT NULL')
@@ -589,6 +551,9 @@ export class CiltSequencesExecutionsService {
           .createQueryBuilder('card')
           .where('card.id IN (:...ids)', { ids: uniqueAmTagIds })
           .andWhere('card.deletedAt IS NULL')
+          .innerJoin(CiltSequencesExecutionsEntity, 'linked', 'linked.amTagId = card.id AND linked.siteId = card.siteId')
+          .andWhere('linked.id IN (:...executionIds)', { executionIds: amTagResults.map(item => item.execution_id) })
+          .andWhere('linked.deletedAt IS NULL')
           .getMany();
         console.log('cards found:', cards.length);
       }
@@ -655,21 +620,8 @@ export class CiltSequencesExecutionsService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
       }
 
-      const lastExecution = await this.ciltSequencesExecutionsRepository.findOne({
-        where: {
-          siteId: sequence.siteId,
-          deletedAt: IsNull()
-        },
-        order: {
-          siteExecutionId: 'DESC'
-        }
-      });
-
-      const nextSiteExecutionId = (lastExecution?.siteExecutionId || 0) + 1;
-
-      const newExecution = this.ciltSequencesExecutionsRepository.create({
+      const newExecution = {
         siteId: sequence.siteId,
-        siteExecutionId: nextSiteExecutionId,
         positionId: ciltMstrPositionLevel.positionId,
         ciltId: sequence.ciltMstrId,
         ciltSecuenceId: sequence.id,
@@ -708,9 +660,9 @@ export class CiltSequencesExecutionsService {
         toolsRequiered: sequence.toolsRequired,
         selectableWithoutProgramming: sequence.selectableWithoutProgramming === 1,
         status: 'A'
-      });
+      };
 
-      return await this.ciltSequencesExecutionsRepository.save(newExecution);
+      return await this.executionPersistence.create(newExecution);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -762,6 +714,8 @@ export class CiltSequencesExecutionsService {
           secuenceSchedule: 'ASC'
         }
       });
+
+      executions.forEach(sanitizeExecutionRelations);
 
       this.logger.logProcess('[GET_OF_DAY] Executions found', { count: executions?.length });
 
@@ -906,4 +860,4 @@ export class CiltSequencesExecutionsService {
       HandleException.exception(exception);
     }
   };
-} 
+}

@@ -137,4 +137,10 @@ describe('CardSolutionPersistence', () => {
       expect.anything(),
     );
   });
+  it.each(['R', 'C'])('rejects solutions on terminal status %s', async status => {
+    jest.mocked(manager.findOne).mockResolvedValue({ ...card, status });
+    await expect(persistence.persist({ cardId: 12, type: 'provisional', solutionUser: { id: 8, name: 'Resolver' }, actor: { id: 7, name: 'Operator' }, comments: 'Temporary', evidences: [] })).rejects.toThrow('Solutions can only be applied to open cards');
+    expect(manager.save).not.toHaveBeenCalled();
+  });
+
 });

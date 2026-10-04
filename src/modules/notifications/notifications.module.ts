@@ -7,10 +7,12 @@ import { NotificationsController } from './notifications.controller';
 import { NotificationOutboxEntity } from './entities/notification-outbox.entity';
 import { NotificationOutboxService } from './notification-outbox.service';
 import { NotificationOutboxProcessor } from './notification-outbox.processor';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
     FirebaseModule,
+    MailModule,
     UsersModule,
     TypeOrmModule.forFeature([NotificationOutboxEntity]),
   ],

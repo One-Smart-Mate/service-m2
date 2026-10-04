@@ -20,6 +20,7 @@ import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
 import { CiltMasterPersistence } from './cilt-master.persistence';
+import { CiltExecutionPersistence } from '../CiltSequencesExecutions/cilt-execution.persistence';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CiltMasterPersistence } from './cilt-master.persistence';
   providers: [
     CiltMstrService,
     CiltExecutionService,
+    CiltExecutionPersistence,
     CiltPositionLevelService,
     CiltValidationService,
     CiltQueryBuilderService,

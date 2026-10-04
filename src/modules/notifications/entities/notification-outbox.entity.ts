@@ -16,6 +16,12 @@ export type NotificationAudience =
   | { type: 'all-users' };
 
 export interface NotificationOutboxPayload {
+  email?: {
+    type: 'cilt-stoppage';
+    userId: number;
+    positionName: string;
+    translation: 'ES' | 'EN';
+  };
   audience: NotificationAudience;
   notification: {
     title: string;

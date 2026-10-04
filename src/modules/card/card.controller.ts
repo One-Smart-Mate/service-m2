@@ -1,3 +1,4 @@
+import { CardEvidenceUploadService } from './card-evidence-upload.service';
 import {
   BadRequestException,
   Body,
@@ -62,6 +63,7 @@ export class CardController {
   constructor(
     private readonly cardService: CardService,
     private readonly cardEvidenceStorage: R2CardEvidenceService,
+    private readonly evidenceUploads: CardEvidenceUploadService,
   ) {}
 
   @Get('/all/level-machine/:siteId/:levelMachineId')
@@ -306,14 +308,16 @@ export class CardController {
     @Param('siteId', ParseIntPipe) siteId: number,
     @Body() body: UploadCardEvidenceDto,
     @UploadedFile() file: Express.Multer.File,
+    @Request() req,
   ) {
     if (!file) throw new BadRequestException('Evidence file is required');
-    return this.cardEvidenceStorage.uploadCardEvidence(
+    return this.evidenceUploads.upload(
       siteId,
       body.cardUUID,
       body.evidenceId,
       body.evidenceType,
       file,
+      Number(req.user.id),
     );
   }
 
