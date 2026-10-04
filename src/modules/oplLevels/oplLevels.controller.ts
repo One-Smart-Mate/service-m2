@@ -25,6 +25,14 @@ export class OplLevelsController {
     return await this.oplLevelsService.findOplMstrByLevelId(levelId);
   }
 
+  @Get('opl/:oplId')
+  @ApiOperation({ summary: 'Get all level relations by OPL ID' })
+  @ApiParam({ name: 'oplId', type: 'number', description: 'OPL ID' })
+  @ApiResponse({ status: 200, description: 'List of level relations for the OPL' })
+  async findByOplId(@Param('oplId') oplId: number) {
+    return await this.oplLevelsService.findLevelsByOplId(oplId);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a relation (soft delete)' })
   @ApiResponse({ status: 200, description: 'Relation deleted correctly' })
