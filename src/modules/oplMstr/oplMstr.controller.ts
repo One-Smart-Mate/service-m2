@@ -111,6 +111,25 @@ export class OplMstrController {
     return await this.oplMstrService.findOplMstrBySiteId(siteId);
   }
 
+  @Get('user/:userId/access')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
+  @ApiOperation({ summary: 'Get the OPLs a user has accessed' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'List of OPL accesses for the user' })
+  async findUserOplAccess(@Param('userId', ParseIntPipe) userId: number) {
+    return await this.oplMstrService.findUserOplAccess(userId);
+  }
+
   @Get(':id')
   @SiteResourceAccess({
     resource: 'oplMaster',
@@ -121,8 +140,8 @@ export class OplMstrController {
   @ApiOperation({ summary: 'Get an OPL by ID' })
   @ApiResponse({ status: 200, description: 'OPL found' })
   @ApiResponse({ status: 404, description: 'OPL not found' })
-  async findById(@Param('id') id: number) {
-    return await this.oplMstrService.findById(id);
+  async findById(@Param('id') id: number, @Request() req: any) {
+    return await this.oplMstrService.findById(id, req?.user?.id);
   }
 
   @Post('/create')

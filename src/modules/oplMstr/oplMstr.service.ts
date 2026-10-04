@@ -11,6 +11,8 @@ import {
 } from 'src/common/exceptions/types/notFound.exception';
 import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
+import { OplUserAccessEntity } from './entities/oplUserAccess.entity';
+import { LevelEntity } from '../level/entities/level.entity';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 import { OplMasterPersistence } from './opl-master.persistence';
 
@@ -25,6 +27,10 @@ export class OplMstrService {
     private readonly oplLevelsRepository: Repository<OplLevelsEntity>,
     @InjectRepository(OplDetailsEntity)
     private readonly oplDetailsRepository: Repository<OplDetailsEntity>,
+    @InjectRepository(OplUserAccessEntity)
+    private readonly oplUserAccessRepository: Repository<OplUserAccessEntity>,
+    @InjectRepository(LevelEntity)
+    private readonly levelRepository: Repository<LevelEntity>,
     private readonly oplMasterPersistence: OplMasterPersistence,
   ) {}
 
@@ -64,7 +70,7 @@ export class OplMstrService {
     }
   };
 
-  findById = async (id: number) => {
+  findById = async (id: number, userId?: number) => {
     try {
       const opl = await this.oplRepository.findOneBy({ id });
       if (!opl) {
@@ -74,11 +80,124 @@ export class OplMstrService {
         [opl],
         Number(opl.siteId),
       );
+
+      // Record this user's access to the OPL (best-effort; never block the read).
+      if (userId) {
+        this.recordUserAccess(Number(userId), opl).catch((e) =>
+          this.logger.warn(`Failed to record OPL access: ${e?.message ?? e}`),
+        );
+      }
+
       return hydratedOpl;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
+
+  /**
+   * Upserts the (user, opl) access row: first access inserts, subsequent ones
+   * increment access_count and refresh last_access_at. Also bumps the global
+   * direct_usage_count on the OPL so the list "times used" reflects every open.
+   */
+  private async recordUserAccess(userId: number, opl: OplMstr): Promise<void> {
+    const now = new Date();
+    const existing = await this.oplUserAccessRepository.findOne({
+      where: { userId, oplId: opl.id },
+    });
+
+    if (existing) {
+      existing.accessCount = Number(existing.accessCount ?? 0) + 1;
+      existing.lastAccessAt = now;
+      await this.oplUserAccessRepository.save(existing);
+    } else {
+      const row = this.oplUserAccessRepository.create({
+        userId,
+        oplId: opl.id,
+        siteId: opl.siteId ?? null,
+        accessCount: 1,
+        lastAccessAt: now,
+      });
+      await this.oplUserAccessRepository.save(row);
+    }
+
+    await this.oplRepository
+      .createQueryBuilder()
+      .update(OplMstr)
+      .set({
+        directUsageCount: () => 'COALESCE(direct_usage_count, 0) + 1',
+        lastUsedAt: now,
+      })
+      .where('id = :id', { id: opl.id })
+      .execute();
+  }
+
+  /**
+   * Returns every OPL a user has accessed, with the OPL title, its node path
+   * (built from opl_mstr_levels + levels), the access count and last access.
+   */
+  async findUserOplAccess(userId: number): Promise<any[]> {
+    try {
+      const accesses = await this.oplUserAccessRepository.find({
+        where: { userId },
+        order: { lastAccessAt: 'DESC' },
+      });
+      if (!accesses || accesses.length === 0) {
+        return [];
+      }
+
+      const oplIds = [...new Set(accesses.map((a) => a.oplId))];
+      const opls = await this.oplRepository.find({
+        where: { id: In(oplIds) },
+      });
+      const oplMap = new Map(opls.map((o) => [Number(o.id), o]));
+
+      // Resolve node path for each OPL via its first level assignment.
+      const oplLevels = await this.oplLevelsRepository.find({
+        where: { oplId: In(oplIds), deletedAt: IsNull() },
+      });
+      const firstLevelByOpl = new Map<number, number>();
+      for (const ol of oplLevels) {
+        if (!firstLevelByOpl.has(Number(ol.oplId))) {
+          firstLevelByOpl.set(Number(ol.oplId), Number(ol.levelId));
+        }
+      }
+
+      // Load all levels for the sites involved to build breadcrumb paths.
+      const allLevels = await this.levelRepository.find({
+        where: { deletedAt: IsNull() },
+      });
+      const levelById = new Map(allLevels.map((l) => [Number(l.id), l]));
+      const buildPath = (levelId?: number): string | null => {
+        if (!levelId) return null;
+        const parts: string[] = [];
+        const seen = new Set<number>();
+        let current = levelById.get(Number(levelId));
+        while (current && !seen.has(Number(current.id))) {
+          seen.add(Number(current.id));
+          parts.unshift(current.name);
+          const sup = Number(current.superiorId);
+          if (!sup || sup === 0) break;
+          current = levelById.get(sup);
+        }
+        return parts.length ? parts.join(' › ') : null;
+      };
+
+      return accesses.map((a) => {
+        const opl = oplMap.get(Number(a.oplId));
+        const levelId = firstLevelByOpl.get(Number(a.oplId));
+        return {
+          oplId: a.oplId,
+          title: opl?.title ?? null,
+          oplTypeId: opl?.oplTypeId ?? null,
+          path: buildPath(levelId),
+          accessCount: a.accessCount,
+          lastAccessAt: a.lastAccessAt,
+        };
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
 
   findOplMstrBySiteId = async (siteId: number) => {
     try {
