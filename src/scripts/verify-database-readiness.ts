@@ -15,6 +15,7 @@ const REQUIRED_MIGRATIONS = [
   'CreateOplUserAccess1791072000000',
   'HardenCiltExecutionIdentity1791072000001',
   'ReserveCardEvidenceUploads1791072000002',
+  'AddSiteTimezone1791072000003',
 ];
 
 const REQUIRED_INDEXES: IndexRequirement[] = [
@@ -57,6 +58,7 @@ const REQUIRED_INDEXES: IndexRequirement[] = [
     columns: ['site_id', 'card_id', 'status', 'deleted_at'],
   },
   { table: 'users', columns: ['email'] },
+  { table: 'users', columns: ['fast_password_digest'] },
   {
     table: 'user_has_sites',
     columns: ['user_id', 'deleted_at', 'status', 'site_id'],
@@ -105,7 +107,7 @@ async function verifyDatabaseReadiness(): Promise<void> {
           SELECT TABLE_NAME AS tableName, ENGINE AS engine
           FROM information_schema.TABLES
           WHERE TABLE_SCHEMA = DATABASE()
-            AND TABLE_NAME IN ('cards', 'evidences', 'notification_outbox', 'opl_user_access', 'card_evidence_uploads', 'cilt_sequences_executions')
+            AND TABLE_NAME IN ('cards', 'evidences', 'notification_outbox', 'opl_user_access', 'card_evidence_uploads', 'cilt_sequences_executions', 'sites', 'users', 'user_has_sites', 'positions', 'users_positions', 'cilt_mstr', 'cilt_sequences', 'cilt_sequences_schedule', 'cilt_mstr_position_levels')
         `,
       );
     for (const tableName of [
@@ -115,6 +117,15 @@ async function verifyDatabaseReadiness(): Promise<void> {
       'opl_user_access',
       'card_evidence_uploads',
       'cilt_sequences_executions',
+      'sites',
+      'users',
+      'user_has_sites',
+      'positions',
+      'users_positions',
+      'cilt_mstr',
+      'cilt_sequences',
+      'cilt_sequences_schedule',
+      'cilt_mstr_position_levels',
     ]) {
       const table = engines.find((item) => item.tableName === tableName);
       if (!table) {
@@ -123,6 +134,14 @@ async function verifyDatabaseReadiness(): Promise<void> {
       if (table.engine.toUpperCase() !== 'INNODB') {
         throw new Error(`${tableName} must use InnoDB`);
       }
+    }
+
+    const [siteTimezoneColumn] = await AppDataSource.query(`
+      SELECT IS_NULLABLE AS isNullable FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sites' AND COLUMN_NAME = 'timezone'
+    `);
+    if (siteTimezoneColumn?.isNullable !== 'NO') {
+      throw new Error('sites.timezone must exist and be non-nullable');
     }
 
     const syncColumns: Array<{

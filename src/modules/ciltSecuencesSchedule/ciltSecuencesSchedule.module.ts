@@ -1,3 +1,4 @@
+import { CiltConfigurationPersistence } from '../ciltMstr/cilt-configuration.persistence';
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltSecuencesScheduleController } from './ciltSecuencesSchedule.controller';
@@ -26,7 +27,7 @@ import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entiti
     forwardRef(() => SiteModule),
   ],
   controllers: [CiltSecuencesScheduleController],
-  providers: [CiltSecuencesScheduleService, CustomLoggerService],
+  providers: [CiltConfigurationPersistence, CiltSecuencesScheduleService, CustomLoggerService],
   exports: [CiltSecuencesScheduleService],
 })
 export class CiltSecuencesScheduleModule {} 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, DeepPartial, In, IsNull, Not } from 'typeorm';
+import { DataSource, DeepPartial, IsNull, Not } from 'typeorm';
 import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
@@ -13,7 +13,7 @@ import { AuthSessionEntity } from '../auth-session/entities/auth-session.entity'
 import { RoleEntity } from '../roles/entities/role.entity';
 import { UserRoleEntity } from '../roles/entities/user-role.entity';
 import { UserEntity } from './entities/user.entity';
-import { UserHasSitesEntity } from './entities/user.has.sites.entity';
+import { FastPasswordPolicy } from './fast-password.policy';
 import {
   UserAdministrationActor,
   UserAdministrationPolicy,
@@ -51,7 +51,7 @@ export class UserUpdatePersistence {
   ) {}
 
   persist = async (input: PersistUserUpdate): Promise<PersistedUserUpdate> => {
-    return this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
       UserAdministrationPolicy.assertRoles(input.actor, input.roles);
       UserAdministrationPolicy.assertSite(input.actor, input.siteId);
       let user = await manager.findOne(UserEntity, {
@@ -77,19 +77,13 @@ export class UserUpdatePersistence {
         throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
       }
 
-      if (input.fastPasswordDigest) {
-        const duplicateFastPassword = await manager.exists(UserEntity, {
-          where: {
-            fastPasswordDigest: input.fastPasswordDigest,
-            userHasSites: { site: { id: input.siteId } },
-            id: Not(input.userId),
-          },
-        });
-        if (duplicateFastPassword) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATED_USER,
-          );
-        }
+      if (input.fastPasswordDigest || input.update.status === 'A') {
+        await FastPasswordPolicy.assertForUser(
+          manager,
+          user.id,
+          input.fastPasswordDigest ?? user.fastPasswordDigest,
+          [input.siteId],
+        );
       }
 
       const fastPasswordChanged = Boolean(
@@ -162,7 +156,7 @@ export class UserUpdatePersistence {
   persistPartial = async (
     input: PersistUserPartialUpdate,
   ): Promise<PersistedUserUpdate> => {
-    return this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
       UserAdministrationPolicy.assertActor(input.actor);
       let user = await manager.findOne(UserEntity, {
         where: { id: input.userId },
@@ -192,26 +186,12 @@ export class UserUpdatePersistence {
         }
       }
 
-      if (input.fastPasswordDigest) {
-        const userSites = await manager.find(UserHasSitesEntity, {
-          where: { user: { id: input.userId } },
-          relations: { site: true },
-        });
-        const siteIds = userSites.map(({ site }) => site.id);
-        if (siteIds.length > 0) {
-          const duplicateFastPassword = await manager.exists(UserEntity, {
-            where: {
-              fastPasswordDigest: input.fastPasswordDigest,
-              userHasSites: { site: { id: In(siteIds) } },
-              id: Not(input.userId),
-            },
-          });
-          if (duplicateFastPassword) {
-            throw new ValidationException(
-              ValidationExceptionType.DUPLICATED_USER,
-            );
-          }
-        }
+      if (input.fastPasswordDigest || input.update.status === 'A') {
+        await FastPasswordPolicy.assertForUser(
+          manager,
+          user.id,
+          input.fastPasswordDigest ?? user.fastPasswordDigest,
+        );
       }
 
       const passwordChanged = typeof input.update.password === 'string';

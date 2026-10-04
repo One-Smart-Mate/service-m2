@@ -1,3 +1,4 @@
+import { SiteEntity } from '../site/entities/site.entity';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltMstrController } from './ciltMstr.controller';
@@ -32,6 +33,7 @@ import { CiltExecutionPersistence } from '../CiltSequencesExecutions/cilt-execut
       CiltSequencesExecutionsEntity,
       CiltMstrPositionLevelsEntity,
       OplMstr,
+      SiteEntity,
     ]),
     CiltSecuencesScheduleModule,
     LevelModule,

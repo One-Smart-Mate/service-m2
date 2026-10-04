@@ -1,3 +1,4 @@
+import { parseCiltLocalDate } from '../../../utils/cilt-timezone.utils';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -140,12 +141,7 @@ export class CiltValidationService {
    * Validate that dates are in the correct format
    */
   validateDateFormat(dateString: string): Date {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      const errorMessage = `Formato de fecha inválido: ${dateString}`;
-      this.logger.logProcess('DATE FORMAT VALIDATION FAILED', { dateString });
-      throw new Error(errorMessage);
-    }
+    const date = parseCiltLocalDate(dateString);
     this.logger.logProcess('DATE FORMAT VALIDATION PASSED', { dateString, parsedDate: date.toISOString() });
     return date;
   }

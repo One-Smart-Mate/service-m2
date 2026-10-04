@@ -1,3 +1,4 @@
+import { CiltConfigurationPersistence } from '../ciltMstr/cilt-configuration.persistence';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CiltMstrPositionLevelsController } from './ciltMstrPositionLevels.controller';
@@ -19,7 +20,7 @@ import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
     ])
   ],
   controllers: [CiltMstrPositionLevelsController],
-  providers: [CiltMstrPositionLevelsService],
+  providers: [CiltConfigurationPersistence, CiltMstrPositionLevelsService],
   exports: [CiltMstrPositionLevelsService],
 })
 export class CiltMstrPositionLevelsModule {} 

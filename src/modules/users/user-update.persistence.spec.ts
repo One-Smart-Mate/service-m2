@@ -1,5 +1,6 @@
+import { SiteEntity } from '../site/entities/site.entity';
 import { DataSource } from 'typeorm';
-import { ValidationException } from 'src/common/exceptions/types/validation.exception';
+import { FastPasswordConflictException } from './fast-password.policy';
 import { AuthSessionEntity } from '../auth-session/entities/auth-session.entity';
 import { RoleEntity } from '../roles/entities/role.entity';
 import { UserRoleEntity } from '../roles/entities/user-role.entity';
@@ -21,7 +22,7 @@ describe('UserUpdatePersistence', () => {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
   const dataSource = {
-    transaction: jest.fn((callback) => callback(manager)),
+    transaction: jest.fn((isolationOrCallback, callback?) => (callback ?? isolationOrCallback)(manager)),
   } as unknown as DataSource;
   const persistence = new UserUpdatePersistence(dataSource);
 
@@ -36,11 +37,11 @@ describe('UserUpdatePersistence', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    manager.findOne.mockResolvedValue({ ...user });
+    manager.findOne.mockImplementation(entity => Promise.resolve(entity === SiteEntity ? { id: 3 } : { ...user }));
     manager.exists.mockResolvedValue(false);
-    manager.find.mockResolvedValue([
-      { id: 20, user, role: operator } as UserRoleEntity,
-    ]);
+    manager.find.mockImplementation(entity => Promise.resolve(entity === UserHasSitesEntity
+      ? [{ user, site: { id: 3 } }]
+      : [{ id: 20, user, role: operator } as UserRoleEntity]));
   });
 
   it('updates roles by user id even when the email changes', async () => {
@@ -107,7 +108,7 @@ describe('UserUpdatePersistence', () => {
         revokeAllSessions: false,
         updatedAt,
       }),
-    ).rejects.toBeInstanceOf(ValidationException);
+    ).rejects.toBeInstanceOf(FastPasswordConflictException);
     expect(manager.save).not.toHaveBeenCalled();
   });
 

@@ -1,3 +1,4 @@
+import { hasActiveSiteMembership } from '../../../common/auth/active-site-membership.policy';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In, IsNull } from 'typeorm';
@@ -27,39 +28,55 @@ export class CiltPositionLevelService {
   /**
    * Get active position levels for a set of positions
    */
-  async getActiveLevelsForPositions(positionIds: number[]): Promise<CiltMstrPositionLevelsEntity[]> {
-    this.logger.logProcess('GETTING ACTIVE LEVELS FOR POSITIONS', { positionIds });
-    
-    const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find({
-      where: {
-        positionId: In(positionIds),
-        status: 'A',
-        deletedAt: IsNull(),
-      },
-      relations: ['ciltMstr', 'level'],
+  async getActiveLevelsForPositions(
+    positionIds: number[],
+  ): Promise<CiltMstrPositionLevelsEntity[]> {
+    this.logger.logProcess('GETTING ACTIVE LEVELS FOR POSITIONS', {
+      positionIds,
     });
 
-    this.logger.logProcess('FOUND CILT POSITION LEVELS', { count: ciltPositionLevels.length });
-    return ciltPositionLevels;
+    const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find(
+      {
+        where: {
+          positionId: In(positionIds),
+          status: 'A',
+          deletedAt: IsNull(),
+        },
+        relations: ['ciltMstr', 'level', 'position'],
+      },
+    );
+
+    this.logger.logProcess('FOUND CILT POSITION LEVELS', {
+      count: ciltPositionLevels.length,
+    });
+    return this.filterValidPositionLevels(ciltPositionLevels);
   }
 
   /**
    * Get active position levels for a set of CILTs
    */
-  async getActiveLevelsForCilts(ciltMasterIds: number[]): Promise<CiltMstrPositionLevelsEntity[]> {
-    this.logger.logProcess('GETTING ACTIVE LEVELS FOR CILTS', { ciltMasterIds });
-    
-    const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find({
-      where: {
-        ciltMstrId: In(ciltMasterIds),
-        status: 'A',
-        deletedAt: IsNull(),
-      },
-      relations: ['position', 'level'],
+  async getActiveLevelsForCilts(
+    ciltMasterIds: number[],
+  ): Promise<CiltMstrPositionLevelsEntity[]> {
+    this.logger.logProcess('GETTING ACTIVE LEVELS FOR CILTS', {
+      ciltMasterIds,
     });
 
-    this.logger.logProcess('FOUND CILT POSITION LEVELS', { count: ciltPositionLevels.length });
-    return ciltPositionLevels;
+    const ciltPositionLevels = await this.ciltMstrPositionLevelsRepository.find(
+      {
+        where: {
+          ciltMstrId: In(ciltMasterIds),
+          status: 'A',
+          deletedAt: IsNull(),
+        },
+        relations: ['position', 'level', 'ciltMstr'],
+      },
+    );
+
+    this.logger.logProcess('FOUND CILT POSITION LEVELS', {
+      count: ciltPositionLevels.length,
+    });
+    return this.filterValidPositionLevels(ciltPositionLevels);
   }
 
   /**
@@ -67,42 +84,80 @@ export class CiltPositionLevelService {
    */
   async getUserPositions(userId: number): Promise<UsersPositionsEntity[]> {
     this.logger.logProcess('GETTING USER POSITIONS', { userId });
-    
+
     const userPositions = await this.usersPositionsRepository.find({
-      where: { user: { id: userId } },
-      relations: ['position'],
+      where: { user: { id: userId }, deletedAt: IsNull() },
+      relations: [
+        'position',
+        'user',
+        'user.userHasSites',
+        'user.userHasSites.site',
+      ],
     });
 
-    this.logger.logProcess('FOUND USER POSITIONS', { count: userPositions.length });
-    return userPositions;
+    this.logger.logProcess('FOUND USER POSITIONS', {
+      count: userPositions.length,
+    });
+    return userPositions.filter(
+      (up) =>
+        up.position?.status === 'A' &&
+        !up.position.deletedAt &&
+        up.user?.status === 'A' &&
+        hasActiveSiteMembership(up.user, Number(up.position.siteId)),
+    );
   }
 
   /**
    * Get users with specific positions
    */
-  async getUsersWithPositions(positionIds: number[]): Promise<UsersPositionsEntity[]> {
+  async getUsersWithPositions(
+    positionIds: number[],
+  ): Promise<UsersPositionsEntity[]> {
     this.logger.logProcess('GETTING USERS WITH POSITIONS', { positionIds });
-    
+
     const userPositions = await this.usersPositionsRepository.find({
-      where: { 
+      where: {
         positionId: In(positionIds),
-        deletedAt: IsNull()
+        deletedAt: IsNull(),
       },
-      relations: ['user', 'position'],
+      relations: [
+        'position',
+        'user',
+        'user.userHasSites',
+        'user.userHasSites.site',
+      ],
     });
 
-    this.logger.logProcess('FOUND USERS WITH POSITIONS', { count: userPositions.length });
-    return userPositions;
+    this.logger.logProcess('FOUND USERS WITH POSITIONS', {
+      count: userPositions.length,
+    });
+    return userPositions.filter(
+      (up) =>
+        up.position?.status === 'A' &&
+        !up.position.deletedAt &&
+        up.user?.status === 'A' &&
+        hasActiveSiteMembership(up.user, Number(up.position.siteId)),
+    );
   }
 
   /**
    * Filter valid levels (without null ciltMstr)
    */
-  filterValidPositionLevels(ciltPositionLevels: CiltMstrPositionLevelsEntity[]): CiltMstrPositionLevelsEntity[] {
-    const validLevels = ciltPositionLevels.filter(cpl => cpl.ciltMstr !== null);
-    this.logger.logProcess('FILTERED VALID POSITION LEVELS', { 
-      original: ciltPositionLevels.length, 
-      valid: validLevels.length 
+  filterValidPositionLevels(
+    ciltPositionLevels: CiltMstrPositionLevelsEntity[],
+  ): CiltMstrPositionLevelsEntity[] {
+    const validLevels = ciltPositionLevels.filter((cpl) =>
+      [cpl.ciltMstr, cpl.position, cpl.level].every(
+        (record) =>
+          record &&
+          !record.deletedAt &&
+          record.status === 'A' &&
+          Number(record.siteId) === Number(cpl.siteId),
+      ),
+    );
+    this.logger.logProcess('FILTERED VALID POSITION LEVELS', {
+      original: ciltPositionLevels.length,
+      valid: validLevels.length,
     });
     return validLevels;
   }
@@ -110,58 +165,72 @@ export class CiltPositionLevelService {
   /**
    * Get level paths for multiple levels with error handling
    */
-  async getLevelPaths(ciltPositionLevels: CiltMstrPositionLevelsEntity[]): Promise<LevelPathInfo[]> {
-    this.logger.logProcess('GETTING LEVEL PATHS', { count: ciltPositionLevels.length });
-    
+  async getLevelPaths(
+    ciltPositionLevels: CiltMstrPositionLevelsEntity[],
+  ): Promise<LevelPathInfo[]> {
+    this.logger.logProcess('GETTING LEVEL PATHS', {
+      count: ciltPositionLevels.length,
+    });
+
     const levelPaths = await Promise.all(
       ciltPositionLevels.map(async (cpl) => {
         try {
           const route = await this.levelService.getLevelPathById(cpl.levelId);
           return { ciltMstrId: cpl.ciltMstrId, levelId: cpl.levelId, route };
         } catch (error) {
-          this.logger.logProcess('ERROR GETTING LEVEL PATH', { 
-            levelId: cpl.levelId, 
-            error: error.message 
+          this.logger.logProcess('ERROR GETTING LEVEL PATH', {
+            levelId: cpl.levelId,
+            error: error.message,
           });
-          return { 
-            ciltMstrId: cpl.ciltMstrId, 
-            levelId: cpl.levelId, 
-            route: null 
+          return {
+            ciltMstrId: cpl.ciltMstrId,
+            levelId: cpl.levelId,
+            route: null,
           };
         }
-      })
+      }),
     );
 
-    this.logger.logProcess('GENERATED LEVEL PATHS', { count: levelPaths.length });
+    this.logger.logProcess('GENERATED LEVEL PATHS', {
+      count: levelPaths.length,
+    });
     return levelPaths;
   }
 
   /**
    * Group users by position
    */
-  groupUsersByPosition(userPositions: UsersPositionsEntity[]): Map<number, UserEntity[]> {
+  groupUsersByPosition(
+    userPositions: UsersPositionsEntity[],
+  ): Map<number, UserEntity[]> {
     const usersByPosition = new Map<number, UserEntity[]>();
-    
-    userPositions.forEach(up => {
+
+    userPositions.forEach((up) => {
       const users = usersByPosition.get(up.positionId) || [];
       users.push(up.user);
       usersByPosition.set(up.positionId, users);
     });
 
-    this.logger.logProcess('GROUPED USERS BY POSITION', { 
+    this.logger.logProcess('GROUPED USERS BY POSITION', {
       positions: usersByPosition.size,
-      totalUsers: userPositions.length 
+      totalUsers: userPositions.length,
     });
-    
+
     return usersByPosition;
   }
 
   /**
    * Extract unique position IDs from position levels
    */
-  extractUniquePositionIds(ciltPositionLevels: CiltMstrPositionLevelsEntity[]): number[] {
-    const positionIds = [...new Set(ciltPositionLevels.map(cpl => cpl.positionId))];
-    this.logger.logProcess('EXTRACTED UNIQUE POSITION IDS', { count: positionIds.length });
+  extractUniquePositionIds(
+    ciltPositionLevels: CiltMstrPositionLevelsEntity[],
+  ): number[] {
+    const positionIds = [
+      ...new Set(ciltPositionLevels.map((cpl) => cpl.positionId)),
+    ];
+    this.logger.logProcess('EXTRACTED UNIQUE POSITION IDS', {
+      count: positionIds.length,
+    });
     return positionIds;
   }
-} 
+}

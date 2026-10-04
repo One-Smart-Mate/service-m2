@@ -1,4 +1,6 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { parseCiltLocalDate } from '../../utils/cilt-timezone.utils';
+import { CiltConfigurationPersistence } from '../ciltMstr/cilt-configuration.persistence';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { CiltSecuencesScheduleEntity } from './entities/ciltSecuencesSchedule.entity';
@@ -12,12 +14,8 @@ import {
 } from '../../common/exceptions/types/notFound.exception';
 import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { stringConstants } from '../../utils/string.constant';
-import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
-import { SiteEntity } from '../site/entities/site.entity';
-import { CiltMstrService } from '../ciltMstr/ciltMstr.service';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import { IsNull } from 'typeorm';
-import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 
 @Injectable()
@@ -25,17 +23,10 @@ export class CiltSecuencesScheduleService {
   constructor(
     @InjectRepository(CiltSecuencesScheduleEntity)
     private readonly ciltSecuencesScheduleRepository: Repository<CiltSecuencesScheduleEntity>,
-    @InjectRepository(CiltMstrEntity)
-    private readonly ciltMstrRepository: Repository<CiltMstrEntity>,
-    @InjectRepository(CiltSequencesEntity)
-    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
-    @InjectRepository(SiteEntity)
-    private readonly siteRepository: Repository<SiteEntity>,
-    @Inject(forwardRef(() => CiltMstrService))
-    private readonly ciltMstrService: CiltMstrService,
     private readonly logger: CustomLoggerService,
     @InjectRepository(CiltSequencesExecutionsEntity)
-    private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>
+    private readonly ciltSequencesExecutionsRepository: Repository<CiltSequencesExecutionsEntity>,
+    private readonly configurationPersistence: CiltConfigurationPersistence
   ) {}
 
   findAll = async () => {
@@ -137,7 +128,7 @@ export class CiltSecuencesScheduleService {
   ): Promise<CiltSecuencesScheduleEntity[]> => {
     try {
       // Parse the ISO date
-      const date = new Date(dateStr + 'T00:00:00'); // Ensure consistent date parsing
+      const date = parseCiltLocalDate(dateStr); // Ensure consistent date parsing
 
       // Verify it's a valid date
       if (isNaN(date.getTime())) {
@@ -145,11 +136,11 @@ export class CiltSecuencesScheduleService {
       }
 
       // Get date components
-      const dayOfMonth = date.getDate();
-      const month = date.getMonth() + 1; // Month is 0-based in JS, so add 1
+      const dayOfMonth = date.getUTCDate();
+      const month = date.getUTCMonth() + 1; // Month is 0-based in JS, so add 1
 
       // Determine day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-      const dayOfWeekNum = date.getDay();
+      const dayOfWeekNum = date.getUTCDay();
       const dayColumns = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
       const dayColumn = dayColumns[dayOfWeekNum];
 
@@ -159,15 +150,19 @@ export class CiltSecuencesScheduleService {
       }
 
       // Calculate week of month (1-based)
-      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const firstWeekDay = firstDayOfMonth.getDay();
-      const offsetDate = date.getDate() + firstWeekDay - 1;
+      const firstDayOfMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+      const firstWeekDay = firstDayOfMonth.getUTCDay();
+      const offsetDate = date.getUTCDate() + firstWeekDay - 1;
       const weekOfMonth = Math.floor(offsetDate / 7) + 1;
 
       // Create query to get all active schedules
       const queryBuilder = this.ciltSecuencesScheduleRepository
         .createQueryBuilder('schedule')
+        .innerJoin('schedule.cilt', 'master', 'master.siteId = schedule.siteId')
+        .innerJoin('schedule.sequence', 'sequence', 'sequence.siteId = schedule.siteId AND sequence.ciltMstrId = schedule.ciltId')
         .where('schedule.status = :status', { status: 'A' })
+        .andWhere('schedule.deletedAt IS NULL')
+        .andWhere('sequence.deletedAt IS NULL')
         // Only include schedules that haven't expired
         .andWhere(
           '(schedule.endDate IS NULL OR DATE(schedule.endDate) >= :currentDate)',
@@ -295,7 +290,7 @@ export class CiltSecuencesScheduleService {
     dateStr: string,
   ): boolean => {
     try {
-      const date = new Date(dateStr + 'T00:00:00'); // Ensure consistent date parsing
+      const date = parseCiltLocalDate(dateStr); // Ensure consistent date parsing
 
       // Verify it's a valid date
       if (isNaN(date.getTime())) {
@@ -303,27 +298,28 @@ export class CiltSecuencesScheduleService {
       }
 
       // Check if schedule is active
-      if (schedule.status !== 'A') {
+      if (schedule.status !== 'A' || schedule.deletedAt) {
         return false;
       }
 
       // Check if schedule hasn't expired
       if (schedule.endDate) {
-        const endDate = new Date(schedule.endDate + 'T23:59:59');
+        const endDate = parseCiltLocalDate(schedule.endDate);
+        endDate.setUTCHours(23, 59, 59, 999);
         if (date > endDate) {
           return false;
         }
       }
 
       // Get date components
-      const dayOfMonth = date.getDate();
-      const month = date.getMonth() + 1;
-      const dayOfWeekNum = date.getDay();
+      const dayOfMonth = date.getUTCDate();
+      const month = date.getUTCMonth() + 1;
+      const dayOfWeekNum = date.getUTCDay();
 
       // Calculate week of month
-      const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const firstWeekDay = firstDayOfMonth.getDay();
-      const offsetDate = date.getDate() + firstWeekDay - 1;
+      const firstDayOfMonth = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+      const firstWeekDay = firstDayOfMonth.getUTCDay();
+      const offsetDate = date.getUTCDate() + firstWeekDay - 1;
       const weekOfMonth = Math.floor(offsetDate / 7) + 1;
 
       // Get day of week activation status
@@ -364,10 +360,10 @@ export class CiltSecuencesScheduleService {
         case 'yea': // Yearly
           if (schedule.dateOfYear) {
             // Yearly by specific date
-            const yearlyDate = new Date(schedule.dateOfYear + 'T00:00:00');
+            const yearlyDate = parseCiltLocalDate(schedule.dateOfYear);
             return (
-              date.getMonth() === yearlyDate.getMonth() &&
-              date.getDate() === yearlyDate.getDate()
+              date.getUTCMonth() === yearlyDate.getUTCMonth() &&
+              date.getUTCDate() === yearlyDate.getUTCDate()
             );
           } else {
             const hasMonthOfYear =
@@ -406,102 +402,14 @@ export class CiltSecuencesScheduleService {
     }
   };
 
-  create = async (createDto: CreateCiltSecuencesScheduleDto) => {
-    try {
-      // Validar que existan las entidades relacionadas
-      if (createDto.siteId) {
-        const site = await this.siteRepository.findOneBy({ id: createDto.siteId });
-        if (!site) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-        }
-      }
-
-      if (createDto.ciltId) {
-        const cilt = await this.ciltMstrRepository.findOneBy({ id: createDto.ciltId });
-        if (!cilt) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
-        }
-      }
-
-      if (createDto.secuenceId) {
-        const sequence = await this.ciltSequencesRepository.findOneBy({ id: createDto.secuenceId });
-        if (!sequence) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
-        }
-      }
-
-      // Found existing schedules for the same sequence
-      const existingSchedules = await this.ciltSecuencesScheduleRepository.find({
-        where: { secuenceId: createDto.secuenceId },
-        order: { order: 'DESC' },
-        take: 1
-      });
-
-      // Assign the next order number
-      const nextOrder = existingSchedules.length > 0 ? existingSchedules[0].order + 1 : 1;
-
-      // Crear un schedule para cada horario en el array
-      const schedules = await Promise.all(createDto.schedules.map(async (scheduleTime, index) => {
-        const schedule = this.ciltSecuencesScheduleRepository.create({
-          ...createDto,
-          schedule: scheduleTime,
-          order: nextOrder + index,
-          createdAt: new Date()
-        });
-        return await this.ciltSecuencesScheduleRepository.save(schedule);
-      }));
-
-      return schedules;
-    } catch (exception) {
-      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
-        throw exception;
-      }
-      HandleException.exception(exception);
-    }
+  create = async (input: CreateCiltSecuencesScheduleDto) => {
+    try { return await this.configurationPersistence.createSchedules(input); }
+    catch (exception) { HandleException.exception(exception); }
   };
 
-  update = async (updateDto: UpdateCiltSecuencesScheduleDto) => {
-    try {
-      const schedule = await this.ciltSecuencesScheduleRepository.findOneBy({
-        id: updateDto.id,
-      });
-      if (!schedule) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
-        );
-      }
-
-      // Validar que existan las entidades relacionadas
-      if (updateDto.siteId) {
-        const site = await this.siteRepository.findOneBy({ id: updateDto.siteId });
-        if (!site) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-        }
-      }
-
-      if (updateDto.ciltId) {
-        const cilt = await this.ciltMstrRepository.findOneBy({ id: updateDto.ciltId });
-        if (!cilt) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
-        }
-      }
-
-      if (updateDto.secuenceId) {
-        const sequence = await this.ciltSequencesRepository.findOneBy({ id: updateDto.secuenceId });
-        if (!sequence) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
-        }
-      }
-
-      Object.assign(schedule, updateDto);
-      schedule.updatedAt = new Date();
-      return await this.ciltSecuencesScheduleRepository.save(schedule);
-    } catch (exception) {
-      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
-        throw exception;
-      }
-      HandleException.exception(exception);
-    }
+  update = async (input: UpdateCiltSecuencesScheduleDto) => {
+    try { return await this.configurationPersistence.updateSchedule(input); }
+    catch (exception) { HandleException.exception(exception); }
   };
 
   findActiveSchedules = async () => {

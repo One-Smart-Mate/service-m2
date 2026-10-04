@@ -1,3 +1,4 @@
+import { FastPasswordConflictException } from '../users/fast-password.policy';
 import {
   BadRequestException,
   ForbiddenException,
@@ -223,7 +224,9 @@ export class FileUploadService {
         let fastPassword =
           await this.userService.generateUniqueFastPassword(siteId);
         let fastPasswordDigest = digestFastPassword(fastPassword);
+        let attempts = 0;
         while (importedFastPasswordDigests.has(fastPasswordDigest)) {
+          if (++attempts >= 100) throw new FastPasswordConflictException();
           fastPassword =
             await this.userService.generateUniqueFastPassword(siteId);
           fastPasswordDigest = digestFastPassword(fastPassword);

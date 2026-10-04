@@ -12,6 +12,12 @@ import {
 } from 'class-validator';
 import { stringConstants } from 'src/utils/string.constant';
 export class UpadeSiteDTO {
+  @ApiProperty({ required: false, description: 'IANA timezone used for CILT schedules', example: 'America/Mexico_City' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 64)
+  timezone?: string;
+
   @ApiProperty({ type: 'number', description: 'Id', required: true })
   @IsNumber()
   @IsNotEmpty()

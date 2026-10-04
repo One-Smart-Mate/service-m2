@@ -2,17 +2,16 @@ import { sanitizeExecutionRelations } from './cilt-execution-relations.policy';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull, Between } from 'typeorm';
-import { getUTCRangeFromLocalDate } from '../../utils/timezone.utils';
+import { ciltLocalDateAt, ciltSiteDayRange, DEFAULT_SITE_TIMEZONE, parseCiltLocalDate } from '../../utils/cilt-timezone.utils';
+import { SiteEntity } from '../site/entities/site.entity';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { HandleException } from '../../common/exceptions/handler/handle.exception';
 import { NotFoundCustomException, NotFoundCustomExceptionType } from '../../common/exceptions/types/notFound.exception';
 import { UsersService } from '../users/users.service';
-import { stringConstants } from '../../utils/string.constant';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
-import { ValidationException, ValidationExceptionType } from '../../common/exceptions/types/validation.exception';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.service';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
@@ -114,11 +113,16 @@ export class CiltSequencesExecutionsService {
         return null;
       }
 
-      // Then we get the executions
+      const site = await this.ciltSequencesExecutionsRepository.manager.findOne(SiteEntity, {
+        where: { id: sequence.siteId, status: 'A', deletedAt: IsNull() },
+      });
+      if (!site) return null;
+      const { dayStart, dayEnd } = ciltSiteDayRange(date, site.timezone || DEFAULT_SITE_TIMEZONE);
       const executions = await this.ciltSequencesExecutionsRepository
         .createQueryBuilder('execution')
         .where('execution.ciltSecuenceId = :ciltSequenceId', { ciltSequenceId })
-        .andWhere('DATE(execution.secuenceSchedule) = :date', { date })
+        .andWhere('execution.siteId = :siteId', { siteId: site.id })
+        .andWhere('execution.secuenceSchedule BETWEEN :dayStart AND :dayEnd', { dayStart, dayEnd })
         .andWhere('execution.status = :status', { status: 'A' })
         .andWhere('execution.deletedAt IS NULL')
         .getMany();
@@ -168,16 +172,7 @@ export class CiltSequencesExecutionsService {
 
   softDelete = async (id: number) => {
     try {
-      const execution = await this.findById(id);
-      if (!execution) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
-      }
-
-      // Set the deletedAt field to the current timestamp
-      execution.deletedAt = new Date();
-      
-      // Save the entity with the updated deletedAt timestamp
-      return await this.ciltSequencesExecutionsRepository.save(execution);
+      return await this.executionPersistence.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -185,32 +180,8 @@ export class CiltSequencesExecutionsService {
 
   async start(startDTO: StartCiltSequencesExecutionDTO) {
     try {
-      const execution = await this.findById(startDTO.id);
-      if (!execution) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
-      }
-    
-      if (execution.secuenceStart) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_STARTED);
-      }
-
-      if (execution.status === stringConstants.completedStatus) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
-      }
-    
-      const startDate = new Date(startDTO.startDate);
-      if (isNaN(startDate.getTime())) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_INVALID_DATE);
-      }
-
-      execution.secuenceStart = startDate;
-      execution.updatedAt = new Date();
-      
-      try {
-        return await this.ciltSequencesExecutionsRepository.update(execution.id, execution);
-      } catch (saveError) {
-        throw new Error(`Failed to save CILT sequence execution: ${saveError.message}`);
-      }
+      await this.executionPersistence.start(startDTO);
+      return { generatedMaps: [], raw: [], affected: 1 };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -218,47 +189,7 @@ export class CiltSequencesExecutionsService {
 
   async stop(stopDTO: StopCiltSequencesExecutionDTO) {
     try {
-      const execution = await this.findById(stopDTO.id);
-      if (!execution) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
-      }
-
-      if (!execution.secuenceStart) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_STARTED);
-      }
-
-      if (execution.secuenceStop) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_ALREADY_FINISHED);
-      }
-
-      if (execution.status !== stringConstants.activeStatus) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_NOT_ACTIVE);
-      }
-
-      const stopDate = new Date(stopDTO.stopDate);
-      if (isNaN(stopDate.getTime())) {
-        throw new ValidationException(ValidationExceptionType.CILT_SEQUENCE_INVALID_DATE);
-      }
-
-      const startDate = new Date(execution.secuenceStart);
-      const durationInSeconds = Math.floor((stopDate.getTime() - startDate.getTime()) / 1000);
-
-      Object.assign(execution, {
-        status: stringConstants.completedStatus,
-        secuenceStop: stopDate,
-        realDuration: durationInSeconds,
-        initialParameter: stopDTO.initialParameter?.toString(),
-        evidenceAtCreation: stopDTO.evidenceAtCreation,
-        finalParameter: stopDTO.finalParameter?.toString(),
-        evidenceAtFinal: stopDTO.evidenceAtFinal,
-        nok: stopDTO.nok,
-        amTagId: stopDTO.amTagId,
-        updatedAt: new Date()
-      });
-
-
-      await this.executionPersistence.update(execution);
-      return this.findById(execution.id);
+      return await this.executionPersistence.stop(stopDTO);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -266,13 +197,10 @@ export class CiltSequencesExecutionsService {
 
   async findAllByUserIdAndDate(userId: number, date: string) {
     try {
-      const [year, month, day] = date.split('-').map(Number);
-      
-      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
-      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
-
+      const conditions = await this.dayConditionsForUser(userId, date);
+      if (!conditions.length) return [];
       return await this.ciltSequencesExecutionsRepository.find({
-        where: { userId, secuenceSchedule: Between(startOfDay, endOfDay), status: 'I', deletedAt: IsNull() }
+        where: conditions.map(condition => ({ ...condition, status: 'I' })),
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -668,39 +596,29 @@ export class CiltSequencesExecutionsService {
     }
   };
 
+  private async dayConditionsForUser(userId: number, date?: string) {
+    if (date !== undefined) parseCiltLocalDate(date);
+    const sites = await this.ciltSequencesExecutionsRepository.manager.find(SiteEntity, {
+      where: { status: 'A', deletedAt: IsNull(), userHasSites: {
+        user: { id: userId, status: 'A', deletedAt: IsNull() }, status: 'A', deletedAt: IsNull(),
+      } },
+    });
+    const now = new Date();
+    return sites.map(site => {
+      const timezone = site.timezone || DEFAULT_SITE_TIMEZONE;
+      const localDate = date ?? ciltLocalDateAt(now, timezone);
+      const { dayStart, dayEnd } = ciltSiteDayRange(localDate, timezone);
+      return { userId, siteId: site.id, secuenceSchedule: Between(dayStart, dayEnd), deletedAt: IsNull() };
+    });
+  }
+
   getOfDay = async (user: any) => {
     try {
       this.logger.logProcess('[GET_OF_DAY] Starting getOfDay method', { userId: user?.id, timezone: user?.timezone });
       
-      const timezone = user?.timezone || 'UTC';
-
-      // Get today's date in the USER'S timezone, not UTC
-      const nowInUserTimezone = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).format(new Date());
-
-      const today = nowInUserTimezone; // This is YYYY-MM-DD in user's timezone
-
-      this.logger.logProcess('[GET_OF_DAY] Timezone and date info', { timezone, today, userLocalDate: today });
-
-      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(today, timezone);
-      
-      this.logger.logProcess('[GET_OF_DAY] UTC range calculated', { 
-        dayStart: dayStart.toISOString(), 
-        dayEnd: dayEnd.toISOString(), 
-        timezone,
-        localDate: today
-      });
-      
-      const executions = await this.ciltSequencesExecutionsRepository.find({
-        where: {
-          userId: user.id,
-          secuenceSchedule: Between(dayStart, dayEnd),
-          deletedAt: IsNull()
-        },
+      const conditions = await this.dayConditionsForUser(Number(user.id));
+      const executions = conditions.length ? await this.ciltSequencesExecutionsRepository.find({
+        where: conditions,
         relations: [
           'evidences',
           'referenceOplSop',
@@ -713,7 +631,7 @@ export class CiltSequencesExecutionsService {
         order: {
           secuenceSchedule: 'ASC'
         }
-      });
+      }) : [];
 
       executions.forEach(sanitizeExecutionRelations);
 

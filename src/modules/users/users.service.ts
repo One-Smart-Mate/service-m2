@@ -1,3 +1,4 @@
+import { FastPasswordConflictException } from './fast-password.policy';
 import { In, IsNull, Not, Repository, DataSource } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
@@ -68,7 +69,7 @@ export class UsersService {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = 4;
     const normalizedSiteIds = Array.isArray(siteIds) ? siteIds : [siteIds];
-    while (true) {
+    for (let attempt = 0; attempt < 100; attempt++) {
       const fastPassword = generateRandomCode(length, chars);
       const fastPasswordDigest = digestFastPassword(fastPassword);
 
@@ -90,6 +91,7 @@ export class UsersService {
         return fastPassword;
       }
     }
+    throw new FastPasswordConflictException();
   }
 
   private async sendFastPasswordWhatsAppMessage(phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> {
@@ -991,8 +993,8 @@ export class UsersService {
     }
   };
 
-  findOneByFastPassword = (fastPassword: string, siteId: number) => {
-    return this.userRepository.findOne({
+  findOneByFastPassword = async (fastPassword: string, siteId: number) => {
+    const users = await this.userRepository.find({
       where: {
         status: stringConstants.activeStatus,
         deletedAt: IsNull(),
@@ -1004,7 +1006,9 @@ export class UsersService {
         },
       },
       relations: { userHasSites: { site: true } },
+      take: 2,
     });
+    return users.length === 1 ? users[0] : null;
   };
 
   findOneByPhoneNumber = async (phoneNumber: string) => {

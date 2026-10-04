@@ -1,3 +1,4 @@
+import { IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsNumber, IsString, IsISO8601, IsBoolean, IsEnum } from 'class-validator';
 
@@ -192,9 +193,10 @@ export class CreateCiltSequencesExecutionDTO {
   @IsBoolean()
   selectableWithoutProgramming?: boolean;
 
-  @ApiProperty({ description: 'Status (A=Active, I=Inactive, D=Draft)', required: false, default: 'A' })
+  @ApiProperty({ description: 'Status (A=Active, D=Draft, R=Completed, I=Inactive, C=Cancelled)', enum: ['A', 'D', 'R', 'I', 'C'], required: false, default: 'A' })
   @IsOptional()
   @IsString()
+  @IsIn(['A', 'D', 'R', 'I', 'C'])
   status?: string;
 
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })

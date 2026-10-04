@@ -14,6 +14,7 @@ import { UserRoleEntity } from '../roles/entities/user-role.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { UserEntity } from './entities/user.entity';
 import { UserHasSitesEntity } from './entities/user.has.sites.entity';
+import { FastPasswordPolicy } from './fast-password.policy';
 
 export interface PersistUserCreation {
   actor: UserAdministrationActor;
@@ -44,7 +45,7 @@ export class UserCreationPersistence {
   persist = async (
     input: PersistUserCreation,
   ): Promise<PersistedUserCreation> => {
-    return this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
       UserAdministrationPolicy.assertRoles(input.actor, input.roles);
       UserAdministrationPolicy.assertSite(input.actor, input.site.id);
       let user = await manager.findOne(UserEntity, {
@@ -54,7 +55,14 @@ export class UserCreationPersistence {
       const isNewUser = !user;
       const fastPasswordChanged = false;
 
+      await FastPasswordPolicy.lockSites(manager, [input.site.id]);
+
       if (!user) {
+        await FastPasswordPolicy.assertAvailable(
+          manager,
+          [input.site.id],
+          input.newUser.fastPasswordDigest,
+        );
         user = manager.create(UserEntity, input.newUser);
         user = await manager.save(UserEntity, user);
 
@@ -83,6 +91,12 @@ export class UserCreationPersistence {
             ValidationExceptionType.DUPLICATED_USER,
           );
         }
+        await FastPasswordPolicy.assertAvailable(
+          manager,
+          [input.site.id],
+          user.fastPasswordDigest,
+          user.id,
+        );
       }
 
       const userSite = manager.create(UserHasSitesEntity, {

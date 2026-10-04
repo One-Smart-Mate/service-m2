@@ -16,7 +16,7 @@ describe('UserCreationPersistence', () => {
     create: jest.fn((entity, value) => Object.assign(new entity(), value)),
   };
   const dataSource = {
-    transaction: jest.fn((callback) => callback(manager)),
+    transaction: jest.fn((isolationOrCallback, callback?) => (callback ?? isolationOrCallback)(manager)),
   } as unknown as DataSource;
   const persistence = new UserCreationPersistence(dataSource);
 
@@ -34,7 +34,7 @@ describe('UserCreationPersistence', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    manager.findOne.mockResolvedValue(null);
+    manager.findOne.mockImplementation(entity => Promise.resolve(entity === SiteEntity ? site : null));
     manager.exists.mockResolvedValue(false);
     manager.save.mockImplementation((entity, value) =>
       Promise.resolve(value),

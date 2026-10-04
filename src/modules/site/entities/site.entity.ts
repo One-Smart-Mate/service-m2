@@ -85,6 +85,9 @@ export class SiteEntity {
   @Column({ name: 'app_history_days', type: 'smallint' })
   appHistoryDays: number;
 
+  @Column({ type: 'varchar', length: 64, default: 'America/Mexico_City' })
+  timezone: string;
+
   @Column({ type: 'char', length: 1, default: 'A' })
   status: string;
 

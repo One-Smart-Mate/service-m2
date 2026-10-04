@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import {
@@ -38,6 +38,7 @@ export class CardMutationPersistence {
     dueDate: Date;
   }): Promise<MutationResult> {
     return this.withLockedCard(input.cardId, async (manager, card) => {
+      this.assertOpenCard(card);
       if (Number(card.priorityId) === Number(input.priority.id)) {
         return { card, changed: false };
       }
@@ -60,6 +61,7 @@ export class CardMutationPersistence {
     mechanic: MutationActor;
   }): Promise<MutationResult> {
     return this.withLockedCard(input.cardId, async (manager, card) => {
+      this.assertOpenCard(card);
       if (Number(card.mechanicId) === Number(input.mechanic.id)) {
         return { card, changed: false };
       }
@@ -83,6 +85,7 @@ export class CardMutationPersistence {
     dueDateText: string;
   }): Promise<MutationResult> {
     return this.withLockedCard(input.cardId, async (manager, card) => {
+      this.assertOpenCard(card);
       const noteText = `${stringConstants.cambio} <${input.actor.id} ${input.actor.name}> estableció fecha de vencimiento personalizada: <${input.dueDateText}>`;
       card.cardDueDate = input.dueDate;
       card.updatedAt = new Date();
@@ -99,6 +102,14 @@ export class CardMutationPersistence {
     comments?: string;
   }): Promise<CardEntity> {
     return this.withLockedCard(input.cardId, async (manager, card) => {
+      if (card.status === stringConstants.DISCARDED) {
+        if (Number(card.managerId) === Number(input.actor.id) &&
+          Number(card.amDiscardReasonId) === Number(input.discardReasonId) &&
+          (card.discardReason || null) === (input.discardReason || null) &&
+          (card.commentsManagerAtCardClose || null) === (input.comments || null)) return card;
+        throw new ConflictException('A discarded card cannot be closed again with different details');
+      }
+      this.assertOpenCard(card);
       const now = new Date();
       card.status = stringConstants.DISCARDED;
       card.amDiscardReasonId = input.discardReasonId;
@@ -109,7 +120,10 @@ export class CardMutationPersistence {
       card.commentsManagerAtCardClose = input.comments || null;
       card.updatedAt = now;
 
-      return manager.save(CardEntity, card);
+      const result = await this.saveCardAndNote(manager, card,
+        `${stringConstants.cambio} <${input.actor.id} ${input.actor.name}> descartó la tarjeta con motivo <${input.discardReasonId}>`,
+      );
+      return result.card;
     });
   }
 
@@ -125,9 +139,16 @@ export class CardMutationPersistence {
       if (!card) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
+      if (card.deletedAt) throw new ConflictException('A deleted card cannot be modified');
 
       return mutation(manager, card);
     });
+  }
+
+  private assertOpenCard(card: CardEntity): void {
+    if (![stringConstants.A, stringConstants.P, stringConstants.V].includes(card.status)) {
+      throw new ConflictException('Only open cards can be modified or discarded');
+    }
   }
 
   private async saveCardAndNote(

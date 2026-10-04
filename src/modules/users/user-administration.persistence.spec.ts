@@ -10,7 +10,7 @@ describe('user persistence authorization', () => {
   const site = { id: 7 };
   const forbiddenRoles = [{ id: 1, name: 'ih_sis_admin' }];
   const source = (manager: any) =>
-    ({ transaction: (fn) => fn(manager) }) as never;
+    ({ transaction: (isolationOrCallback, callback?) => (callback ?? isolationOrCallback)(manager) }) as never;
   it.each(['create', 'update', 'import'])(
     'blocks privileged roles on %s before any mutation',
     async (action) => {

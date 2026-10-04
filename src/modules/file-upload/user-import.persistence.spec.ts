@@ -9,10 +9,12 @@ import { UserImportPersistence } from './user-import.persistence';
 describe('UserImportPersistence', () => {
   const manager = {
     save: jest.fn(),
+    findOne: jest.fn(),
+    exists: jest.fn(),
     create: jest.fn((entity, value) => Object.assign(new entity(), value)),
   };
   const dataSource = {
-    transaction: jest.fn((callback) => callback(manager)),
+    transaction: jest.fn((isolationOrCallback, callback?) => (callback ?? isolationOrCallback)(manager)),
   } as unknown as DataSource;
   const persistence = new UserImportPersistence(dataSource);
 
@@ -39,6 +41,8 @@ describe('UserImportPersistence', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    manager.findOne.mockImplementation(entity => Promise.resolve(entity === SiteEntity ? site : existingUser));
+    manager.exists.mockResolvedValue(false);
     manager.save.mockImplementation((entity, values) => {
       if (entity === UserEntity) return Promise.resolve([newUser]);
       return Promise.resolve(values);

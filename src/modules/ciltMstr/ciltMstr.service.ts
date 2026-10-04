@@ -19,7 +19,6 @@ import { CiltPositionLevelService } from './services/cilt-position-level.service
 import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService, CiltUserResponse, CiltSiteResponse } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
-import { getUTCRangeFromLocalDate } from 'src/utils/timezone.utils';
 import { CiltMasterPersistence } from './cilt-master.persistence';
 
 @Injectable()
@@ -98,16 +97,6 @@ export class CiltMstrService {
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      // Usar utilidad de timezone para calcular el rango correcto
-      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
-
-      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
-        originalDate: date, 
-        timezone, 
-        dayStart: dayStart.toISOString(), 
-        dayEnd: dayEnd.toISOString() 
-      });
-  
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
   
@@ -161,10 +150,10 @@ export class CiltMstrService {
       );
   
       // 9) Get
-      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+      const allExecutions = await this.ciltExecutionService.getExecutionsForLocalDate(
         ciltMasters.map(cm => cm.id),
-        dayStart,
-        dayEnd,
+        date,
+        validCiltPositionLevels.map(cpl => cpl.siteId),
         userId
       );
   
@@ -196,19 +185,8 @@ export class CiltMstrService {
       this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date, timezone });
       
       // Validate date format
-      const scheduleDate = this.ciltValidationService.validateDateFormat(date);
-      console.log(`Unused variable: ${scheduleDate}`)
+      this.ciltValidationService.validateDateFormat(date);
 
-      // Usar utilidad de timezone para calcular el rango correcto
-      const { dayStart, dayEnd } = getUTCRangeFromLocalDate(date, timezone);
-
-      this.logger.logProcess('TIMEZONE RANGE CALCULATED', { 
-        originalDate: date, 
-        timezone, 
-        dayStart: dayStart.toISOString(), 
-        dayEnd: dayEnd.toISOString() 
-      });
-  
       // 1) Validate and get user
       const user = await this.ciltValidationService.validateUser(userId);
   
@@ -245,10 +223,10 @@ export class CiltMstrService {
       );
   
       // 7) Get executions (READ ONLY - no creation/update)
-      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+      const allExecutions = await this.ciltExecutionService.getExecutionsForLocalDate(
         ciltMasters.map(cm => cm.id),
-        dayStart,
-        dayEnd,
+        date,
+        validCiltPositionLevels.map(cpl => cpl.siteId),
         userId
       );
 
@@ -328,12 +306,6 @@ export class CiltMstrService {
       // Validate date format
       const scheduleDate = this.ciltValidationService.validateDateFormat(date);
 
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
-  
       // 1) Get all active CILTs for the site
       const ciltMasters = await this.ciltQueryService.getActiveCiltsForSite(siteId);
       if (!ciltMasters.length) {
@@ -378,10 +350,10 @@ export class CiltMstrService {
       );
 
       // 9) Read all executions for the date
-      const allExecutions = await this.ciltExecutionService.getExecutionsForDate(
+      const allExecutions = await this.ciltExecutionService.getExecutionsForLocalDate(
         ciltMasters.map(cm => cm.id),
-        dayStart,
-        dayEnd
+        date,
+        [siteId]
       );
 
       // 10) Build

@@ -19,6 +19,12 @@ enum UserLicense {
 }
 
 export class CreateSiteDTO {
+  @ApiProperty({ required: false, description: 'IANA timezone used for CILT schedules', example: 'America/Mexico_City' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 64)
+  timezone?: string;
+
   @ApiProperty({ type: 'number', description: 'Company ID', required: true })
   @IsNumber()
   @IsNotEmpty()
