@@ -105,6 +105,14 @@ export const stringConstants = {
   inactiveStatus: 'I',
   cancelledStatus: 'C',
   completedStatus: 'R', // For CILT sequences executions
+  invalidCardCatalogSelection:
+    'The selected card catalogs are not compatible',
+  customDueDateRequired:
+    'A custom due date is required for the wildcard priority',
+  customDueDateNotAllowed:
+    'A custom due date is only allowed for the wildcard priority',
+  cardTypeValueRequired:
+    'A safe or unsafe value is required for this card type',
 
   //Harcoded
   tagVersion: '1.0.0',

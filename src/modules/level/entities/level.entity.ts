@@ -1,7 +1,20 @@
 import { Exclude } from 'class-transformer';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('levels')
+@Index('idx_levels_site_state_depth', [
+  'siteId',
+  'status',
+  'deletedAt',
+  'level',
+  'id',
+])
+@Index('idx_levels_site_parent_state', [
+  'siteId',
+  'superiorId',
+  'deletedAt',
+  'status',
+])
 export class LevelEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;

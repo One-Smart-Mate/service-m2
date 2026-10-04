@@ -24,21 +24,27 @@ import { ResetPasswordDTO } from './models/reset.password.dto';
 import { SetAppTokenDTO } from './models/set.app.token.dto';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
-import { UserHasSitesEntity } from './entities/user.has.sites.entity';
-import { CreateUsersDTO } from '../file-upload/dto/create.users.dto';
-import { UsersAndSitesDTO } from '../file-upload/dto/users.and.sites.dto';
 import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { UpdateUserPartialDTO } from './models/update-user-partial.dto';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import {
+  PLATFORM_ADMIN_ROLE,
+  normalizeRole,
+} from 'src/common/auth/roles.constants';
+import { digestFastPassword } from '../auth/fast-password.crypto';
+import { UserCreationPersistence } from './user-creation.persistence';
+import { UserUpdatePersistence } from './user-update.persistence';
+import { PasswordResetPersistence } from './password-reset.persistence';
+import { UserLogoutPersistence } from './user-logout.persistence';
 
 @Injectable()
 export class UsersService {
+  private static readonly RESET_CODE_TTL_MS = 15 * 60 * 1000;
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(UserHasSitesEntity)
-    private readonly userHasSiteRepository: Repository<UserHasSitesEntity>,
     private readonly siteService: SiteService,
     private readonly roleService: RolesService,
     private readonly mailService: MailService,
@@ -49,20 +55,31 @@ export class UsersService {
     private readonly whatsappService: WhatsappService,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly userCreationPersistence: UserCreationPersistence,
+    private readonly userUpdatePersistence: UserUpdatePersistence,
+    private readonly passwordResetPersistence: PasswordResetPersistence,
+    private readonly userLogoutPersistence: UserLogoutPersistence,
   ) {}
 
-  async generateUniqueFastPassword(siteId: number): Promise<string> {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  async generateUniqueFastPassword(siteIds: number | number[]): Promise<string> {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = 4;
+    const normalizedSiteIds = Array.isArray(siteIds) ? siteIds : [siteIds];
     while (true) {
-      const fastPassword = Array.from({ length }, () =>
-        chars.charAt(Math.floor(Math.random() * chars.length)),
-      ).join('');
+      const fastPassword = generateRandomCode(length, chars);
+      const fastPasswordDigest = digestFastPassword(fastPassword);
 
       const existingUser = await this.userRepository.findOne({
         where: {
-          fastPassword,
-          userHasSites: { site: { id: siteId } },
+          fastPasswordDigest,
+          userHasSites: {
+            site: {
+              id:
+                normalizedSiteIds.length === 1
+                  ? normalizedSiteIds[0]
+                  : In(normalizedSiteIds),
+            },
+          },
         },
       });
 
@@ -83,10 +100,14 @@ export class UsersService {
           code: fastPassword,
           language: validLanguage
         }]);
-        this.logger.log(`WhatsApp authentication message sent to ${phoneNumber} with fastPassword: ${fastPassword} in language: ${validLanguage}`);
+        this.logger.log(
+          `WhatsApp authentication message sent successfully in language: ${validLanguage}`,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send WhatsApp authentication message to ${phoneNumber}: ${error.message}`);
+      this.logger.error(
+        `Failed to send WhatsApp authentication message: ${error.message}`,
+      );
     }
   }
 
@@ -123,18 +144,21 @@ export class UsersService {
         throw new ValidationException(ValidationExceptionType.EMAIL_MISSING);
       }
 
-      const user = await this.userRepository.findOneBy({ email });
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await this.userRepository.findOneBy({ email: normalizedEmail });
 
       if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        return;
       }
 
       const resetCode = generateRandomCode(6);
-      user.resetCode = await await bcryptjs.hash(
+      user.resetCode = await bcryptjs.hash(
         resetCode,
         stringConstants.SALT_ROUNDS,
       );
-      user.resetCodeExpiration = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      user.resetCodeExpiration = new Date(
+        Date.now() + UsersService.RESET_CODE_TTL_MS,
+      );
       await this.userRepository.save(user);
 
       if (!email.endsWith('@fakeosm.com')) {
@@ -148,11 +172,21 @@ export class UsersService {
   verifyResetCode = async (sendCodeDTO: SendCodeDTO) => {
     try {
       const user = await this.userRepository.findOne({
-        where: { email: sendCodeDTO.email },
+        where: { email: sendCodeDTO.email.toLowerCase() },
       });
 
       if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (!user.resetCode || !user.resetCodeExpiration) {
+        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
+      }
+
+      if (new Date() > user.resetCodeExpiration) {
+        throw new ValidationException(
+          ValidationExceptionType.RESETCODE_EXPIRED,
+        );
       }
 
       const isCodeValid = await bcryptjs.compare(
@@ -164,11 +198,6 @@ export class UsersService {
         throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
       }
 
-      if (new Date() > user.resetCodeExpiration) {
-        throw new ValidationException(
-          ValidationExceptionType.RESETCODE_EXPIRED,
-        );
-      }
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -176,37 +205,26 @@ export class UsersService {
 
   resetPassword = async (resetPasswordDTO: ResetPasswordDTO) => {
     try {
-      const user = await this.userRepository.findOne({
-        where: { email: resetPasswordDTO.email },
-      });
-
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-
-      const isCodeValid = await bcryptjs.compare(
-        resetPasswordDTO.resetCode,
-        user.resetCode,
-      );
-
-      if (!isCodeValid) {
-        throw new ValidationException(ValidationExceptionType.WRONG_RESET_CODE);
-      }
-
-      user.password = await await bcryptjs.hash(
+      const passwordHash = await bcryptjs.hash(
         resetPasswordDTO.newPassword,
         stringConstants.SALT_ROUNDS,
       );
-      user.resetCode = null;
-      user.resetCodeExpiration = null;
-      user.updatedAt = new Date();
-      await this.userRepository.save(user);
+      await this.passwordResetPersistence.reset({
+        email: resetPasswordDTO.email.trim().toLowerCase(),
+        resetCode: resetPasswordDTO.resetCode,
+        passwordHash,
+        resetAt: new Date(),
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
   findOneByEmail = (email: string) => {
+    if (typeof email !== 'string' || email.trim().length === 0) {
+      throw new BadRequestException('Email is required');
+    }
+
     return this.userRepository.findOne({
       where: { email: email },
       relations: { userHasSites: { site: true } },
@@ -240,6 +258,10 @@ export class UsersService {
       relations: ['userRoles', 'userRoles.role'],
     });
 
+    if (!user || !user.userRoles) {
+      return [];
+    }
+
     return user.userRoles.map((userRole) => userRole.role.name);
   };
 
@@ -265,6 +287,35 @@ export class UsersService {
       where: { id: userId },
       relations: { userHasSites: { site: true } },
     });
+  };
+
+  getAccessibleSiteIds = async (userId: number): Promise<number[] | null> => {
+    const roles = await this.getUserRoles(userId);
+    if (roles.map(normalizeRole).includes(PLATFORM_ADMIN_ROLE)) {
+      return null;
+    }
+
+    const user = await this.findByIdWithSites(userId);
+    if (!user?.userHasSites?.length) {
+      throw new UnauthorizedException('User has no site access');
+    }
+
+    const activeSiteIds = [
+      ...new Set(
+        user.userHasSites
+          .filter(
+            (userSite) =>
+              userSite.status === stringConstants.activeStatus &&
+              userSite.site?.status === stringConstants.activeStatus,
+          )
+          .map((userSite) => Number(userSite.site.id)),
+      ),
+    ];
+    if (activeSiteIds.length === 0) {
+      throw new UnauthorizedException('User has no active site access');
+    }
+
+    return activeSiteIds;
   };
 
   findSiteUsersResponsibleData = async (siteId: number) => {
@@ -418,15 +469,6 @@ export class UsersService {
 
   create = async (createUserDTO: CreateUserDTO) => {
     try {
-      const userAlreadyExistInSite = await this.userRepository.existsBy({
-        email: createUserDTO.email,
-        userHasSites: { site: { id: createUserDTO.siteId } },
-      });
-
-      if (userAlreadyExistInSite) {
-        throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-      }
-
       const [site, roles] = await Promise.all([
         this.siteService.findById(createUserDTO.siteId),
         this.roleService.findRolesByIds(createUserDTO.roles),
@@ -434,17 +476,13 @@ export class UsersService {
 
       if (!site) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (roles.length === 0) {
+      }
+      const requestedRoleCount = new Set(createUserDTO.roles).size;
+      if (roles.length !== requestedRoleCount) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
       }
 
-      const user = await this.userRepository.findOne({
-        where: { email: createUserDTO.email },
-      });
-
-      const userSite = new UserHasSitesEntity();
-      userSite.site = site;
-
+      const normalizedEmail = createUserDTO.email.trim().toLowerCase();
       let fastPassword = createUserDTO.fastPassword;
       if (!fastPassword) {
         fastPassword = await this.generateUniqueFastPassword(
@@ -452,16 +490,19 @@ export class UsersService {
         );
       }
 
-      if (!user) {
-        const createUser = await this.userRepository.create({
+      const createdAt = new Date();
+      const fastPasswordDigest = digestFastPassword(fastPassword);
+      const result = await this.userCreationPersistence.persist({
+        email: normalizedEmail,
+        newUser: {
           name: createUserDTO.name,
-          email: createUserDTO.email,
+          email: normalizedEmail,
           phoneNumber: createUserDTO.phoneNumber,
           password: await bcryptjs.hash(
             createUserDTO.password,
             stringConstants.SALT_ROUNDS,
           ),
-          fastPassword,
+          fastPasswordDigest,
           appVersion: process.env.APP_ENV,
           siteCode: site.siteCode,
           uploadCardDataWithDataNet: createUserDTO.uploadCardDataWithDataNet,
@@ -469,41 +510,38 @@ export class UsersService {
             createUserDTO.uploadCardEvidenceWithDataNet,
           translation: createUserDTO.translation || stringConstants.LANG_ES,
           status: createUserDTO.status || stringConstants.activeStatus,
-          createdAt: new Date(),
-        });
+          createdAt,
+        },
+        roles,
+        site,
+        createdAt,
+      });
 
-        await this.userRepository.save(createUser);
-        await this.roleService.assignUserRoles(createUser, roles);
-        userSite.user = createUser;
-
-        if (createUser.phoneNumber && fastPassword) {
-          this.sendFastPasswordWhatsAppMessage(createUser.phoneNumber, fastPassword, createUserDTO.translation);
-        }
-      } else {
-        const oldFastPassword = user.fastPassword;
-        user.fastPassword = fastPassword;
-        await this.userRepository.save(user);
-        userSite.user = user;
-
-        if (user.phoneNumber && fastPassword && oldFastPassword !== fastPassword) {
-          this.sendFastPasswordWhatsAppMessage(user.phoneNumber, fastPassword, createUserDTO.translation);
-        }
+      if (
+        result.user.phoneNumber &&
+        (result.isNewUser || result.fastPasswordChanged)
+      ) {
+        void this.sendFastPasswordWhatsAppMessage(
+          result.user.phoneNumber,
+          fastPassword,
+          createUserDTO.translation,
+        );
       }
       const appUrl = process.env.URL_WEB;
 
-      if (!userSite.user.email.endsWith('@fakeosm.com')) {
+      if (!result.user.email.endsWith('@fakeosm.com')) {
         this.mailService.sendWelcomeEmail(
-          userSite.user,
+          result.user,
           appUrl,
           createUserDTO.translation,
         ).catch((error) => {
           this.logger.logProcess(
-            `[CREATE_USER] Welcome email for ${userSite.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
+            `[CREATE_USER] Welcome email for ${result.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
           );
         });
       }
 
-      return await this.userHasSiteRepository.save(userSite);
+      return result.userSite;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -512,29 +550,22 @@ export class UsersService {
   updateUser = async (updateUserDTO: UpdateUserDTO) => {
     try {
       this.logger.logProcess(`[UPDATE_USER] Starting update for user_id: ${updateUserDTO.id}`);
-  
-      const [user, site, roles] = await Promise.all([
-        this.userRepository.findOneBy({ id: updateUserDTO.id }),
+
+      const [site, roles] = await Promise.all([
         this.siteService.findById(updateUserDTO.siteId),
         this.roleService.findRolesByIds(updateUserDTO.roles),
       ]);
-  
-      if (!user) throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+
       if (!site) throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      if (roles.length === 0) throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
-  
-      const emailIsNotUnique = await this.userRepository.exists({
-        where: {
-          email: updateUserDTO.email,
-          id: Not(updateUserDTO.id),
-          siteCode: site.siteCode,
-        },
-      });
-      if (emailIsNotUnique) throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-  
-      let updatePayload: Partial<UserEntity> = {
+      const requestedRoleCount = new Set(updateUserDTO.roles).size;
+      if (roles.length !== requestedRoleCount) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.ROLES);
+      }
+
+      const updatedAt = new Date();
+      const updatePayload: Partial<UserEntity> = {
         name: updateUserDTO.name,
-        email: updateUserDTO.email,
+        email: updateUserDTO.email.trim().toLowerCase(),
         status: updateUserDTO.status,
         siteId: site.id,
         siteCode: site.siteCode,
@@ -543,142 +574,141 @@ export class UsersService {
         uploadCardEvidenceWithDataNet: updateUserDTO.uploadCardEvidenceWithDataNet,
         phoneNumber: updateUserDTO.phoneNumber,
         translation: updateUserDTO.translation || stringConstants.LANG_ES,
-        updatedAt: new Date(),
+        updatedAt,
       };
-  
+
       if (updateUserDTO.password) {
         updatePayload.password = await bcryptjs.hash(
           updateUserDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+        updatePayload.resetCode = null;
+        updatePayload.resetCodeExpiration = null;
       }
   
-      if (!updateUserDTO.fastPassword) {
-        updatePayload.fastPassword = await this.generateUniqueFastPassword(
-          site.id,
-        );
-      } else {
-        if (!/^[a-zA-Z0-9]{4}$/.test(updateUserDTO.fastPassword)) {
-          throw new ValidationException(
-            ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
+      let fastPasswordDigest: string | undefined;
+      if (updateUserDTO.fastPassword) {
+        fastPasswordDigest = digestFastPassword(updateUserDTO.fastPassword);
+      }
+
+      const revokeAllSessions =
+        Boolean(updateUserDTO.password) ||
+        updateUserDTO.status === stringConstants.inactiveStatus ||
+        updateUserDTO.status === stringConstants.cancelledStatus;
+      const result = await this.userUpdatePersistence.persist({
+        userId: updateUserDTO.id,
+        siteId: site.id,
+        update: updatePayload,
+        roles,
+        fastPasswordDigest,
+        revokeAllSessions,
+        updatedAt,
+      });
+
+      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${result.user.id}`);
+
+      if (
+        updateUserDTO.fastPassword &&
+        result.user.phoneNumber &&
+        result.fastPasswordChanged
+      ) {
+        try {
+          await this.sendFastPasswordWhatsAppMessage(
+            result.user.phoneNumber,
+            updateUserDTO.fastPassword,
+            result.user.translation,
+          );
+        } catch (notificationError) {
+          this.logger.error(
+            `[UPDATE_USER] Fast Password notification failed for user_id: ${result.user.id}. Error: ${notificationError.message}`,
           );
         }
-
-        const existingUser = await this.userRepository.findOne({
-          where: {
-            fastPassword: updateUserDTO.fastPassword,
-            userHasSites: { site: { id: site.id } },
-            id: Not(updateUserDTO.id),
-          },
-        });
-
-        if (existingUser) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
-
-        updatePayload.fastPassword = updateUserDTO.fastPassword;
       }
-  
-      const oldFastPassword = user.fastPassword;
-      this.logger.logProcess(`[UPDATE_USER] Updating user with ID: ${user.id}`);
-      await this.userRepository.update({ id: user.id }, updatePayload);
-      this.logger.logProcess(`[UPDATE_USER] User updated successfully. ID: ${user.id}`);
 
-      if (updatePayload.phoneNumber && updatePayload.fastPassword && oldFastPassword !== updatePayload.fastPassword) {
-        await this.sendFastPasswordWhatsAppMessage(updatePayload.phoneNumber, updatePayload.fastPassword, updatePayload.translation);
-      }
-  
       if (updateUserDTO.status === stringConstants.inactiveStatus || updateUserDTO.status === stringConstants.cancelledStatus) {
-        const tokens = await this.getUserToken(user.id);
-        if (tokens?.length > 0) {
-          await this.firebaseService.sendMultipleMessage(
-            new NotificationDTO(
-              stringConstants.closeSessionTitle,
-              stringConstants.closeSessionDescription,
-              stringConstants.closeSessionType,
-            ),
-            tokens,
+        try {
+          const tokens = await this.getUserToken(result.user.id);
+          if (tokens?.length > 0) {
+            await this.firebaseService.sendMultipleMessage(
+              new NotificationDTO(
+                stringConstants.closeSessionTitle,
+                stringConstants.closeSessionDescription,
+                stringConstants.closeSessionType,
+              ),
+              tokens,
+            );
+          }
+        } catch (notificationError) {
+          this.logger.error(
+            `[UPDATE_USER] Session close notification failed for user_id: ${result.user.id}. Error: ${notificationError.message}`,
           );
         }
       }
 
-      return await this.roleService.updateUserRoles(user, roles);
+      return result.user;
     } catch (exception) {
       this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
 
   updateUserPartial = async (updateUserPartialDTO: UpdateUserPartialDTO) => {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: updateUserPartialDTO.id },
-      });
-      
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      const updatedAt = new Date();
+      const updatePayload: Partial<UserEntity> = {};
+
+      if (updateUserPartialDTO.email) {
+        updatePayload.email = updateUserPartialDTO.email.trim().toLowerCase();
       }
-      
-      if (updateUserPartialDTO.email && updateUserPartialDTO.email !== user.email) {
-        const emailIsNotUnique = await this.userRepository.exists({
-          where: { email: updateUserPartialDTO.email, id: Not(updateUserPartialDTO.id) },
-        });
-        
-        if (emailIsNotUnique) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
-        
-        user.email = updateUserPartialDTO.email;
+      if (updateUserPartialDTO.name !== undefined) {
+        updatePayload.name = updateUserPartialDTO.name;
       }
-      
-      if (updateUserPartialDTO.name) {
-        user.name = updateUserPartialDTO.name;
+      if (updateUserPartialDTO.phoneNumber !== undefined) {
+        updatePayload.phoneNumber = updateUserPartialDTO.phoneNumber;
       }
-      
+      if (updateUserPartialDTO.translation !== undefined) {
+        updatePayload.translation = updateUserPartialDTO.translation;
+      }
       if (updateUserPartialDTO.password) {
-        user.password = await bcryptjs.hash(
+        updatePayload.password = await bcryptjs.hash(
           updateUserPartialDTO.password,
           stringConstants.SALT_ROUNDS,
         );
+        updatePayload.resetCode = null;
+        updatePayload.resetCodeExpiration = null;
       }
-      
+
+      let fastPasswordDigest: string | undefined;
       if (updateUserPartialDTO.fastPassword) {
         if (!/^[a-zA-Z0-9]{4}$/.test(updateUserPartialDTO.fastPassword)) {
           throw new ValidationException(
             ValidationExceptionType.INVALID_FAST_PASSWORD_FORMAT,
           );
         }
-
-        const userSites = await this.userHasSiteRepository.find({
-          where: { user: { id: user.id } },
-          select: ['site'],
-        });
-        const userSiteIds = userSites.map((us) => us.site.id);
-
-        const existingUser = await this.userRepository.findOne({
-          where: {
-            fastPassword: updateUserPartialDTO.fastPassword,
-            userHasSites: { site: { id: In(userSiteIds) } },
-            id: Not(updateUserPartialDTO.id),
-          },
-        });
-
-        if (existingUser) {
-          throw new ValidationException(ValidationExceptionType.DUPLICATED_USER);
-        }
-
-        const oldFastPassword = user.fastPassword;
-        user.fastPassword = updateUserPartialDTO.fastPassword;
-
-        if (user.phoneNumber && updateUserPartialDTO.fastPassword && oldFastPassword !== updateUserPartialDTO.fastPassword) {
-          await this.sendFastPasswordWhatsAppMessage(user.phoneNumber, updateUserPartialDTO.fastPassword, user.translation);
-        }
+        fastPasswordDigest = digestFastPassword(
+          updateUserPartialDTO.fastPassword,
+        );
       }
 
-      user.updatedAt = new Date();
+      const result = await this.userUpdatePersistence.persistPartial({
+        userId: updateUserPartialDTO.id,
+        update: updatePayload,
+        fastPasswordDigest,
+        updatedAt,
+      });
+      if (
+        updateUserPartialDTO.fastPassword &&
+        result.fastPasswordChanged &&
+        result.user.phoneNumber
+      ) {
+        await this.sendFastPasswordWhatsAppMessage(
+          result.user.phoneNumber,
+          updateUserPartialDTO.fastPassword,
+          result.user.translation,
+        );
+      }
 
-      return await this.userRepository.save(user);
+      return result.user;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -773,30 +803,14 @@ export class UsersService {
       HandleException.exception(exception);
     }
   };
-  logout = async (userId: number, osName: string) => {
+  logout = async (userId: number, osName: string, sessionId: string) => {
     try {
-      const user = await this.userRepository.findOneBy({ id: userId });
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-  
-      switch (osName) {
-        case stringConstants.OS_ANDROID:
-          user.androidToken = null;
-          break;
-        case stringConstants.OS_IOS:
-          user.iosToken = null;
-          break;
-        case stringConstants.OS_WEB:
-          user.webToken = null;
-          break;
-        default:
-          throw new Error('OS no reconocido');
-      }
-  
-      user.updatedAt = new Date();
-  
-      return await this.userRepository.save(user);
+      return await this.userLogoutPersistence.logout({
+        userId,
+        sessionId,
+        requestedPlatform: osName,
+        loggedOutAt: new Date(),
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -815,18 +829,28 @@ export class UsersService {
   };
 
   getExistingUsersInSite = async (data: any, siteId: number) => {
+    const emails = data
+      .map((user) => user.Email?.trim().toLowerCase())
+      .filter(Boolean);
+    if (emails.length === 0) return [];
+
     const existingUsers = await this.userRepository.find({
       where: {
-        email: In(data.map((user) => user.Email.toLowerCase())),
+        email: In(emails),
         userHasSites: { site: { id: siteId } },
       },
     });
     return existingUsers;
   };
   getExistingUsersMap = async (data: any): Promise<Map<string, UserEntity>> => {
+    const emails = data
+      .map((user) => user.Email?.trim().toLowerCase())
+      .filter(Boolean);
+    if (emails.length === 0) return new Map();
+
     const existingUsers = await this.userRepository.find({
       where: {
-        email: In(data.map((user) => user.Email.toLowerCase())),
+        email: In(emails),
       },
     });
 
@@ -834,21 +858,6 @@ export class UsersService {
     return userMap;
   };
 
-  saveImportedNewUsers = async (users: CreateUsersDTO[]) => {
-    try {
-      return await this.userRepository.save(users);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  assignSiteToImportedUsers = async (usersAndSites: UsersAndSitesDTO[]) => {
-    try {
-      return await this.userHasSiteRepository.save(usersAndSites);
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
   async findUsersByRole(siteId: number, roleName: string) {
     try {
       const users = await this.userRepository.find({
@@ -957,30 +966,59 @@ export class UsersService {
 
   findOneByFastPassword = (fastPassword: string, siteId: number) => {
     return this.userRepository.findOne({
-      where: { fastPassword, siteId },
+      where: {
+        fastPasswordDigest: digestFastPassword(fastPassword),
+        userHasSites: { site: { id: siteId } },
+      },
       relations: { userHasSites: { site: true } },
     });
   };
 
-  findOneByPhoneNumber = (phoneNumber: string) => {
-    return this.userRepository.findOne({
+  findOneByPhoneNumber = async (phoneNumber: string) => {
+    const users = await this.userRepository.find({
       where: { phoneNumber },
       relations: { userHasSites: { site: true } },
+      take: 2,
     });
+    return users.length === 1 ? users[0] : null;
   };
 
   sendFastPasswordWhatsApp = async (phoneNumber: string, fastPassword: string, language?: string | null): Promise<void> => {
     await this.sendFastPasswordWhatsAppMessage(phoneNumber, fastPassword, language);
   };
 
-  private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
-    const authUser = await this.findByIdWithSites(userId);
-    if (!authUser || !authUser.userHasSites?.length) {
-      throw new UnauthorizedException();
+  rotateFastPasswordAndSend = async (user: UserEntity): Promise<void> => {
+    const siteIds = [
+      ...new Set([
+        ...(user.userHasSites?.map(({ site }) => site.id) ?? []),
+        ...(user.siteId ? [user.siteId] : []),
+      ]),
+    ];
+    if (siteIds.length === 0 || !user.phoneNumber) {
+      return;
     }
 
-    const hasAccessToSite = authUser.userHasSites.some(userSite => userSite.site.id === siteId);
-    if (!hasAccessToSite) {
+    const fastPassword = await this.generateUniqueFastPassword(siteIds);
+    const result = await this.userUpdatePersistence.persistPartial({
+      userId: user.id,
+      update: {},
+      fastPasswordDigest: digestFastPassword(fastPassword),
+      updatedAt: new Date(),
+    });
+    await this.sendFastPasswordWhatsAppMessage(
+      result.user.phoneNumber,
+      fastPassword,
+      result.user.translation,
+    );
+  };
+
+  private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
+    const accessibleSiteIds = await this.getAccessibleSiteIds(userId);
+    if (accessibleSiteIds === null) {
+      return;
+    }
+
+    if (!accessibleSiteIds.includes(siteId)) {
       throw new UnauthorizedException();
     }
   }

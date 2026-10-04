@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -21,6 +22,10 @@ import {
   ApiTags,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @ApiTags('AM Discard Reasons')
 @ApiBearerAuth()
@@ -31,6 +36,8 @@ export class AmDiscardReasonController {
   ) {}
 
   @Post()
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @RequireSiteAccess()
   @ApiOperation({ summary: 'Create a new discard reason' })
   @ApiBody({ type: CreateAmDiscardReasonDto })
   @ApiResponse({
@@ -43,12 +50,13 @@ export class AmDiscardReasonController {
   }
 
   @Get()
+  @RequireSiteAccess()
   @ApiOperation({
-    summary: 'Get all discard reasons, optionally filtered by site',
+    summary: 'Get all discard reasons for a site',
   })
   @ApiQuery({
     name: 'siteId',
-    required: false,
+    required: true,
     type: 'number',
     description: 'Site ID to filter reasons',
   })
@@ -61,6 +69,12 @@ export class AmDiscardReasonController {
   }
 
   @Get(':id')
+  @SiteResourceAccess({
+    resource: 'discardReason',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Get a discard reason by ID' })
   @ApiParam({ name: 'id', type: 'number', description: 'Discard reason ID' })
   @ApiResponse({ status: 200, description: 'Discard reason found' })
@@ -70,6 +84,13 @@ export class AmDiscardReasonController {
   }
 
   @Put(':id')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'discardReason',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Update a discard reason' })
   @ApiBody({ type: UpdateAmDiscardReasonDto })
   @ApiResponse({
@@ -78,12 +99,23 @@ export class AmDiscardReasonController {
   })
   @ApiResponse({ status: 404, description: 'Discard reason not found' })
   update(
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateAmDiscardReasonDto: UpdateAmDiscardReasonDto,
   ) {
+    if (id !== updateAmDiscardReasonDto.id) {
+      throw new BadRequestException('Route id and body id must match');
+    }
     return this.amDiscardReasonsService.update(updateAmDiscardReasonDto);
   }
 
   @Delete(':id')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'discardReason',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Delete a discard reason' })
   @ApiParam({ name: 'id', type: 'number', description: 'Discard reason ID' })
   @ApiResponse({ status: 200, description: 'Discard reason deleted successfully' })
@@ -91,4 +123,4 @@ export class AmDiscardReasonController {
   delete(@Param('id', ParseIntPipe) id: number) {
     return this.amDiscardReasonsService.delete(id);
   }
-} 
+}

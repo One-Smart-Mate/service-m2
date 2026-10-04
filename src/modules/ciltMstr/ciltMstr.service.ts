@@ -10,7 +10,6 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltSequencesExecutionsEntity } from '../CiltSequencesExecutions/entities/ciltSequencesExecutions.entity';
 import { CiltSecuencesScheduleService } from '../ciltSecuencesSchedule/ciltSecuencesSchedule.service';
 import { CustomLoggerService } from 'src/common/logger/logger.service';
@@ -21,16 +20,16 @@ import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService, CiltUserResponse, CiltSiteResponse } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
 import { getUTCRangeFromLocalDate } from 'src/utils/timezone.utils';
+import { CiltMasterPersistence } from './cilt-master.persistence';
 
 @Injectable()
 export class CiltMstrService {
   constructor(
     @InjectRepository(CiltMstrEntity)
     private readonly ciltRepository: Repository<CiltMstrEntity>,
-    @InjectRepository(CiltSequencesEntity)
-    private readonly ciltSequencesRepository: Repository<CiltSequencesEntity>,
     @InjectRepository(OplMstr)
     private readonly oplMstrRepository: Repository<OplMstr>,
+    private readonly ciltMasterPersistence: CiltMasterPersistence,
     private readonly ciltSecuencesScheduleService: CiltSecuencesScheduleService,
     private readonly logger: CustomLoggerService, 
     private readonly ciltExecutionService: CiltExecutionService,
@@ -68,14 +67,9 @@ export class CiltMstrService {
     }
   };
 
-  create = async (createCiltDto: CreateCiltMstrDTO) => {
+  create = async (createCiltDto: CreateCiltMstrDTO, creatorId: number) => {
     try {
-      // Obtener el próximo número de orden
-      const nextOrder = await this.ciltQueryService.getNextOrderForSite(createCiltDto.siteId);
-      createCiltDto.order = nextOrder;
-
-      const cilt = this.ciltRepository.create(createCiltDto);
-      return await this.ciltRepository.save(cilt);
+      return await this.ciltMasterPersistence.create(createCiltDto, creatorId);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -83,15 +77,7 @@ export class CiltMstrService {
 
   update = async (updateCiltDto: UpdateCiltMstrDTO) => {
     try {
-      const cilt = await this.ciltRepository.findOneBy({
-        id: updateCiltDto.id,
-      });
-      if (!cilt) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
-      }
-
-      Object.assign(cilt, updateCiltDto);
-      return await this.ciltRepository.save(cilt);
+      return await this.ciltMasterPersistence.update(updateCiltDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -99,36 +85,7 @@ export class CiltMstrService {
 
   updateOrder = async (updateOrderDto: UpdateCiltOrderDTO) => {
     try {
-      // Find the CILT to update
-      const ciltToUpdate = await this.ciltRepository.findOneBy({
-        id: updateOrderDto.ciltMstrId,
-      });
-      if (!ciltToUpdate) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
-      }
-
-      // Find the CILT that currently has the new order
-      const ciltWithNewOrder = await this.ciltRepository.findOne({
-        where: {
-          siteId: ciltToUpdate.siteId,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (ciltWithNewOrder) {
-        // Swap orders
-        const oldOrder = ciltToUpdate.order;
-        ciltToUpdate.order = updateOrderDto.newOrder;
-        ciltWithNewOrder.order = oldOrder;
-
-        // Save both CILTs
-        await this.ciltRepository.save(ciltWithNewOrder);
-        return await this.ciltRepository.save(ciltToUpdate);
-      } else {
-        // If no CILT has the new order, just update the order
-        ciltToUpdate.order = updateOrderDto.newOrder;
-        return await this.ciltRepository.save(ciltToUpdate);
-      }
+      return await this.ciltMasterPersistence.updateOrder(updateOrderDto);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -446,79 +403,12 @@ export class CiltMstrService {
     }
   }
 
-  async cloneCiltMaster(id: number) {
+  async cloneCiltMaster(id: number, creatorId: number) {
     try {
-      // 1. Find the original CILT master
-      const originalCilt = await this.ciltRepository.findOne({
-        where: { id },
-        relations: ['sequences']
-      });
-      if (!originalCilt) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
-      }
-
-      // 2. Get the next available order for sequences
-      const lastSequence = await this.ciltSequencesRepository.findOne({
-        where: { siteId: originalCilt.siteId },
-        order: { order: 'DESC' }
-      });
-      let nextSequenceOrder = lastSequence ? lastSequence.order + 1 : 1;
-
-      // 3. Start a transaction
-      const queryRunner = this.ciltRepository.manager.connection.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        // 4. Create a new CILT master with the same data
-        const { id: originalId, sequences, createdAt, updatedAt, deletedAt, ...ciltData } = originalCilt;
-
-        console.log(`Unused variable: ${originalId} - ${createdAt} - ${updatedAt} - ${deletedAt}`)
-
-        const newCilt = this.ciltRepository.create({
-          ...ciltData,
-          ciltName: `${ciltData.ciltName} (Copy)`,
-          order: await this.getNextOrder(ciltData.siteId)
-        });
-        const savedCilt = await queryRunner.manager.save(CiltMstrEntity, newCilt);
-
-        // 5. Clone all sequences sequentially
-        const clonedSequences = [];
-        for (const sequence of sequences) {
-          const { id: seqId, createdAt: seqCreatedAt, updatedAt: seqUpdatedAt, deletedAt: seqDeletedAt, ...seqData } = sequence;
-          console.log(`Unused variable: ${seqId} - ${seqCreatedAt} - ${seqUpdatedAt} - ${seqDeletedAt}`)
-
-          const newSequence = this.ciltSequencesRepository.create({
-            ...seqData,
-            ciltMstrId: savedCilt.id,
-            order: nextSequenceOrder++
-          });
-          const savedSequence = await queryRunner.manager.save(CiltSequencesEntity, newSequence);
-          clonedSequences.push(savedSequence);
-        }
-
-        // 6. Commit the transaction
-        await queryRunner.commitTransaction();
-
-        return {
-          ciltMaster: savedCilt,
-          sequences: clonedSequences
-        };
-      } catch (error) {
-        // 7. Rollback in case of error
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
-        // 8. Release the query runner
-        await queryRunner.release();
-      }
+      return await this.ciltMasterPersistence.clone(id, creatorId);
     } catch (exception) {
       HandleException.exception(exception);
     }
-  }
-
-  private async getNextOrder(siteId: number): Promise<number> {
-    return await this.ciltQueryService.getNextOrderForSite(siteId);
   }
 
   async softDelete(id: number){

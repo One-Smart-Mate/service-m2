@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PreclassifierEntity } from './entities/preclassifier.entity';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { CreatePreclassifierDTO } from './models/dto/create-preclassifier.dto';
 import { CardTypesService } from '../cardTypes/cardTypes.service';
@@ -14,9 +14,12 @@ import { stringConstants } from 'src/utils/string.constant';
 import { UsersService } from '../users/users.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
 
 @Injectable()
 export class PreclassifierService {
+  private readonly logger = new Logger(PreclassifierService.name);
+
   constructor(
     @InjectRepository(PreclassifierEntity)
     private readonly preclassifiersRepository: Repository<PreclassifierEntity>,
@@ -30,6 +33,7 @@ export class PreclassifierService {
       return await this.preclassifiersRepository.findBy({
         cardTypeId: cardTypeId,
         status: stringConstants.A,
+        deletedAt: IsNull(),
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -51,6 +55,7 @@ export class PreclassifierService {
       return await this.preclassifiersRepository.findBy({
         siteId: siteId,
         status: stringConstants.A,
+        deletedAt: IsNull(),
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -62,25 +67,25 @@ export class PreclassifierService {
       const existCardType = await this.cardTypeService.findById(
         createPreclassifierDTO.cardTypeId,
       );
+      if (
+        !existCardType ||
+        existCardType.status !== stringConstants.A ||
+        existCardType.deletedAt != null
+      ) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
+      }
 
       createPreclassifierDTO.siteId = existCardType.siteId;
       createPreclassifierDTO.siteCode = existCardType.siteCode;
       createPreclassifierDTO.createdAt = new Date();
 
-      const tokens = await this.userService.getSiteUsersTokens(
-        createPreclassifierDTO.siteId,
-        true, // Exclude web tokens - web always loads data online
+      const savedPreclassifier = await this.preclassifiersRepository.save(
+        createPreclassifierDTO,
       );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      return await this.preclassifiersRepository.save(createPreclassifierDTO);
+      await this.notifyCatalogChange(createPreclassifierDTO.siteId);
+      return savedPreclassifier;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -100,26 +105,13 @@ export class PreclassifierService {
         updatePreclassifierDTO.preclassifierCode;
       preclassifier.preclassifierDescription =
         updatePreclassifierDTO.preclassifierDescription;
-      preclassifier.status = updatePreclassifierDTO.status;
-      if (updatePreclassifierDTO.status !== stringConstants.A) {
-        preclassifier.deletedAt = new Date();
-      }
-      preclassifier.updatedAt = new Date();
+      applyCatalogLifecycle(preclassifier, updatePreclassifierDTO.status);
 
-      const tokens = await this.userService.getSiteUsersTokens(
-        preclassifier.siteId,
-        true, // Exclude web tokens - web always loads data online
+      const savedPreclassifier = await this.preclassifiersRepository.save(
+        preclassifier,
       );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      return await this.preclassifiersRepository.save(preclassifier);
+      await this.notifyCatalogChange(preclassifier.siteId);
+      return savedPreclassifier;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -134,4 +126,26 @@ export class PreclassifierService {
       HandleException.exception(exception);
     }
   };
+
+  private async notifyCatalogChange(siteId: number): Promise<void> {
+    try {
+      const tokens = await this.userService.getSiteUsersTokens(siteId, true);
+      if (tokens.length === 0) {
+        return;
+      }
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Preclassifier ${siteId} was saved but catalog notification failed`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
 }

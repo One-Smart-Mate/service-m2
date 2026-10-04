@@ -4,6 +4,7 @@
 # compiled output
 /dist
 /node_modules
+*.tsbuildinfo
 
 # Logs
 logs
@@ -39,6 +40,3 @@ lerna-debug.log*
 
 # Auth
 .auth_info_baileys
-# TypeScript incremental build cache (must not be committed)
-tsconfig.build.tsbuildinfo
-*.tsbuildinfo

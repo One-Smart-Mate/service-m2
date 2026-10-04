@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import typeOrmConfig from './config/type.orm.config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -48,6 +48,13 @@ import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 import { IncidentModule } from './modules/incident/incident.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { ChartsModule } from './modules/charts/charts.module';
+import { SiteAccessGuard } from './modules/auth/guard/site-access.guard';
+import { RolesGuard } from './modules/auth/guard/roles.guard';
+import { CiltExecutionOwnerGuard } from './modules/auth/guard/cilt-execution-owner.guard';
+import { createJwtOptions } from './config/jwt.config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AUTH_THROTTLE } from './common/auth/auth-throttle';
+import { AuthSessionModule } from './modules/auth-session/auth-session.module';
 
 @Module({
   imports: [
@@ -56,6 +63,7 @@ import { ChartsModule } from './modules/charts/charts.module';
       envFilePath: '.env',
     }),
     typeOrmConfig,
+    AuthSessionModule,
     ScheduleModule.forRoot(),
     UsersModule,
     AuthModule,
@@ -94,11 +102,13 @@ import { ChartsModule } from './modules/charts/charts.module';
     IncidentModule,
     CatalogModule,
     ChartsModule,
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN },
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: createJwtOptions,
     }),
+    ThrottlerModule.forRoot([{ name: 'default', ...AUTH_THROTTLE.default }]),
   ],
   controllers: [AppController],
   providers: [
@@ -115,6 +125,18 @@ import { ChartsModule } from './modules/charts/charts.module';
     {
       provide: APP_GUARD,
       useClass: AuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SiteAccessGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: CiltExecutionOwnerGuard,
     },
     {
       provide: APP_FILTER,

@@ -1,6 +1,13 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('evidences')
+@Index('idx_evidences_site_sync', ['siteId', 'syncChangedAt', 'cardId'])
+@Index('idx_evidences_site_card_state', [
+  'siteId',
+  'cardId',
+  'status',
+  'deletedAt',
+])
 export class EvidenceEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true, name: 'id' })
   id: number;
@@ -28,4 +35,16 @@ export class EvidenceEntity {
 
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @Column({
+    name: 'sync_changed_at',
+    type: 'timestamp',
+    precision: 6,
+    select: false,
+    insert: false,
+    update: false,
+    default: () => 'CURRENT_TIMESTAMP(6)',
+    onUpdate: 'CURRENT_TIMESTAMP(6)',
+  })
+  syncChangedAt: Date;
 }

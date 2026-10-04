@@ -1,10 +1,13 @@
 import { Controller, Get, Param, Put, Delete } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { IncidentService } from './incident.service';
+import { PLATFORM_ADMIN_ROLE } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Incident')
 @ApiBearerAuth()
 @Controller('incident')
+@RequireRoles(PLATFORM_ADMIN_ROLE)
 export class IncidentController {
   constructor(private readonly incidentService: IncidentService) {}
 

@@ -19,6 +19,7 @@ import { CiltPositionLevelService } from './services/cilt-position-level.service
 import { CiltValidationService } from './services/cilt-validation.service';
 import { CiltQueryBuilderService } from './services/cilt-query-builder.service';
 import { CiltQueryService } from './services/cilt-query.service';
+import { CiltMasterPersistence } from './cilt-master.persistence';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { CiltQueryService } from './services/cilt-query.service';
     CiltValidationService,
     CiltQueryBuilderService,
     CiltQueryService,
+    CiltMasterPersistence,
     CustomLoggerService,
   ],
   exports: [

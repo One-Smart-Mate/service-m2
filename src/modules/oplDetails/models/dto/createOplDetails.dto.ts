@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber, IsEnum, IsString, IsOptional, IsISO8601 } from 'class-validator';
 
 export class CreateOplDetailsDTO {
-  @ApiProperty({ description: 'Site ID', required: false })
+  @ApiProperty({ description: 'Ignored. Derived from the OPL master.', required: false, deprecated: true })
   @IsOptional()
   @IsNumber()
   siteId?: number;
@@ -12,10 +12,10 @@ export class CreateOplDetailsDTO {
   @IsNumber()
   oplId: number;
 
-  @ApiProperty({ description: 'Order of the detail' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Ignored. Calculated by the server.', required: false, deprecated: true })
+  @IsOptional()
   @IsNumber()
-  order: number;
+  order?: number;
 
   @ApiProperty({ description: 'Type of content', enum: ['texto', 'imagen', 'video', 'pdf'] })
   @IsNotEmpty()
@@ -35,4 +35,4 @@ export class CreateOplDetailsDTO {
   @ApiProperty({ description: 'Creation date in ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)', default: '2023-06-20T00:00:00.000Z' })
   @IsISO8601()
   createdAt: string;
-} 
+}

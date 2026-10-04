@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsString,
@@ -56,6 +57,7 @@ export class UpdatePriorityDTO {
   })
   @IsNotEmpty()
   @IsString()
+  @IsIn(['A', 'I'])
   status: string;
 
   updatedAt?: Date;

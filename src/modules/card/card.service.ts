@@ -1,7 +1,12 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { CardEntity } from './entities/card.entity';
-import { In, Repository, DataSource } from 'typeorm';
+import { In, IsNull, Repository, DataSource } from 'typeorm';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { CreateCardDTO } from './models/dto/create.card.dto';
@@ -43,9 +48,30 @@ import {
   CardReportStackedDTO,
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
+import {
+  CardCreationPersistence,
+  PersistedCardCreation,
+} from './card-creation.persistence';
+import { CardCreationPolicy } from './card-creation.policy';
+import { CardSolutionPersistence } from './card-solution.persistence';
+import { CardMutationPersistence } from './card-mutation.persistence';
+import { CardPaginationPolicy } from './card-pagination.policy';
+import {
+  CardListFilterPolicy,
+  CardListFilters,
+} from './card-list-filter.policy';
+import {
+  CardSyncItemResult,
+  CardSyncResponse,
+  FailedCardSyncResult,
+} from './models/card-sync.response';
+import { CardDeltaSyncReader } from './card-delta-sync.reader';
+import type { EnqueueNotification } from '../notifications/notification-outbox.service';
 
 @Injectable()
 export class CardService {
+  private readonly logger = new Logger(CardService.name);
+
   constructor(
     @InjectRepository(CardEntity)
     private readonly cardRepository: Repository<CardEntity>,
@@ -66,18 +92,19 @@ export class CardService {
     private readonly amDiscardReasonRepository: Repository<AmDiscardReasonEntity>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly cardCreationPersistence: CardCreationPersistence,
+    private readonly cardSolutionPersistence: CardSolutionPersistence,
+    private readonly cardMutationPersistence: CardMutationPersistence,
+    private readonly cardDeltaSyncReader: CardDeltaSyncReader,
   ) {}
 
   private async validateSiteAccess(siteId: number, userId: number): Promise<void> {
-    const authUser = await this.userService.findByIdWithSites(userId);
-    if (!authUser || !authUser.userHasSites?.length) {
-      throw new UnauthorizedException();
-    }
-
-    const hasAccessToSite = authUser.userHasSites.some(
-      (userSite) => Number(userSite.site.id) === Number(siteId),
-    );
-    if (!hasAccessToSite) {
+    const accessibleSiteIds =
+      await this.userService.getAccessibleSiteIds(userId);
+    if (
+      accessibleSiteIds !== null &&
+      !accessibleSiteIds.includes(Number(siteId))
+    ) {
       throw new UnauthorizedException();
     }
   }
@@ -88,6 +115,10 @@ export class CardService {
     page: number = 1,
     limit: number = 50,
   ) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       const level = await this.levelService.findByLeveleMachineId(
         siteId,
@@ -104,11 +135,13 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.nodeId = :nodeId', { nodeId: level.id });
+        .where('card.nodeId = :nodeId', { nodeId: level.id })
+        .andWhere('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'
@@ -145,10 +178,16 @@ export class CardService {
 
   findCardByUUID = async (uuid: string) => {
     try {
-      const card = await this.cardRepository.findOneBy({ cardUUID: uuid });
+      const card = await this.cardRepository.findOneBy({
+        cardUUID: uuid,
+        deletedAt: IsNull(),
+      });
       if (card) {
         const cardEvidences = await this.evidenceRepository.findBy({
           cardId: card.id,
+          siteId: card.siteId,
+          status: stringConstants.activeStatus,
+          deletedAt: IsNull(),
         });
         card['levelName'] = card.nodeName;
         card['evidences'] = cardEvidences;
@@ -160,6 +199,10 @@ export class CardService {
   };
 
   findSiteCards = async (siteId: number, page: number = 1, limit: number = 50) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       // Get site to retrieve app_history_days
       const site = await this.siteService.findById(siteId);
@@ -167,11 +210,12 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
       }
 
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'
@@ -194,10 +238,17 @@ export class CardService {
       const [cards, total] = await queryBuilder.getManyAndCount();
 
       if (cards.length > 0) {
-        const allEvidencesMap = await this.findAllEvidences(siteId);
+        const pageEvidences = await this.evidenceRepository.find({
+          where: {
+            cardId: In(cards.map((card) => card.id)),
+            siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          },
+        });
 
         const cardEvidencesMap = new Map();
-        allEvidencesMap.forEach((evidence) => {
+        pageEvidences.forEach((evidence) => {
           if (!cardEvidencesMap.has(evidence.cardId)) {
             cardEvidencesMap.set(evidence.cardId, []);
           }
@@ -226,24 +277,16 @@ export class CardService {
   // Paginated version for better performance with large datasets
   findSiteCardsPaginated = async (
     siteId: number,
+    requesterId: number,
     page: number = 1,
     limit: number = 50,
-    filters?: {
-      searchText?: string;
-      cardNumber?: string;
-      location?: string;
-      levelMachineId?: string;
-      creator?: string;
-      resolver?: string;
-      dateFilterType?: 'creation' | 'due' | '';
-      startDate?: string;
-      endDate?: string;
-      sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '';
-      status?: string;
-      userId?: number;
-      myCards?: boolean;
-    }
+    filters?: CardListFilters,
   ) => {
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    filters = CardListFilterPolicy.normalize(filters);
+    page = pagination.page;
+    limit = pagination.limit;
+
     try {
       // Get site to retrieve app_history_days
       const site = await this.siteService.findById(siteId);
@@ -252,7 +295,8 @@ export class CardService {
       }
 
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply base status filtering logic with app_history_days:
       // - Always include status 'A'
@@ -341,9 +385,12 @@ export class CardService {
       // Date range filter
       if (filters?.dateFilterType && filters?.startDate && filters?.endDate) {
         if (filters.dateFilterType === 'creation') {
+          const creationEndDate = /^\d{4}-\d{2}-\d{2}$/.test(filters.endDate)
+            ? `${filters.endDate} 23:59:59`
+            : filters.endDate;
           queryBuilder.andWhere('card.cardCreationDate BETWEEN :startDate AND :endDate', {
             startDate: filters.startDate,
-            endDate: filters.endDate
+            endDate: creationEndDate
           });
         } else if (filters.dateFilterType === 'due') {
           queryBuilder.andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
@@ -354,10 +401,10 @@ export class CardService {
       }
 
       // My Cards filter (created by me OR assigned to me)
-      if (filters?.myCards && filters?.userId) {
+      if (filters?.myCards) {
         queryBuilder.andWhere(
           '(card.creatorId = :userId OR card.mechanicId = :userId)',
-          { userId: filters.userId }
+          { userId: requesterId }
         );
       }
 
@@ -387,7 +434,7 @@ export class CardService {
       const total = await queryBuilder.getCount();
 
       // Apply pagination
-      const skip = (page - 1) * limit;
+      const skip = pagination.offset;
       queryBuilder.skip(skip).take(limit);
 
       // Get cards
@@ -397,7 +444,12 @@ export class CardService {
       if (cards && cards.length > 0) {
         const cardIds = cards.map(card => card.id);
         const evidences = await this.evidenceRepository.find({
-          where: { cardId: In(cardIds) }
+          where: {
+            cardId: In(cardIds),
+            siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          }
         });
 
         const cardEvidencesMap = new Map();
@@ -429,11 +481,22 @@ export class CardService {
       HandleException.exception(exception);
     }
   };
-  findResponsibleCards = async (responsibleId: number) => {
+  findResponsibleCards = async (
+    responsibleId: number,
+    requesterId: number,
+  ) => {
     try {
-      const cards = await this.cardRepository.findBy({
-        responsableId: responsibleId,
-      });
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(requesterId);
+      const cards = await this.cardRepository.findBy(
+        accessibleSiteIds === null
+          ? { responsableId: responsibleId, deletedAt: IsNull() }
+          : {
+              responsableId: responsibleId,
+              siteId: In(accessibleSiteIds),
+              deletedAt: IsNull(),
+            },
+      );
       if (cards) {
         for (const card of cards) {
           card['levelName'] = card.nodeName;
@@ -446,13 +509,21 @@ export class CardService {
   };
   findCardByIDAndGetEvidences = async (cardId: number) => {
     try {
-      const card = await this.cardRepository.findOneBy({ id: cardId });
+      const card = await this.cardRepository.findOneBy({
+        id: cardId,
+        deletedAt: IsNull(),
+      });
       if (card) {
         card['levelName'] = card.nodeName;
       }
-      const evidences = await this.evidenceRepository.findBy({
-        cardId: cardId,
-      });
+      const evidences = card
+        ? await this.evidenceRepository.findBy({
+            cardId,
+            siteId: card.siteId,
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          })
+        : [];
 
       return {
         card,
@@ -553,7 +624,7 @@ export class CardService {
             : null,
         cardTypeValue:
           cardType.cardTypeMethodology === stringConstants.C
-            ? createCardDTO.cardTypeValue
+            ? (createCardDTO.cardTypeValue as 'safe' | 'unsafe')
             : null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
@@ -659,6 +730,7 @@ export class CardService {
   };
   updateDefinitivesolution = async (
     updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO,
+    actorId: number,
   ) => {
     try {
       const card = await this.cardRepository.findOneBy({
@@ -677,77 +749,21 @@ export class CardService {
         updateDefinitivesolutionDTO.userDefinitiveSolutionId,
       );
       const userAppDefinitiveSolution = await this.userService.findById(
-        updateDefinitivesolutionDTO.userAppDefinitiveSolutionId,
+        actorId,
       );
 
       if (!userAppDefinitiveSolution || !userDefinitiveSolution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      card.userDefinitiveSolutionId = userDefinitiveSolution.id;
-      card.userDefinitiveSolutionName = userDefinitiveSolution.name;
-      card.userAppDefinitiveSolutionId = userAppDefinitiveSolution.id;
-      card.userAppDefinitiveSolutionName = userAppDefinitiveSolution.name;
-      card.cardDefinitiveSolutionDate = new Date();
-      card.commentsAtCardDefinitiveSolution =
-        updateDefinitivesolutionDTO.comments;
-      card.status = stringConstants.R;
-      card.updatedAt = new Date();
-
-      await Promise.all(
-        updateDefinitivesolutionDTO.evidences.map(async (evidence) => {
-          switch (evidence.type) {
-            case stringConstants.AUCR:
-              card.evidenceAucr = 1;
-              break;
-            case stringConstants.VICR:
-              card.evidenceVicr = 1;
-              break;
-            case stringConstants.IMCR:
-              card.evidenceImcr = 1;
-              break;
-            case stringConstants.AUCL:
-              card.evidenceAucl = 1;
-              break;
-            case stringConstants.VICL:
-              card.evidenceVicl = 1;
-              break;
-            case stringConstants.IMCL:
-              card.evidenceImcl = 1;
-              break;
-            case stringConstants.IMPS:
-              card.evidenceImps = 1;
-              break;
-            case stringConstants.AUPS:
-              card.evidenceAups = 1;
-              break;
-            case stringConstants.VIPS:
-              card.evidenceVips = 1;
-              break;
-          }
-          var evidenceToCreate = await this.evidenceRepository.create({
-            evidenceName: evidence.url,
-            evidenceType: evidence.type,
-            cardId: card.id,
-            siteId: card.siteId,
-            createdAt: new Date(),
-          });
-          await this.evidenceRepository.save(evidenceToCreate);
-        }),
-      );
-
-      await this.cardRepository.save(card);
-
-      const note = await this.cardNoteRepository.create({
+      return await this.cardSolutionPersistence.persist({
         cardId: card.id,
-        siteId: card.siteId,
-        note: `${stringConstants.noteDefinitiveSoluition} <${card.userAppDefinitiveSolutionId} ${card.userAppDefinitiveSolutionName}> ${stringConstants.aplico} <${card.userDefinitiveSolutionId} ${card.userDefinitiveSolutionName}>`,
-        createdAt: new Date(),
+        type: 'definitive',
+        solutionUser: userDefinitiveSolution,
+        actor: userAppDefinitiveSolution,
+        comments: updateDefinitivesolutionDTO.comments,
+        evidences: updateDefinitivesolutionDTO.evidences,
       });
-
-      await this.cardNoteRepository.save(note);
-
-      return card;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -759,7 +775,7 @@ export class CardService {
           superiorId: superiorId,
           siteId: siteId,
           status: In([stringConstants.A, stringConstants.P, stringConstants.V]),
-          deletedAt: null,
+          deletedAt: IsNull(),
         },
       });
       if (cards) {
@@ -775,6 +791,7 @@ export class CardService {
   };
   updateProvisionalSolution = async (
     updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
+    actorId: number,
   ) => {
     try {
       const card = await this.cardRepository.findOneBy({
@@ -794,77 +811,21 @@ export class CardService {
         updateProvisionalSolutionDTO.userProvisionalSolutionId,
       );
       const userAppProvisionalSolution = await this.userService.findById(
-        updateProvisionalSolutionDTO.userAppProvisionalSolutionId,
+        actorId,
       );
 
       if (!userProvisionalSolution || !userAppProvisionalSolution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      card.userProvisionalSolutionId = userProvisionalSolution.id;
-      card.userProvisionalSolutionName = userProvisionalSolution.name;
-      card.userAppProvisionalSolutionId = userAppProvisionalSolution.id;
-      card.userAppProvisionalSolutionName = userAppProvisionalSolution.name;
-      card.cardProvisionalSolutionDate = new Date();
-      card.commentsAtCardProvisionalSolution =
-        updateProvisionalSolutionDTO.comments;
-      card.status = stringConstants.P;
-      card.updatedAt = new Date();
-
-      await Promise.all(
-        updateProvisionalSolutionDTO.evidences.map(async (evidence) => {
-          switch (evidence.type) {
-            case stringConstants.AUCR:
-              card.evidenceAucr = 1;
-              break;
-            case stringConstants.VICR:
-              card.evidenceVicr = 1;
-              break;
-            case stringConstants.IMCR:
-              card.evidenceImcr = 1;
-              break;
-            case stringConstants.AUCL:
-              card.evidenceAucl = 1;
-              break;
-            case stringConstants.VICL:
-              card.evidenceVicl = 1;
-              break;
-            case stringConstants.IMCL:
-              card.evidenceImcl = 1;
-              break;
-            case stringConstants.IMPS:
-              card.evidenceImps = 1;
-              break;
-            case stringConstants.AUPS:
-              card.evidenceAups = 1;
-              break;
-            case stringConstants.VIPS:
-              card.evidenceVips = 1;
-              break;
-          }
-          var evidenceToCreate = await this.evidenceRepository.create({
-            evidenceName: evidence.url,
-            evidenceType: evidence.type,
-            cardId: card.id,
-            siteId: card.siteId,
-            createdAt: new Date(),
-          });
-          await this.evidenceRepository.save(evidenceToCreate);
-        }),
-      );
-
-      await this.cardRepository.save(card);
-
-      const note = await this.cardNoteRepository.create({
+      return await this.cardSolutionPersistence.persist({
         cardId: card.id,
-        siteId: card.siteId,
-        note: `${stringConstants.noteProvisionalSolution} <${card.userAppProvisionalSolutionId} ${card.userAppProvisionalSolutionName}> ${stringConstants.aplico} <${card.userProvisionalSolutionId} ${card.userProvisionalSolutionName}>`,
-        createdAt: new Date(),
+        type: 'provisional',
+        solutionUser: userProvisionalSolution,
+        actor: userAppProvisionalSolution,
+        comments: updateProvisionalSolutionDTO.comments,
+        evidences: updateProvisionalSolutionDTO.evidences,
       });
-
-      await this.cardNoteRepository.save(note);
-
-      return card;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -872,7 +833,11 @@ export class CardService {
 
   findAllEvidences = async (siteId: number) => {
     const evidences = await this.evidenceRepository.find({
-      where: { siteId: siteId },
+      where: {
+        siteId,
+        status: stringConstants.activeStatus,
+        deletedAt: IsNull(),
+      },
     });
     const evidencesMap = new Map();
     evidences.forEach((level) => evidencesMap.set(level.id, level));
@@ -889,7 +854,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByPreclassifier])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering
       if (status) {
@@ -935,7 +901,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByMethodology])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering if provided
       if (status) {
@@ -977,10 +944,11 @@ export class CardService {
     endDate?: string,
   ) => {
     try {
-              const queryBuilder = this.cardRepository
+      const queryBuilder = this.cardRepository
           .createQueryBuilder('card')
           .select([QUERY_CONSTANTS.findSiteCardsGroupedByArea])
-          .where('card.site_id = :siteId', { siteId });
+          .where('card.site_id = :siteId', { siteId })
+          .andWhere('card.deletedAt IS NULL');
 
       if (startDate && endDate) {
         queryBuilder.andWhere(
@@ -1011,7 +979,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByAreaMore])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1049,7 +1018,8 @@ export class CardService {
       // Obtener todas las tarjetas con los filtros aplicados
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1212,7 +1182,8 @@ export class CardService {
           'COUNT(*) as totalCards'
         ])
         .where('card.site_id = :siteId', { siteId })
-        .andWhere('card.area_id = :areaId', { areaId });
+        .andWhere('card.area_id = :areaId', { areaId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering
       if (status) {
@@ -1254,7 +1225,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByCreator])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1293,7 +1265,8 @@ export class CardService {
       // Get all cards with the applied filters
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1451,7 +1424,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByDefinitiveUser])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering - always use the provided status or default to C,R
       if (status) {
@@ -1487,7 +1461,8 @@ export class CardService {
       const queryBuilder = this.cardRepository
         .createQueryBuilder('card')
         .select([QUERY_CONSTANTS.findSiteCardsGroupedByWeeks])
-        .where('card.site_id = :siteId', { siteId });
+        .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
       
       if (status) {
         const statusArray = status.split(',').map(s => s.trim());
@@ -1528,7 +1503,10 @@ export class CardService {
     }
   };
 
-  updateCardPriority = async (updateCardPriorityDTO: UpdateCardPriorityDTO) => {
+  updateCardPriority = async (
+    updateCardPriorityDTO: UpdateCardPriorityDTO,
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: updateCardPriorityDTO.cardId },
@@ -1549,36 +1527,42 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
       }
 
+      if (
+        Number(priority.siteId) !== Number(card.siteId) ||
+        priority.status !== stringConstants.activeStatus ||
+        priority.deletedAt != null
+      ) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+
       const user = await this.userService.findOneById(
-        updateCardPriorityDTO.idOfUpdatedBy,
+        actorId,
       );
 
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      if (user.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioLaPrioridadDe} <${card.priorityCode} - ${card.priorityDescription}> ${stringConstants.a} <${priority.priorityCode} - ${priority.priorityDescription}>`;
-      note.createdAt = new Date();
+      const result = await this.cardMutationPersistence.updatePriority({
+        cardId: card.id,
+        actor: user,
+        priority,
+        dueDate: addDaysToDate(card.createdAt, priority.priorityDays),
+      });
 
-      card.priorityId = priority.id;
-      card.priorityCode = priority.priorityCode;
-      card.priorityDescription = priority.priorityDescription;
-
-      // Set due date based on priority days
-      card.cardDueDate = addDaysToDate(card.createdAt, priority.priorityDays);
-
-      await this.cardRepository.save(card);
-
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  updateCardMechanic = async (updateCardMechanicDTO: UpdateCardMechanicDTO) => {
+  updateCardMechanic = async (
+    updateCardMechanicDTO: UpdateCardMechanicDTO,
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: updateCardMechanicDTO.cardId },
@@ -1599,25 +1583,39 @@ export class CardService {
       );
 
       const user = await this.userService.findOneById(
-        updateCardMechanicDTO.idOfUpdatedBy,
+        actorId,
       );
 
       if (!userMechanic || !user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const oldMechanicName = card.mechanicName || stringConstants.noResponsible;
+      if (
+        userMechanic.status !== stringConstants.activeStatus ||
+        user.status !== stringConstants.activeStatus
+      ) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      card.mechanicId = userMechanic.id;
-      card.mechanicName = userMechanic.name;
+      const mechanicSiteIds = await this.userService.getAccessibleSiteIds(
+        userMechanic.id,
+      );
+      if (
+        mechanicSiteIds !== null &&
+        !mechanicSiteIds.includes(Number(card.siteId))
+      ) {
+        throw new UnauthorizedException();
+      }
 
-      await this.cardRepository.save(card);
+      const result = await this.cardMutationPersistence.updateMechanic({
+        cardId: card.id,
+        actor: user,
+        mechanic: userMechanic,
+      });
 
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> ${stringConstants.cambioElMecanicoDe} <${oldMechanicName}> ${stringConstants.a} <${userMechanic.name}>`;
-      note.createdAt = new Date();
+      if (!result.changed) {
+        return;
+      }
 
       const tokens = await this.userService.getUserToken(userMechanic.id);
       if (tokens && tokens.length > 0) {
@@ -1634,13 +1632,16 @@ export class CardService {
         );
       }
 
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  updateCardCustomDueDate = async (body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }) => {
+  updateCardCustomDueDate = async (
+    body: { cardId: number; customDueDate: string; idOfUpdatedBy?: number },
+    actorId: number,
+  ) => {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: body.cardId },
@@ -1650,28 +1651,34 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CARD);
       }
 
-      const user = await this.userService.findOneById(body.idOfUpdatedBy);
+      const user = await this.userService.findOneById(actorId);
 
       if (!user) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
+      if (user.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+      if (card.priorityCode?.trim().toUpperCase() !== 'XX') {
+        throw new ValidationException(
+          ValidationExceptionType.CUSTOM_DUE_DATE_NOT_ALLOWED,
+        );
+      }
 
-      // Fix timezone issue by creating date in local timezone
-      // Split the date string and create date with explicit components
-      const [year, month, day] = body.customDueDate.split('-').map(Number);
-      const newDate = new Date(year, month - 1, day); // month is 0-indexed in JS
+      const { cardDueDate } = CardCreationPolicy.resolveDates({
+        cardCreationDate: card.cardCreationDate,
+        priorityCode: card.priorityCode,
+        priorityDays: 0,
+        customDueDate: body.customDueDate,
+      });
+      const result = await this.cardMutationPersistence.updateCustomDueDate({
+        cardId: card.id,
+        actor: user,
+        dueDate: cardDueDate,
+        dueDateText: body.customDueDate,
+      });
 
-      card.cardDueDate = newDate;
-
-      await this.cardRepository.save(card);
-
-      const note = new CardNoteEntity();
-      note.cardId = card.id;
-      note.siteId = card.siteId;
-      note.note = `${stringConstants.cambio} <${user.id} ${user.name}> estableció fecha de vencimiento personalizada: <${body.customDueDate}>`;
-      note.createdAt = new Date();
-
-      return await this.cardNoteRepository.save(note);
+      return result.note;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1680,7 +1687,7 @@ export class CardService {
   findCardNotes = async (cardId: number) => {
     try {
       return await this.cardNoteRepository.find({
-        where: { cardId: cardId },
+        where: { cardId, deletedAt: IsNull() },
         order: { createdAt: 'DESC' },
       });
     } catch (exception) {
@@ -1691,7 +1698,7 @@ export class CardService {
   findCardNotesByUUID = async (cardUUID: string) => {
     try {
       const card = await this.cardRepository.findOne({
-        where: { cardUUID: cardUUID }
+        where: { cardUUID, deletedAt: IsNull() },
       });
 
       if (!card) {
@@ -1699,7 +1706,7 @@ export class CardService {
       }
 
       return await this.cardNoteRepository.find({
-        where: { cardId: card.id },
+        where: { cardId: card.id, deletedAt: IsNull() },
         order: { createdAt: 'DESC' },
       });
     } catch (exception) {
@@ -1733,7 +1740,8 @@ export class CardService {
     const queryBuilder = this.cardRepository
       .createQueryBuilder('card')
       .where('card.siteId = :siteId', { siteId })
-      .andWhere('card.cardTypeName = :cardTypeName', { cardTypeName });
+      .andWhere('card.cardTypeName = :cardTypeName', { cardTypeName })
+      .andWhere('card.deletedAt IS NULL');
 
     switch (true) {
       case !!area:
@@ -1808,14 +1816,18 @@ export class CardService {
 
   findbySiteId = async (siteId: number) => {
     try {
-      return await this.cardRepository.find({ where: { siteId: siteId } });
+      return await this.cardRepository.find({
+        where: { siteId, deletedAt: IsNull() },
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
   async getCardsByLevelId(siteId: number, levelId: number, page: number = 1, limit: number = 50) {
-    const skip = (page - 1) * limit;
+    const pagination = CardPaginationPolicy.normalize(page, limit);
+    page = pagination.page;
+    limit = pagination.limit;
 
     const [cards, total] = await this.cardRepository
       .createQueryBuilder('card')
@@ -1827,7 +1839,7 @@ export class CardService {
         statusR: 'R',
       })
       .orderBy('card.siteCardId', 'DESC')
-      .skip(skip)
+      .skip(pagination.offset)
       .take(limit)
       .getManyAndCount();
 
@@ -1841,7 +1853,7 @@ export class CardService {
     };
   }
 
-  findUserCards = async (userId: number) => {
+  findUserCards = async (userId: number, requesterId: number) => {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
@@ -1852,21 +1864,49 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const userSite = user.userHasSites[0].site;
+      const targetSiteIds = user.userHasSites
+        .filter(
+          (userSite) =>
+            userSite.status === stringConstants.activeStatus &&
+            !userSite.deletedAt &&
+            userSite.site?.status === stringConstants.activeStatus &&
+            !userSite.site.deletedAt,
+        )
+        .map((userSite) => Number(userSite.site.id));
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(requesterId);
+      const authorizedSiteIds =
+        accessibleSiteIds === null
+          ? targetSiteIds
+          : targetSiteIds.filter((siteId) =>
+              accessibleSiteIds.includes(siteId),
+            );
+
+      if (authorizedSiteIds.length === 0) {
+        return [];
+      }
 
       const cards = await this.cardRepository.find({
-        where: { 
-          siteId: userSite.id,
-          mechanicId: userId
+        where: {
+          siteId: In(authorizedSiteIds),
+          mechanicId: userId,
+          deletedAt: IsNull(),
         },
-        order: { siteCardId: 'DESC' }
+        order: { siteCardId: 'DESC' },
       });
 
-      if (cards) {
-        const allEvidencesMap = await this.findAllEvidences(userSite.id);
+      if (cards.length > 0) {
+        const allEvidences = await this.evidenceRepository.find({
+          where: {
+            cardId: In(cards.map((card) => card.id)),
+            siteId: In(authorizedSiteIds),
+            status: stringConstants.activeStatus,
+            deletedAt: IsNull(),
+          },
+        });
 
         const cardEvidencesMap = new Map();
-        allEvidencesMap.forEach((evidence) => {
+        allEvidences.forEach((evidence) => {
           if (!cardEvidencesMap.has(evidence.cardId)) {
             cardEvidencesMap.set(evidence.cardId, []);
           }
@@ -1884,7 +1924,7 @@ export class CardService {
     }
   };
 
-  async discardCard(dto: DiscardCardDto) {
+  async discardCard(dto: DiscardCardDto, actorId: number) {
     try {
       const card = await this.cardRepository.findOne({
         where: { id: dto.cardId },
@@ -1895,7 +1935,10 @@ export class CardService {
       }
 
       const discardReason = await this.amDiscardReasonRepository.findOne({
-        where: { id: dto.amDiscardReasonId, siteId: card.siteId },
+        where: [
+          { id: dto.amDiscardReasonId, siteId: card.siteId },
+          { id: dto.amDiscardReasonId, siteId: IsNull() },
+        ],
       });
 
       if (!discardReason) {
@@ -1904,16 +1947,21 @@ export class CardService {
         );
       }
 
-      card.status = stringConstants.DISCARDED;
-      card.amDiscardReasonId = dto.amDiscardReasonId;
-      card.discardReason = dto.discardReason;
-      card.managerId = dto.managerId || null;
-      card.managerName = dto.managerName || null;
-      card.cardManagerCloseDate = dto.cardManagerCloseDate || null;
-      card.commentsManagerAtCardClose = dto.commentsManagerAtCardClose || null;
-      card.updatedAt = new Date();
+      const manager = await this.userService.findOneById(actorId);
+      if (!manager) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
+      }
+      if (manager.status !== stringConstants.activeStatus) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
 
-      return await this.cardRepository.save(card);
+      return await this.cardMutationPersistence.discard({
+        cardId: card.id,
+        actor: manager,
+        discardReasonId: discardReason.id,
+        discardReason: dto.discardReason,
+        comments: dto.commentsManagerAtCardClose,
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -1945,6 +1993,7 @@ export class CardService {
           'card.cardCreationDate',
         ])
         .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL')
         .andWhere('card.cardDueDate IS NOT NULL')
         .andWhere('card.cardDueDate BETWEEN :startDate AND :endDate', {
           startDate,
@@ -1995,6 +2044,7 @@ export class CardService {
           'adr.id = card.am_discard_reason_id',
         )
         .where('card.site_id = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL')
         .andWhere('card.status = :status', {
           status: stringConstants.DISCARDED,
         });
@@ -2014,64 +2064,6 @@ export class CardService {
         .getRawMany();
 
       return result;
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  findCardsByFastPassword = async (siteId: number, fastPassword: string) => {
-    try {
-      const user = await this.userRepository.findOne({
-        where: { 
-          fastPassword: fastPassword,
-          siteId: siteId,
-          status: 'A'
-        }
-      });
-
-      if (!user) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-      const cards = await this.cardRepository.find({
-        where: [
-          { 
-            siteId: siteId,
-            mechanicId: user.id
-          },
-          {
-            siteId: siteId,
-            responsableId: user.id
-          }
-        ],
-        order: { siteCardId: 'DESC' }
-      });
-
-      if (cards && cards.length > 0) {
-        const allEvidencesMap = await this.findAllEvidences(siteId);
-
-        const cardEvidencesMap = new Map();
-        allEvidencesMap.forEach((evidence) => {
-          if (!cardEvidencesMap.has(evidence.cardId)) {
-            cardEvidencesMap.set(evidence.cardId, []);
-          }
-          cardEvidencesMap.get(evidence.cardId).push(evidence);
-        });
-
-        for (const card of cards) {
-          card['levelName'] = card.nodeName;
-          card['evidences'] = cardEvidencesMap.get(card.id) || [];
-        }
-      }
-
-      return {
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          fastPassword: user.fastPassword
-        },
-        cards: cards || []
-      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -2543,40 +2535,104 @@ export class CardService {
    * OPTIMIZED VERSION: Create a new card with performance improvements
    * Main optimizations:
    * 1. Parallelized validation queries using Promise.all
-   * 2. Optimized UUID generation check
-   * 3. Moved notification sending to background (non-blocking)
-   * 4. Batch evidence creation
+   * 2. Idempotent offline synchronization using the client UUID
+   * 3. Transactional card and evidence persistence
+   * 4. Moved notification sending to background (non-blocking)
    * 5. Only fetch necessary level data
    */
   createOptimized = async (createCardDTO: CreateCardDTO) => {
-    try {
-      // 1. OPTIMIZED UUID GENERATION - Check only once instead of while loop
-      let cardUUID = createCardDTO.cardUUID;
-      const uuidExists = await this.cardRepository.exists({
-        where: { cardUUID: cardUUID },
-      });
+    const result = await this.createOptimizedResult(createCardDTO);
+    return result.card;
+  };
 
-      if (uuidExists) {
-        cardUUID = randomUUID();
-        // If by rare chance it still exists, let the DB unique constraint handle it
+  syncOfflineCards = async (
+    cards: CreateCardDTO[],
+    creatorId: number,
+  ): Promise<CardSyncResponse> => {
+    const results: CardSyncItemResult[] = [];
+
+    for (const card of cards) {
+      try {
+        const persisted = await this.createOptimizedResult({
+          ...card,
+          creatorId,
+        });
+        results.push({
+          cardUUID: card.cardUUID,
+          success: true,
+          outcome: persisted.created ? 'created' : 'existing',
+          card: persisted.card,
+        });
+      } catch (error) {
+        const failure = this.toCardSyncFailure(card.cardUUID, error);
+        const logMessage =
+          `Offline card sync failed for UUID ${card.cardUUID} ` +
+          `[${failure.statusCode}]: ${failure.message}`;
+        if (failure.statusCode >= 500) {
+          this.logger.error(
+            logMessage,
+            error instanceof Error ? error.stack : String(error),
+          );
+        } else {
+          this.logger.warn(logMessage);
+        }
+        results.push(failure);
       }
-      createCardDTO.cardUUID = cardUUID;
+    }
+
+    const succeeded = results.filter((result) => result.success).length;
+    return {
+      total: results.length,
+      succeeded,
+      failed: results.length - succeeded,
+      results,
+    };
+  };
+
+  syncCardChanges = async (
+    siteId: number,
+    userId: number,
+    cursor?: string,
+    limit?: number,
+  ) => {
+    await this.validateSiteAccess(siteId, userId);
+    return this.cardDeltaSyncReader.read(siteId, cursor, limit);
+  };
+
+  private createOptimizedResult = async (
+    createCardDTO: CreateCardDTO,
+  ): Promise<PersistedCardCreation> => {
+    try {
+      const existingCard = await this.cardRepository.findOneBy({
+        cardUUID: createCardDTO.cardUUID,
+      });
+      if (existingCard) {
+        CardCreationPolicy.assertIdempotentRetry(
+          existingCard,
+          {
+            siteId: createCardDTO.siteId,
+            creatorId: Number(createCardDTO.creatorId),
+            nodeId: createCardDTO.nodeId,
+            priorityId: createCardDTO.priorityId,
+            cardTypeId: createCardDTO.cardTypeId,
+            preclassifierId: createCardDTO.preclassifierId,
+            cardCreationDate: createCardDTO.cardCreationDate,
+            cardTypeValue: createCardDTO.cardTypeValue,
+            comments: createCardDTO.comments,
+          },
+        );
+        return { card: existingCard, created: false };
+      }
 
       // 2. PARALLELIZED VALIDATIONS - All queries run simultaneously
-      const [site, priority, node, cardType, preclassifier, creator, lastInsertedCard] =
+      const [site, priority, node, cardType, preclassifier, creator] =
         await Promise.all([
           this.siteService.findById(createCardDTO.siteId),
-          createCardDTO.priorityId && createCardDTO.priorityId !== 0
-            ? this.priorityService.findById(createCardDTO.priorityId)
-            : Promise.resolve(new PriorityEntity()),
+          this.priorityService.findById(createCardDTO.priorityId),
           this.levelService.findById(createCardDTO.nodeId),
           this.cardTypeService.findById(createCardDTO.cardTypeId),
           this.preclassifierService.findById(createCardDTO.preclassifierId),
           this.userService.findById(createCardDTO.creatorId),
-          this.cardRepository.findOne({
-            order: { id: 'DESC' },
-            where: { siteId: createCardDTO.siteId },
-          }),
         ]);
 
       // 3. VALIDATIONS (unchanged for safety)
@@ -2598,6 +2654,74 @@ export class CardService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
+      const isActiveResource = (resource: {
+        status?: string;
+        deletedAt?: Date | null;
+      }) =>
+        resource.status === stringConstants.activeStatus &&
+        !resource.deletedAt;
+
+      if (!isActiveResource(site)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
+      }
+      if (!isActiveResource(node)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+      }
+      if (priority.id && !isActiveResource(priority)) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
+      }
+      if (!isActiveResource(cardType)) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.CARDTYPES,
+        );
+      }
+      if (!isActiveResource(preclassifier)) {
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.PRECLASSIFIER,
+        );
+      }
+      if (!isActiveResource(creator)) {
+        throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
+      }
+
+      const selectedSiteId = Number(site.id);
+      const resourcesBelongToSite =
+        Number(node.siteId) === selectedSiteId &&
+        Number(cardType.siteId) === selectedSiteId &&
+        Number(preclassifier.siteId) === selectedSiteId &&
+        (!priority.id || Number(priority.siteId) === selectedSiteId);
+
+      if (!resourcesBelongToSite) {
+        throw new UnauthorizedException(
+          'Card resources do not belong to the selected site',
+        );
+      }
+
+      if (Number(preclassifier.cardTypeId) !== Number(cardType.id)) {
+        throw new ValidationException(
+          ValidationExceptionType.INVALID_CARD_CATALOG_SELECTION,
+        );
+      }
+
+      if (
+        cardType.cardTypeMethodology === stringConstants.C &&
+        createCardDTO.cardTypeValue !== 'safe' &&
+        createCardDTO.cardTypeValue !== 'unsafe'
+      ) {
+        throw new ValidationException(
+          ValidationExceptionType.CARD_TYPE_VALUE_REQUIRED,
+        );
+      }
+
+      const accessibleSiteIds =
+        await this.userService.getAccessibleSiteIds(creator.id);
+      if (
+        accessibleSiteIds !== null &&
+        !accessibleSiteIds.includes(selectedSiteId)
+      ) {
+        throw new UnauthorizedException('Site access denied');
+      }
+
       // 4. OPTIMIZED LEVEL HIERARCHY - Only get superior levels for this node
       const levelMap = await this.levelService.findAllLevelsBySite(site.id);
       const { area, location } = this.levelService.getSuperiorLevelsById(
@@ -2605,12 +2729,16 @@ export class CardService {
         levelMap,
       );
 
-      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
+      const dates = CardCreationPolicy.resolveDates({
+        cardCreationDate: createCardDTO.cardCreationDate,
+        priorityCode: priority.priorityCode,
+        priorityDays: priority.priorityDays,
+        customDueDate: createCardDTO.customDueDate,
+      });
 
       // 5. CREATE CARD ENTITY
-      const card = await this.cardRepository.create({
+      const card = this.cardRepository.create({
         ...createCardDTO,
-        siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
         siteCode: site.siteCode,
         cardTypeColor: cardType.color,
         cardLocation: location,
@@ -2633,149 +2761,160 @@ export class CardService {
             : null,
         cardTypeValue:
           cardType.cardTypeMethodology === stringConstants.C
-            ? createCardDTO.cardTypeValue
+            ? (createCardDTO.cardTypeValue as 'safe' | 'unsafe')
             : null,
         cardTypeMethodologyName: cardType.methodology,
         cardTypeName: cardType.name,
         preclassifierCode: preclassifier.preclassifierCode,
         preclassifierDescription: preclassifier.preclassifierDescription,
         creatorName: creator.name,
-        createdAt: createdAt,
-        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
-        cardDueDate: createCardDTO.customDueDate
-          ? (() => {
-              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
-              return new Date(year, month - 1, day);
-            })()
-          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
+        createdAt: dates.createdAt,
+        cardCreationDate: dates.cardCreationDate,
+        cardDueDate: dates.cardDueDate,
         commentsAtCardCreation: createCardDTO.comments,
         appVersion: createCardDTO.appVersion,
         appSo: createCardDTO.appSo,
       });
 
-      // 6. SAVE CARD
-      const savedCard = await this.cardRepository.save(card);
-
-      // 8. OPTIMIZED BATCH EVIDENCE CREATION
-      const evidencePromises = createCardDTO.evidences.map(async (evidence) => {
-        // Update card evidence flags
+      for (const evidence of createCardDTO.evidences) {
         switch (evidence.type) {
           case stringConstants.AUCR:
-            savedCard.evidenceAucr = 1;
+            card.evidenceAucr = 1;
             break;
           case stringConstants.VICR:
-            savedCard.evidenceVicr = 1;
+            card.evidenceVicr = 1;
             break;
           case stringConstants.IMCR:
-            savedCard.evidenceImcr = 1;
+            card.evidenceImcr = 1;
             break;
           case stringConstants.AUCL:
-            savedCard.evidenceAucl = 1;
+            card.evidenceAucl = 1;
             break;
           case stringConstants.VICL:
-            savedCard.evidenceVicl = 1;
+            card.evidenceVicl = 1;
             break;
           case stringConstants.IMCL:
-            savedCard.evidenceImcl = 1;
+            card.evidenceImcl = 1;
             break;
           case stringConstants.IMPS:
-            savedCard.evidenceImps = 1;
+            card.evidenceImps = 1;
             break;
           case stringConstants.AUPS:
-            savedCard.evidenceAups = 1;
+            card.evidenceAups = 1;
             break;
           case stringConstants.VIPS:
-            savedCard.evidenceVips = 1;
+            card.evidenceVips = 1;
             break;
         }
+      }
 
-        // Create evidence entity
-        const evidenceToCreate = this.evidenceRepository.create({
-          evidenceName: evidence.url,
-          evidenceType: evidence.type,
-          cardId: savedCard.id,
-          siteId: site.id,
-          createdAt: createdAt,
-        });
-
-        return this.evidenceRepository.save(evidenceToCreate);
+      const persisted = await this.cardCreationPersistence.persist({
+        card,
+        siteId: selectedSiteId,
+        creatorId: creator.id,
+        cardUUID: createCardDTO.cardUUID,
+        createdAt: dates.createdAt,
+        evidences: createCardDTO.evidences,
+        notifications: this.buildCardCreationNotifications({
+          cardUUID: createCardDTO.cardUUID,
+          siteId: selectedSiteId,
+          creatorId: creator.id,
+          methodologyName: card.cardTypeMethodologyName,
+          nodeName: node.name,
+          responsibleId: node.responsibleId,
+          notifyResponsible:
+            createCardDTO.notifyResponsible && node.notify === 1,
+        }),
       });
 
-      // Wait for all evidences to be created
-      await Promise.all(evidencePromises);
-
-      // 9. SAVE CARD WITH EVIDENCE FLAGS
-      await this.cardRepository.save(savedCard);
-
-      // 10. BACKGROUND NOTIFICATIONS - Don't wait for these to complete
-      // This significantly speeds up the response time
-      this.sendCardNotifications(savedCard, node, createCardDTO.notifyResponsible).catch((error) => {
-        console.error('Error sending notifications (non-blocking):', error);
-      });
-
-      return savedCard;
+      return persisted;
     } catch (exception) {
-      console.log(exception);
+      if (!(exception instanceof HttpException)) {
+        this.logger.error(
+          `Card creation failed for UUID ${createCardDTO.cardUUID}`,
+          exception instanceof Error ? exception.stack : String(exception),
+        );
+      }
       HandleException.exception(exception);
     }
   };
 
-  /**
-   * Helper method to send notifications in the background
-   * Extracted from create method to be non-blocking
-   */
-  private async sendCardNotifications(
-    card: any,
-    node: any,
-    notifyResponsible: boolean,
-  ): Promise<void> {
-    try {
-      // When the responsible gets a dedicated "assigned" notification, exclude
-      // them from the site-wide broadcast too. Otherwise the responsible is in
-      // both audiences and receives the same card push twice.
-      const notifiesResponsible = Boolean(
-        notifyResponsible && node.notify === 1 && node.responsibleId,
-      );
-      const alsoExcludedUserIds = notifiesResponsible
-        ? [Number(node.responsibleId)]
-        : [];
-
-      // Send general notification to all site users (excluding creator)
-      const tokens = await this.userService.getSiteUsersTokensExcludingOwnerUser(
-        card.siteId,
-        card.creatorId,
-        alsoExcludedUserIds,
-      );
-
-      if (tokens && tokens.length > 0) {
-        await this.firebaseService.sendMultipleMessage(
-          new NotificationDTO(
-            stringConstants.cardsTitle,
-            `${stringConstants.cardsDescription} ${card.cardTypeMethodologyName}`,
-            stringConstants.cardsNotificationType,
-          ),
-          tokens,
-        );
-      }
-
-      // Send specific notification to responsible if requested
-      if (notifyResponsible && node.notify === 1 && node.responsibleId) {
-        const responsibleTokens = await this.userService.getUserToken(node.responsibleId);
-        if (responsibleTokens && responsibleTokens.length > 0) {
-          await this.firebaseService.sendMultipleMessage(
-            new NotificationDTO(
-              stringConstants.cardsTitle,
-              `${stringConstants.cardResponsibleAssignment} ${node.name}: ${card.cardTypeMethodologyName}`,
-              stringConstants.cardsNotificationType,
-            ),
-            responsibleTokens,
-          );
-        }
-      }
-    } catch (error) {
-      console.error('Error in sendCardNotifications:', error);
-      // Don't throw - we don't want notification failures to affect card creation
+  private toCardSyncFailure(
+    cardUUID: string,
+    error: unknown,
+  ): FailedCardSyncResult {
+    if (error instanceof HttpException) {
+      return {
+        cardUUID,
+        success: false,
+        statusCode: error.getStatus(),
+        message: error.message,
+      };
     }
+
+    return {
+      cardUUID,
+      success: false,
+      statusCode: 500,
+      message: 'Unable to synchronize card',
+    };
+  }
+
+  private buildCardCreationNotifications(input: {
+    cardUUID: string;
+    siteId: number;
+    creatorId: number;
+    methodologyName: string;
+    nodeName: string;
+    responsibleId?: number | null;
+    notifyResponsible: boolean;
+  }): EnqueueNotification[] {
+    const notifications: EnqueueNotification[] = [
+      {
+        deduplicationKey: `card-created:${input.cardUUID}:site`,
+        payload: {
+          audience: {
+            type: 'site-except-user' as const,
+            siteId: input.siteId,
+            excludedUserId: input.creatorId,
+          },
+          notification: {
+            title: stringConstants.cardsTitle,
+            description: `${stringConstants.cardsDescription} ${input.methodologyName}`,
+            type: stringConstants.cardsNotificationType,
+            data: {
+              sync_scope: 'cards',
+              site_id: String(input.siteId),
+              card_uuid: input.cardUUID,
+            },
+          },
+        },
+      },
+    ];
+
+    if (input.notifyResponsible && input.responsibleId) {
+      notifications.push({
+        deduplicationKey: `card-created:${input.cardUUID}:responsible:${input.responsibleId}`,
+        payload: {
+          audience: {
+            type: 'user' as const,
+            userId: input.responsibleId,
+          },
+          notification: {
+            title: stringConstants.cardsTitle,
+            description: `${stringConstants.cardResponsibleAssignment} ${input.nodeName}: ${input.methodologyName}`,
+            type: stringConstants.cardsNotificationType,
+            data: {
+              sync_scope: 'cards',
+              site_id: String(input.siteId),
+              card_uuid: input.cardUUID,
+            },
+          },
+        },
+      });
+    }
+
+    return notifications;
   }
 
   /**
@@ -2796,7 +2935,8 @@ export class CardService {
 
       // Build query with status and date filtering
       const queryBuilder = this.cardRepository.createQueryBuilder('card')
-        .where('card.siteId = :siteId', { siteId });
+        .where('card.siteId = :siteId', { siteId })
+        .andWhere('card.deletedAt IS NULL');
 
       // Apply status filtering logic:
       // - Always include status 'A'

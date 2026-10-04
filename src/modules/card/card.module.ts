@@ -14,6 +14,11 @@ import { LevelModule } from '../level/level.module';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
+import { CardCreationPersistence } from './card-creation.persistence';
+import { CardSolutionPersistence } from './card-solution.persistence';
+import { CardMutationPersistence } from './card-mutation.persistence';
+import { CardDeltaSyncReader } from './card-delta-sync.reader';
+import { R2CardEvidenceService } from './r2-card-evidence.service';
 
 @Module({
   imports: [
@@ -27,7 +32,14 @@ import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-re
     TypeOrmModule.forFeature([CardEntity, EvidenceEntity, CardNoteEntity, UserEntity, AmDiscardReasonEntity]),
   ],
   controllers: [CardController],
-  providers: [CardService],
+  providers: [
+    CardService,
+    CardCreationPersistence,
+    CardSolutionPersistence,
+    CardMutationPersistence,
+    CardDeltaSyncReader,
+    R2CardEvidenceService,
+  ],
   exports: [CardService],
 })
 export class CardModule {}

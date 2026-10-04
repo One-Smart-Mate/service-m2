@@ -8,7 +8,9 @@ export class PhoneNumberDTO {
     example: '527773280963',
     pattern: '^[0-9]{10,15}$'
   })
-  @Transform(({ value }) => value.trim())
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : value,
+  )
   @IsString()
   @Matches(/^[0-9]{10,15}$/, {
     message: 'phoneNumber must be a valid phone number without plus sign (10-15 digits)'

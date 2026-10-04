@@ -8,6 +8,7 @@ import { CiltMstrEntity } from '../ciltMstr/entities/ciltMstr.entity';
 import { CiltFrequenciesEntity } from '../ciltFrequencies/entities/ciltFrequencies.entity';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { CiltTypesEntity } from '../ciltTypes/entities/ciltTypes.entity';
+import { CiltSequencePersistence } from './cilt-sequence.persistence';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { CiltTypesEntity } from '../ciltTypes/entities/ciltTypes.entity';
     ]),
   ],
   controllers: [CiltSequencesController],
-  providers: [CiltSequencesService],
+  providers: [CiltSequencesService, CiltSequencePersistence],
   exports: [CiltSequencesService],
 })
-export class CiltSequencesModule {} 
+export class CiltSequencesModule {}

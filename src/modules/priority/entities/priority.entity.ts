@@ -1,7 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { SiteEntity } from '../../site/entities/site.entity';
 
 @Entity('priorities')
+@Index('idx_priorities_site_state_order', [
+  'siteId',
+  'status',
+  'deletedAt',
+  'order',
+  'id',
+])
 export class PriorityEntity {
   @PrimaryGeneratedColumn({ type: 'int', unsigned: true })
   id: number;
@@ -40,4 +47,3 @@ export class PriorityEntity {
   @JoinColumn({ name: 'site_id' })
   site: SiteEntity;
 }
-

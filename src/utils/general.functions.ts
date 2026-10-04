@@ -1,4 +1,5 @@
 import { stringConstants } from './string.constant';
+import { randomInt } from 'crypto';
 
 const capitalizeAndJoinWords = (value: string[]): string => {
   return value
@@ -13,14 +14,19 @@ export const addDaysToDate = (date: Date, days: number): Date => {
   return result;
 };
 
-export const generateRandomCode = (length: number) => {
+export const generateRandomCode = (
+  length: number,
+  characters: string = stringConstants.characters,
+) => {
+  if (!Number.isSafeInteger(length) || length <= 0 || characters.length === 0) {
+    throw new Error('Invalid secure code configuration');
+  }
+
   let result = '';
-  const charactersLength = stringConstants.characters.length;
+  const charactersLength = characters.length;
   let counter = 0;
   while (counter < length) {
-    result += stringConstants.characters.charAt(
-      Math.floor(Math.random() * charactersLength),
-    );
+    result += characters.charAt(randomInt(0, charactersLength));
     counter += 1;
   }
   return result;
@@ -80,4 +86,3 @@ export const convertToISOFormat = (dateString: string): string => {
   // Construct the correct ISO date
   return `${datePart}T${formattedHour}:${minutes}:${seconds}.${milliseconds}Z`;
 };
-
