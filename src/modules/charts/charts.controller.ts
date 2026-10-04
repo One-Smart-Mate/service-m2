@@ -2,10 +2,11 @@ import { Controller, Get, Param, Query, UseGuards, ParseIntPipe } from '@nestjs/
 import { ChartsService } from './charts.service';
 import { ApiTags, ApiBearerAuth, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { SiteAccessGuard } from '../auth/guard/site-access.guard';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('charts')
-@UseGuards(AuthGuard, SiteAccessGuard)
+@UseGuards(AuthGuard)
 @ApiTags('charts')
 @ApiBearerAuth()
 export class ChartsController {
@@ -16,7 +17,8 @@ export class ChartsController {
    * Get all active charts, optionally filtered by site
    */
   @Get()
-  @ApiQuery({ name: 'siteId', required: false, description: 'Filter charts by site ID' })
+  @RequireSiteAccess()
+  @ApiQuery({ name: 'siteId', required: true, description: 'Filter charts by site ID' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status (default: A)' })
   async findAll(@Query('siteId') siteId?: string) {
     const charts = await this.chartsService.findAll(siteId ? parseInt(siteId) : undefined);
@@ -28,6 +30,12 @@ export class ChartsController {
    * Get chart levels for a specific chart
    */
   @Get(':chartId/levels')
+  @SiteResourceAccess({
+    resource: 'chart',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'chartId',
+  })
   @ApiParam({ name: 'chartId', description: 'Chart ID' })
   @ApiQuery({ name: 'level_type', required: false, enum: ['grouping', 'target'], description: 'Filter by level type' })
   @ApiQuery({ name: 'status', required: false, description: 'Filter by status (default: A)' })

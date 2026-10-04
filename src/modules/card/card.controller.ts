@@ -1,8 +1,30 @@
-import { Controller, Get, Post, Body, Param, Put, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  Request,
+  StreamableFile,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { CardService } from './card.service';
-import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '../auth/guard/auth.guard';
-import { SiteAccessGuard } from '../auth/guard/site-access.guard';
 import { CreateCardDTO } from './models/dto/create.card.dto';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
@@ -17,13 +39,30 @@ import {
   CardReportStackedDTO,
   CardTimeSeriesDTO,
 } from './models/dto/card.report.dto';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
+import { SyncCardsDTO } from './models/dto/sync.cards.dto';
+import {
+  CardEvidenceUploadType,
+  UploadCardEvidenceDto,
+} from './models/dto/upload-card-evidence.dto';
+import {
+  ALLOWED_AUDIO_TYPES,
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  R2CardEvidenceService,
+} from './r2-card-evidence.service';
 
 @Controller('card')
-@UseGuards(AuthGuard, SiteAccessGuard)
+@UseGuards(AuthGuard)
 @ApiTags('card')
 @ApiBearerAuth()
 export class CardController {
-  constructor(private readonly cardService: CardService) {}
+  constructor(
+    private readonly cardService: CardService,
+    private readonly cardEvidenceStorage: R2CardEvidenceService,
+  ) {}
 
   @Get('/all/level-machine/:siteId/:levelMachineId')
   @ApiParam({ name: 'siteId' })
@@ -32,11 +71,11 @@ export class CardController {
   async findByLevelMachineId(
     @Param('siteId') siteId: number,
     @Param('levelMachineId') levelMachineId: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.findByLevelMachineId(siteId, levelMachineId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
@@ -54,11 +93,11 @@ export class CardController {
   @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 50)', example: 50 })
   async findBySiteId(
     @Param('siteId') siteId: number,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.findSiteCards(siteId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
@@ -85,12 +124,13 @@ export class CardController {
   @ApiQuery({ name: 'endDate', required: false, description: 'End date (ISO format)' })
   @ApiQuery({ name: 'sortOption', required: false, description: 'Sort option' })
   @ApiQuery({ name: 'status', required: false, description: 'Card status filter (comma-separated: A,C,R)', example: 'A' })
-  @ApiQuery({ name: 'userId', required: false, description: 'User ID for filtering my cards' })
+  @ApiQuery({ name: 'userId', required: false, deprecated: true, description: 'Ignored. My cards uses the authenticated user.' })
   @ApiQuery({ name: 'myCards', required: false, description: 'Filter cards created by or assigned to user', example: 'true' })
   findBySiteIdPaginated(
     @Param('siteId') siteId: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Request() req,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
     @Query('searchText') searchText?: string,
     @Query('cardNumber') cardNumber?: string,
     @Query('location') location?: string,
@@ -102,13 +142,14 @@ export class CardController {
     @Query('endDate') endDate?: string,
     @Query('sortOption') sortOption?: 'dueDate-asc' | 'dueDate-desc' | 'creationDate-asc' | 'creationDate-desc' | '',
     @Query('status') status?: string,
-    @Query('userId') userId?: number,
+    @Query('userId') _userId?: number,
     @Query('myCards') myCards?: string,
   ) {
     return this.cardService.findSiteCardsPaginated(
       siteId,
-      page || 1,
-      limit || 50,
+      req.user.id,
+      page === undefined ? 1 : Number(page),
+      limit === undefined ? 50 : Number(limit),
       {
         searchText,
         cardNumber,
@@ -121,20 +162,39 @@ export class CardController {
         endDate,
         sortOption,
         status,
-        userId,
         myCards: myCards === 'true',
       }
     );
   }
   @Get('/uuid/:uuid')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'uuid',
+    source: 'params',
+    requestKey: 'uuid',
+  })
   @ApiParam({ name: 'uuid' })
   findByCardUUID(@Param('uuid') uuid: string) {
     return this.cardService.findCardByUUID(uuid);
   }
   @Get('/responsible/:responsibleId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'responsibleId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'responsibleId',
+  })
   @ApiParam({ name: 'responsibleId' })
-  findByResponsibleId(@Param('responsibleId') responsibleId: number) {
-    return this.cardService.findResponsibleCards(responsibleId);
+  findByResponsibleId(
+    @Param('responsibleId') responsibleId: number,
+    @Request() req,
+  ) {
+    return this.cardService.findResponsibleCards(responsibleId, req.user.id);
   }
 
   @Get('/count/:siteId')
@@ -143,30 +203,194 @@ export class CardController {
     return this.cardService.countSiteCards(siteId, req.user.id);
   }
 
+  @Get('/sync/:siteId')
+  @ApiParam({ name: 'siteId', description: 'Site ID' })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    description: 'Opaque cursor returned by the previous synchronization',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Changes per page (default: 200, maximum: 500)',
+    example: 200,
+  })
+  syncCardChanges(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Request() req,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit?: string | number,
+  ) {
+    return this.cardService.syncCardChanges(
+      siteId,
+      req.user.id,
+      cursor,
+      limit === undefined ? undefined : Number(limit),
+    );
+  }
+
   @Get('/:cardId')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'cardId',
+  })
   findByIDAndGetEvidences(@Param('cardId') cardId: number) {
     return this.cardService.findCardByIDAndGetEvidences(cardId);
   }
 
   @Post('/create')
-  create(@Body() createCardDTO: CreateCardDTO) {
-    return this.cardService.createOptimized(createCardDTO);
+  create(@Body() createCardDTO: CreateCardDTO, @Request() req) {
+    return this.cardService.createOptimized({
+      ...createCardDTO,
+      creatorId: req.user.id,
+    });
   }
-  
+
+  @Post('/sync')
+  syncOfflineCards(@Body() syncCardsDTO: SyncCardsDTO, @Request() req) {
+    return this.cardService.syncOfflineCards(
+      syncCardsDTO.cards,
+      req.user.id,
+    );
+  }
+
+  @Post('/evidence/:siteId/upload')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  @ApiParam({ name: 'siteId', description: 'Site that owns the card evidence' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['cardUUID', 'evidenceId', 'evidenceType', 'file'],
+      properties: {
+        cardUUID: { type: 'string', example: '2e805731-bc22-43f6-8737-43ec80fd03fc' },
+        evidenceId: { type: 'string', example: 'a1ee9d76-5bf1-4b03-a228-56621fb4288c' },
+        evidenceType: {
+          type: 'string',
+          enum: Object.values(CardEvidenceUploadType),
+        },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 25 * 1024 * 1024,
+        files: 1,
+        fields: 3,
+        fieldNameSize: 100,
+        fieldSize: 1_024,
+      },
+      fileFilter: (_request, file, callback) => {
+        const allowed =
+          ALLOWED_IMAGE_TYPES.has(file.mimetype) ||
+          ALLOWED_VIDEO_TYPES.has(file.mimetype) ||
+          ALLOWED_AUDIO_TYPES.has(file.mimetype);
+        callback(
+          allowed ? null : new BadRequestException('Unsupported evidence file type'),
+          allowed,
+        );
+      },
+    }),
+  )
+  uploadEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Body() body: UploadCardEvidenceDto,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Evidence file is required');
+    return this.cardEvidenceStorage.uploadCardEvidence(
+      siteId,
+      body.cardUUID,
+      body.evidenceId,
+      body.evidenceType,
+      file,
+    );
+  }
+
+  @Get('/evidence/:siteId/content/:token')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  async downloadEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Param('token') token: string,
+  ) {
+    const evidence = await this.cardEvidenceStorage.downloadCardEvidence(
+      siteId,
+      token,
+    );
+    return new StreamableFile(evidence.buffer, {
+      type: evidence.contentType,
+      length: evidence.size,
+      disposition: `inline; filename="${evidence.fileName}"`,
+    });
+  }
+
+  @Get('/evidence/:siteId/legacy')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  async downloadLegacyEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Query('reference') reference: string,
+  ) {
+    const evidence = await this.cardEvidenceStorage.downloadLegacyCardEvidence(
+      siteId,
+      reference,
+    );
+    return new StreamableFile(evidence.buffer, {
+      type: evidence.contentType,
+      length: evidence.size,
+      disposition: `inline; filename="${evidence.fileName}"`,
+    });
+  }
+
   @Put('/update/definitive-solution')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateDefinitiveSolution(
     @Body() updateDefinitiveSolutionDTO: UpdateDefinitiveSolutionDTO,
+    @Request() req,
   ) {
     return this.cardService.updateDefinitivesolution(
       updateDefinitiveSolutionDTO,
+      req.user.id,
     );
   }
   @Put('/update/provisional-solution')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateProvisionalSolution(
     @Body() updateProvisionalSolutionDTO: UpdateProvisionalSolutionDTO,
+    @Request() req,
   ) {
     return this.cardService.updateProvisionalSolution(
       updateProvisionalSolutionDTO,
+      req.user.id,
     );
   }
   @Get('/all/zone/:superiorId/:siteId')
@@ -342,10 +566,8 @@ export class CardController {
     @Param('siteId') siteId: number,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
-    @Query('status') status?: string,
   ) {
     // Always use C,R status for definitive users regardless of parameter
-    console.log(status)
     return this.cardService.findSiteCardsGroupedByDefinitiveUser(
       siteId,
       startDate,
@@ -365,32 +587,73 @@ export class CardController {
   }
 
   @Get('/notes/:cardId')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'cardId',
+  })
   findCardNotes(@Param('cardId') cardId: number) {
     return this.cardService.findCardNotes(cardId);
   }
 
   @Get('/notes/uuid/:cardUUID')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'uuid',
+    source: 'params',
+    requestKey: 'cardUUID',
+  })
   findCardNotesByUUID(@Param('cardUUID') cardUUID: string) {
     return this.cardService.findCardNotesByUUID(cardUUID);
   }
 
   @Post('/update/priority')
-  updateCardPriority(@Body() updateCardPriorityDTO: UpdateCardPriorityDTO) {
-    return this.cardService.updateCardPriority(updateCardPriorityDTO);
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
+  updateCardPriority(
+    @Body() updateCardPriorityDTO: UpdateCardPriorityDTO,
+    @Request() req,
+  ) {
+    return this.cardService.updateCardPriority(
+      updateCardPriorityDTO,
+      req.user.id,
+    );
   }
 
   @Post('/update/mechanic')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateCardResponsible(
     @Body() updateCardResponsibleDTO: UpdateCardMechanicDTO,
+    @Request() req,
   ) {
-    return this.cardService.updateCardMechanic(updateCardResponsibleDTO);
+    return this.cardService.updateCardMechanic(
+      updateCardResponsibleDTO,
+      req.user.id,
+    );
   }
 
   @Post('/update/custom-due-date')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   updateCardCustomDueDate(
-    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy: number }
+    @Body() body: { cardId: number; customDueDate: string; idOfUpdatedBy?: number },
+    @Request() req,
   ) {
-    return this.cardService.updateCardCustomDueDate(body);
+    return this.cardService.updateCardCustomDueDate(body, req.user.id);
   }
 
   @Get()
@@ -429,11 +692,11 @@ export class CardController {
   async getCardsByLevel(
     @Param('levelId') levelId: number,
     @Query('siteId') siteId: number,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+    @Query('page') page?: string | number,
+    @Query('limit') limit?: string | number,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 50;
+    const pageNum = page === undefined ? 1 : Number(page);
+    const limitNum = limit === undefined ? 50 : Number(limit);
     const result = await this.cardService.getCardsByLevelId(siteId, levelId, pageNum, limitNum);
 
     // Legacy support: if no pagination params, return only the array
@@ -446,15 +709,32 @@ export class CardController {
   }
 
   @Get('/user/:userId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   @ApiParam({ name: 'userId' })
-  findUserCards(@Param('userId') userId: number) {
-    return this.cardService.findUserCards(userId);
+  findUserCards(@Param('userId') userId: number, @Request() req) {
+    return this.cardService.findUserCards(userId, req.user.id);
   }
 
   @Post('/discard')
+  @SiteResourceAccess({
+    resource: 'card',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'cardId',
+  })
   @ApiBody({ type: DiscardCardDto })
-  discardCard(@Body() dto: DiscardCardDto) {
-    return this.cardService.discardCard(dto);
+  discardCard(@Body() dto: DiscardCardDto, @Request() req) {
+    return this.cardService.discardCard(dto, req.user.id);
   }
 
   @Get('/site/calendar/:siteId')
@@ -485,16 +765,6 @@ export class CardController {
       startDate,
       endDate,
     );
-  }
-
-  @Get('/fast-password/:siteId/:fastPassword')
-  @ApiParam({ name: 'siteId', description: 'Site ID where to search for the user' })
-  @ApiParam({ name: 'fastPassword', description: 'Fast password of the user' })
-  findCardsByFastPassword(
-    @Param('siteId') siteId: number,
-    @Param('fastPassword') fastPassword: string,
-  ) {
-    return this.cardService.findCardsByFastPassword(siteId, fastPassword);
   }
 
   // Advanced Card Reports Endpoints

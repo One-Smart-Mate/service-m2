@@ -4,6 +4,12 @@ import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailsDTO } from './models/dto/updateOplDetails.dto';
 import { UpdateOplDetailOrderDTO } from './models/dto/update-order.dto';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  PLATFORM_ADMIN_ROLE,
+  SITE_ADMIN_ROLES,
+} from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @ApiTags('Opl Details')
 @ApiBearerAuth()
@@ -12,6 +18,7 @@ export class OplDetailsController {
   constructor(private readonly oplDetailsService: OplDetailsService) {}
 
   @Get("/all")
+  @RequireRoles(PLATFORM_ADMIN_ROLE)
   @ApiOperation({ summary: 'Get all OPL details' })
   @ApiResponse({ status: 200, description: 'List of OPL details'})
   async findAll() {
@@ -19,6 +26,12 @@ export class OplDetailsController {
   }
 
   @Get(':id')
+  @SiteResourceAccess({
+    resource: 'oplDetail',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Get an OPL detail by ID' })
   @ApiResponse({ status: 200, description: 'OPL detail found'})
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
@@ -27,6 +40,12 @@ export class OplDetailsController {
   }
 
   @Get('/by-opl/:oplId')
+  @SiteResourceAccess({
+    resource: 'oplMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'oplId',
+  })
   @ApiOperation({ summary: 'Get OPL details by OPL ID' })
   @ApiResponse({ status: 200, description: 'List of OPL details found'})
   @ApiResponse({ status: 404, description: 'No OPL details found' })
@@ -35,6 +54,13 @@ export class OplDetailsController {
   }
 
   @Post("/create")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'oplMaster',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'oplId',
+  })
   @ApiOperation({ summary: 'Create a new OPL detail' })
   @ApiResponse({ status: 201, description: 'OPL detail created successfully'})
   async create(@Body() createOplDetailsDto: CreateOplDetailsDTO) {
@@ -42,6 +68,22 @@ export class OplDetailsController {
   }
 
   @Put("/update")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess(
+    {
+      resource: 'oplDetail',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'id',
+    },
+    {
+      resource: 'oplMaster',
+      lookup: 'id',
+      source: 'body',
+      requestKey: 'oplId',
+      required: false,
+    },
+  )
   @ApiOperation({ summary: 'Update an OPL detail' })
   @ApiResponse({ status: 200, description: 'OPL detail updated successfully'})
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
@@ -50,6 +92,13 @@ export class OplDetailsController {
   }
 
   @Put("/update-order")
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'oplDetail',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'detailId',
+  })
   @ApiOperation({ summary: 'Update OPL detail order' })
   @ApiResponse({ status: 200, description: 'OPL detail order updated successfully'})
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
@@ -58,10 +107,17 @@ export class OplDetailsController {
   }
 
   @Delete(':id')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'oplDetail',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiOperation({ summary: 'Delete an OPL detail (soft delete)' })
   @ApiResponse({ status: 200, description: 'OPL detail deleted successfully'})
   @ApiResponse({ status: 404, description: 'OPL detail not found' })
   async delete(@Param('id') id: number) {
     return await this.oplDetailsService.delete(id);
   }
-} 
+}

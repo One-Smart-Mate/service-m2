@@ -25,6 +25,14 @@ export class CiltFrequenciesService {
     }
   };
 
+  findBySiteId = async (siteId: number) => {
+    try {
+      return await this.ciltFrequenciesRepository.find({ where: { siteId } });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const frequency = await this.ciltFrequenciesRepository.findOneBy({ id });

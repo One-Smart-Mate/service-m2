@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -29,11 +30,12 @@ export class UpdateUserPartialDTO {
     description: 'Language of the welcome email', 
     example: 'ES',
     enum: [stringConstants.LANG_ES, stringConstants.LANG_EN],
-    default: stringConstants.LANG_ES,
     required: false
   })
+  @IsOptional()
   @IsString()
-  translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES;
+  @IsIn([stringConstants.LANG_ES, stringConstants.LANG_EN])
+  translation?: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN;
 
   @ApiProperty({ description: 'Email address of the user', required: false })
   @IsOptional()
@@ -56,4 +58,4 @@ export class UpdateUserPartialDTO {
     message: 'Fast password must be 4 alphanumeric characters (a-z, A-Z, 0-9)',
   })
   fastPassword?: string;
-} 
+}

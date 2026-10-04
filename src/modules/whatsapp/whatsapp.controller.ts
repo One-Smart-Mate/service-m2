@@ -3,6 +3,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiProperty } from '@nes
 import { WhatsappService } from './whatsapp.service';
 import { IsArray, ValidateNested, IsString, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
+import { PLATFORM_ADMIN_ROLE } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 export class AuthMessageDto {
   @ApiProperty({ example: '5217773280963', description: 'Phone number with country code' })
@@ -34,6 +36,7 @@ export class SendAuthMessagesDto {
 @ApiTags('WhatsApp')
 @ApiBearerAuth()
 @Controller('whatsapp')
+@RequireRoles(PLATFORM_ADMIN_ROLE)
 export class WhatsappController {
   constructor(private readonly whatsappService: WhatsappService) {}
 
@@ -99,4 +102,4 @@ export class WhatsappController {
   async createAuthenticationTemplate() {
     return await this.whatsappService.createAuthenticationTemplate();
   }
-} 
+}

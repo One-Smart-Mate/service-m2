@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  StreamableFile,
 } from '@nestjs/common';
 import { ApiResponse } from './dto/response.dto';
 import { Observable, map } from 'rxjs';
@@ -17,6 +18,10 @@ export class TransformInterceptor<T>
   ): Observable<ApiResponse<T>> | Promise<Observable<ApiResponse<T>>> {
     const status = 200;
     const message = 'success';
-    return next.handle().pipe(map((data) => ({ data, status, message })));
+    return next.handle().pipe(
+      map((data) =>
+        data instanceof StreamableFile ? (data as never) : { data, status, message },
+      ),
+    );
   }
 }

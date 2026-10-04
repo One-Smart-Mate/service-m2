@@ -5,6 +5,9 @@ import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
 import { CloneLevelDto } from './models/dto/clone.level.dto';
+import { SITE_ADMIN_ROLES } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 @Controller('level')
 @ApiTags('level')
@@ -76,27 +79,54 @@ export class LevelController {
     return result;
   }
   @Post('/create')
+  @RequireRoles(...SITE_ADMIN_ROLES)
   create(@Body() createLevelDTO: CreateLevelDto) {
     return this.levelService.create(createLevelDTO);
   }
   @Put('/update')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   update(@Body() updateLevelDTO: UpdateLevelDTO) {
     return this.levelService.update(updateLevelDTO);
   }
 
   @Get('/:levelId')
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'levelId',
+  })
   @ApiParam({ name: 'levelId', required: true, example: 1 })
   findById(@Param('levelId') levelId: number) {
     return this.levelService.findById(+levelId);
   }
 
   @Get('/path/:levelId')
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'levelId',
+  })
   @ApiParam({ name: 'levelId', required: true, example: 1, description: 'Level ID' })
   getLevelPath(@Param('levelId') levelId: number) {
     return this.levelService.getLevelPathById(+levelId);
   }
 
   @Put('/move')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'levelId',
+  })
   @ApiBody({
     type: MoveLevelDto,
     description: 'Move a level to a new position in the hierarchy. The children are automatically reassigned.'
@@ -186,6 +216,13 @@ export class LevelController {
   }
 
   @Post('/clone')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'levelId',
+  })
   @ApiBody({
     type: CloneLevelDto,
     description: 'Clone a level with all its descendants (children, grandchildren, etc.). The cloned level will be a sibling of the original (same parent). All cloned names will have " (Copia)" suffix.'

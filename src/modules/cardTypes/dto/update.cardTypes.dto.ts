@@ -8,6 +8,7 @@ import {
   Min,
   Max,
   IsHexColor,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 export class UpdateCardTypesDTO {
@@ -219,6 +220,7 @@ export class UpdateCardTypesDTO {
   })
   @IsNotEmpty()
   @IsString()
+  @IsIn(['A', 'I'])
   status: string;
 
   updatedAt?: Date;

@@ -38,6 +38,15 @@
     </li>
   </ol>
 
+  <h3>Required authentication secret</h3>
+  <p>
+    Configure <code>FAST_PASSWORD_PEPPER</code> with a cryptographically random
+    value of at least 32 bytes before running migrations or starting an
+    environment that uses Fast Password. Keep the same value across all
+    instances and do not commit it to the repository. Rotating it requires a
+    coordinated Fast Password reset for every user.
+  </p>
+
   <h2>🐳 Docker</h2>
   <h3>Build locally</h3>
   <pre><code>docker build -t service-m2 .</code></pre>
@@ -81,4 +90,3 @@
 
 </body>
 </html>
-

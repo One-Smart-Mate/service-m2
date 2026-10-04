@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardTypesEntity } from './entities/cardTypes.entity';
 import { CardEntity } from '../card/entities/card.entity';
@@ -16,9 +16,16 @@ import { CardTypesCatalogEntity } from './entities/card.types.catalog.entity';
 import { stringConstants } from 'src/utils/string.constant';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { applyCatalogLifecycle } from '../catalog/catalog-lifecycle';
+import {
+  assertActiveCatalogSite,
+  resolveCatalogAssignee,
+} from '../catalog/catalog-assignment.policy';
 
 @Injectable()
 export class CardTypesService {
+  private readonly logger = new Logger(CardTypesService.name);
+
   constructor(
     @InjectRepository(CardTypesEntity)
     private readonly cardTypesRepository: Repository<CardTypesEntity>,
@@ -37,6 +44,7 @@ export class CardTypesService {
         .createQueryBuilder('cardTypes')
         .where('cardTypes.siteId = :siteId', { siteId })
         .andWhere('cardTypes.status = :status', { status: stringConstants.A })
+        .andWhere('cardTypes.deletedAt IS NULL')
         .getMany();
 
       return activeCardTypes;
@@ -62,14 +70,14 @@ export class CardTypesService {
       if (!foundSite) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.COMPANY);
       }
+      assertActiveCatalogSite(foundSite);
 
       if (createCardTypesDTO.responsableId) {
-        const foundUser = await this.usersService.findById(
+        const foundUser = await resolveCatalogAssignee(
+          this.usersService,
           createCardTypesDTO.responsableId,
+          createCardTypesDTO.siteId,
         );
-        if (!foundUser) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         createCardTypesDTO.responsableName = foundUser.name;
         createCardTypesDTO.email = foundUser.email;
       }
@@ -77,19 +85,11 @@ export class CardTypesService {
       createCardTypesDTO.createdAt = new Date();
       createCardTypesDTO.siteCode = foundSite.siteCode;
 
-      const tokens = await this.usersService.getSiteUsersTokens(
-        createCardTypesDTO.siteId,
-        true, // Exclude web tokens - web always loads data online
+      const savedCardType = await this.cardTypesRepository.save(
+        createCardTypesDTO,
       );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-      return await this.cardTypesRepository.save(createCardTypesDTO);
+      await this.notifyCatalogChange(createCardTypesDTO.siteId);
+      return savedCardType;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -108,12 +108,11 @@ export class CardTypesService {
       }
   
       if (updateCardTypesDTO.responsableId) {
-        const foundUser = await this.usersService.findById(
+        const foundUser = await resolveCatalogAssignee(
+          this.usersService,
           updateCardTypesDTO.responsableId,
+          currentCardType.siteId,
         );
-        if (!foundUser) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-        }
         currentCardType.responsableId = updateCardTypesDTO.responsableId;
         currentCardType.responsableName = foundUser.name;
         currentCardType.email = foundUser.email;
@@ -137,47 +136,35 @@ export class CardTypesService {
       currentCardType.audiosDurationPs = updateCardTypesDTO.audiosDurationPs;
       currentCardType.quantityVideosPs = updateCardTypesDTO.quantityVideosPs;
       currentCardType.videosDurationPs = updateCardTypesDTO.videosDurationPs;
-      currentCardType.status = updateCardTypesDTO.status;
-  
-      if (updateCardTypesDTO.status !== stringConstants.A) {
-        currentCardType.deletedAt = new Date();
-      }
-      currentCardType.updatedAt = new Date();
-  
-      let affectedRows = 0;
-  
-      if (updateCardTypesDTO.color !== currentCardType.color) {
-        currentCardType.color = updateCardTypesDTO.color;
-  
-        const result = await this.cardsRepository
-          .createQueryBuilder()
-          .update()
-          .set({ cardTypeColor: updateCardTypesDTO.color }) 
-          .where('cardTypeId = :cardTypeId', { cardTypeId: currentCardType.id }) 
-          .execute();
-  
-        affectedRows = result.affected;
-      }
-  
-      const tokens = await this.usersService.getSiteUsersTokens(
-        currentCardType.siteId,
-        true, // Exclude web tokens - web always loads data online
-      );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-  
+      const colorChanged = updateCardTypesDTO.color !== currentCardType.color;
+      currentCardType.color = updateCardTypesDTO.color;
+      applyCatalogLifecycle(currentCardType, updateCardTypesDTO.status);
+
+      const { updatedCardType, affectedRows } =
+        await this.cardTypesRepository.manager.transaction(async (manager) => {
+          const savedCardType = await manager.save(
+            CardTypesEntity,
+            currentCardType,
+          );
+          let affected = 0;
+          if (colorChanged) {
+            const result = await manager.update(
+              CardEntity,
+              { cardTypeId: currentCardType.id },
+              { cardTypeColor: updateCardTypesDTO.color },
+            );
+            affected = result.affected ?? 0;
+          }
+          return { updatedCardType: savedCardType, affectedRows: affected };
+        });
+
+      await this.notifyCatalogChange(currentCardType.siteId);
       const response = {
         message: stringConstants.cardTypeUpdate,
-        updatedCardsCount: affectedRows, 
-        updatedCardType: await this.cardTypesRepository.save(currentCardType), 
+        updatedCardsCount: affectedRows,
+        updatedCardType,
       };
-  
+
       return response;
     } catch (exception) {
       HandleException.exception(exception);
@@ -200,4 +187,26 @@ export class CardTypesService {
       HandleException.exception(exception);
     }
   };
+
+  private async notifyCatalogChange(siteId: number): Promise<void> {
+    try {
+      const tokens = await this.usersService.getSiteUsersTokens(siteId, true);
+      if (tokens.length === 0) {
+        return;
+      }
+      await this.firebaseService.sendMultipleMessage(
+        new NotificationDTO(
+          stringConstants.catalogsTitle,
+          stringConstants.catalogsDescription,
+          stringConstants.catalogsNotificationType,
+        ),
+        tokens,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Card type ${siteId} was saved but catalog notification failed`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+  }
 }

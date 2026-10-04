@@ -17,6 +17,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Block critical production vulnerabilities
+        run: npm run audit:prod
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:

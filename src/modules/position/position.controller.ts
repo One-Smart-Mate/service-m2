@@ -12,6 +12,14 @@ import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
 import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
 import { UsersService } from '../users/users.service';
+import {
+  PLATFORM_ADMIN_ROLE,
+  SITE_ADMIN_ROLES,
+} from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
+import { RequireSiteAccess } from 'src/common/decorators/require-site-access.decorator';
+import { SelfOrRoles } from 'src/common/decorators/self-or-roles.decorator';
+import { SiteResourceAccess } from 'src/common/decorators/site-resource-access.decorator';
 
 
 @Controller('position')
@@ -24,6 +32,7 @@ export class PositionController {
   ) {}
 
   @Get('/all')
+  @RequireRoles(PLATFORM_ADMIN_ROLE)
   findAll() {
     return this.positionService.findAll();
   }
@@ -76,40 +85,86 @@ export class PositionController {
   }
 
   @Get('/user/:userId')
+  @SelfOrRoles({
+    source: 'params',
+    requestKey: 'userId',
+    roles: SITE_ADMIN_ROLES,
+  })
+  @SiteResourceAccess({
+    resource: 'user',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'userId',
+  })
   @ApiParam({ name: 'userId', required: true, example: 1 })
   findAllByUser(@Param('userId') userId: number) {
     return this.positionService.findAllByUser(+userId);
   }
 
   @Get('/area/:areaId')
+  @SiteResourceAccess({
+    resource: 'level',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'areaId',
+  })
   @ApiParam({ name: 'areaId', required: true, example: 3 })
   findByAreaId(@Param('areaId') areaId: number) {
     return this.positionService.findByAreaId(+areaId);
   }
 
   @Get('/:positionId/users')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'position',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'positionId',
+  })
   @ApiParam({ name: 'positionId', required: true, example: 1 })
   async findUsersByPosition(@Param('positionId') positionId: number) {
     return this.usersService.findUsersByPositionId(positionId);
   }
 
   @Get('/:id')
+  @SiteResourceAccess({
+    resource: 'position',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'id',
+  })
   @ApiParam({ name: 'id', required: true, example: 1 })
   findById(@Param('id') id: number) {
     return this.positionService.findById(+id);
   }
 
   @Post('/create')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @RequireSiteAccess()
   create(@Body() createPositionDto: CreatePositionDto) {
     return this.positionService.create(createPositionDto);
   }
 
   @Put('/update')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'position',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'id',
+  })
   update(@Body() updatePositionDto: UpdatePositionDto) {
     return this.positionService.update(updatePositionDto);
   }
 
   @Put('/update-order')
+  @RequireRoles(...SITE_ADMIN_ROLES)
+  @SiteResourceAccess({
+    resource: 'position',
+    lookup: 'id',
+    source: 'body',
+    requestKey: 'positionId',
+  })
   @ApiOperation({ summary: 'Update position order' })
   updateOrder(@Body() updateOrderDto: UpdatePositionOrderDTO) {
     return this.positionService.updateOrder(updateOrderDto);

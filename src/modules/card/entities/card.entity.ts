@@ -1,7 +1,17 @@
 import { AmDiscardReasonEntity } from 'src/modules/amDiscardReason/entities/am-discard-reason.entity';
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('cards')
+@Index('uq_cards_uuid', ['cardUUID'], { unique: true })
+@Index('uq_cards_site_folio', ['siteId', 'siteCardId'], { unique: true })
+@Index('idx_cards_site_sync', ['siteId', 'syncChangedAt', 'id'])
+@Index('idx_cards_site_list', ['siteId', 'deletedAt', 'siteCardId'])
+@Index('idx_cards_site_status_creation', [
+  'siteId',
+  'deletedAt',
+  'status',
+  'cardCreationDate',
+])
 export class CardEntity {
   @PrimaryGeneratedColumn({ type: 'bigint', unsigned: true })
   id: number;
@@ -119,11 +129,11 @@ export class CardEntity {
   @Column({
     type: 'enum',
     enum: ['safe', 'unsafe'],
-    nullable: false,
-    default: 'unsafe',
+    nullable: true,
+    default: null,
     name: 'cardType_value',
   })
-  cardTypeValue: 'safe' | 'unsafe' | '';
+  cardTypeValue: 'safe' | 'unsafe' | null;
 
   @Column({
     type: 'bigint',
@@ -404,6 +414,18 @@ export class CardEntity {
 
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
+
+  @Column({
+    name: 'sync_changed_at',
+    type: 'timestamp',
+    precision: 6,
+    select: false,
+    insert: false,
+    update: false,
+    default: () => 'CURRENT_TIMESTAMP(6)',
+    onUpdate: 'CURRENT_TIMESTAMP(6)',
+  })
+  syncChangedAt: Date;
 
   @Column({
     type: 'tinyint',

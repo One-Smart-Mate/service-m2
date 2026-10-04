@@ -3,10 +3,13 @@ import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs
 import { CiltSequencesFrequenciesService } from './ciltSequencesFrequencies.service';
 import { CreateCiltSequencesFrequenciesDTO } from './models/dto/createCiltSequencesFrequencies.dto';
 import { UpdateCiltSequencesFrequenciesDTO } from './models/dto/updateCiltSequencesFrequencies.dto';
+import { PLATFORM_ADMIN_ROLE } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('Cilt Sequences Frequencies OLD')
 @ApiBearerAuth()
 @Controller('cilt-sequences-frequencies-OLD')
+@RequireRoles(PLATFORM_ADMIN_ROLE)
 export class CiltSequencesFrequenciesController {
   constructor(private readonly ciltSequencesFrequenciesService: CiltSequencesFrequenciesService) {}
 

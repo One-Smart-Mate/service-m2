@@ -96,6 +96,18 @@ export class ValidationException extends HttpException {
       case ValidationExceptionType.USER_INACTIVE:
         message = stringConstants.inactiveStatus;
         break;
+      case ValidationExceptionType.INVALID_CARD_CATALOG_SELECTION:
+        message = stringConstants.invalidCardCatalogSelection;
+        break;
+      case ValidationExceptionType.CUSTOM_DUE_DATE_REQUIRED:
+        message = stringConstants.customDueDateRequired;
+        break;
+      case ValidationExceptionType.CUSTOM_DUE_DATE_NOT_ALLOWED:
+        message = stringConstants.customDueDateNotAllowed;
+        break;
+      case ValidationExceptionType.CARD_TYPE_VALUE_REQUIRED:
+        message = stringConstants.cardTypeValueRequired;
+        break;
       default:
         message = 'Validation error';
     }
@@ -134,5 +146,9 @@ export enum ValidationExceptionType {
   CILT_SEQUENCE_INVALID_DATE,
   CILT_SEQUENCE_NOT_STARTED,
   CILT_SEQUENCE_ALREADY_FINISHED,
-  INVALID_FAST_PASSWORD_FORMAT
+  INVALID_FAST_PASSWORD_FORMAT,
+  INVALID_CARD_CATALOG_SELECTION,
+  CUSTOM_DUE_DATE_REQUIRED,
+  CUSTOM_DUE_DATE_NOT_ALLOWED,
+  CARD_TYPE_VALUE_REQUIRED,
 }

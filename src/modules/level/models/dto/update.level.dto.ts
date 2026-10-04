@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsInt,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -65,6 +66,7 @@ export class UpdateLevelDTO {
   })
   @IsNotEmpty()
   @IsString()
+  @IsIn(['A', 'I'])
   status: string;
 
   @ApiProperty({

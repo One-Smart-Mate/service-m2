@@ -1,13 +1,12 @@
-import { NotFoundCustomException } from '../types/notFound.exception';
-import { ValidationException } from '../types/validation.exception';
 import { SqlException } from '../types/sql.exception';
-import { UnauthorizedException } from '@nestjs/common';
+import { HttpException } from '@nestjs/common';
 
 export class HandleException {
-  static exception(exception: any) {
-    if (exception instanceof NotFoundCustomException || exception instanceof ValidationException || exception instanceof UnauthorizedException) {
+  static exception(exception: unknown): never {
+    if (exception instanceof HttpException) {
       throw exception;
     }
+
     throw new SqlException(exception);
   }
 }

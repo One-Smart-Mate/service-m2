@@ -4,10 +4,13 @@ import { CreateCompanyDTO } from './models/dto/create.company.dto';
 import { ApiBody, ApiParam, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UpdateCompanyDTO } from './models/dto/update.company.dto';
 import {UpdateStatusDTO } from './models/dto/update.status.dto';
+import { PLATFORM_ADMIN_ROLE } from 'src/common/auth/roles.constants';
+import { RequireRoles } from 'src/common/decorators/roles.decorator';
 
 @ApiTags('company')
 @ApiBearerAuth()
 @Controller('company')
+@RequireRoles(PLATFORM_ADMIN_ROLE)
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
