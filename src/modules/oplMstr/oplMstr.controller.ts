@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Request, } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBearerAuth } from '@nestjs/swagger';
 import { OplMstrService } from './oplMstr.service';
 import { CreateOplMstrDTO } from './models/dto/createOplMstr.dto';
@@ -34,12 +34,20 @@ export class OplMstrController {
     return await this.oplMstrService.findOplMstrBySiteId(siteId);
   }
 
+  @Get('user/:userId/access')
+  @ApiOperation({ summary: 'Get the OPLs a user has accessed' })
+  @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'List of OPL accesses for the user' })
+  async findUserOplAccess(@Param('userId') userId: number) {
+    return await this.oplMstrService.findUserOplAccess(userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get an OPL by ID' })
   @ApiResponse({ status: 200, description: 'OPL found'})
   @ApiResponse({ status: 404, description: 'OPL not found' })
-  async findById(@Param('id') id: number) {
-    return await this.oplMstrService.findById(id);
+  async findById(@Param('id') id: number, @Request() req: any) {
+    return await this.oplMstrService.findById(id, req?.user?.id);
   }
 
   @Post("/create")

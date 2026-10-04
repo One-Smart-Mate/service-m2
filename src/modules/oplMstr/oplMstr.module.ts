@@ -7,9 +7,10 @@ import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
 import { LevelEntity } from '../level/entities/level.entity';
 import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
 import { OplTypes } from '../oplTypes/entities/oplTypes.entity';
+import { OplUserAccessEntity } from './entities/oplUserAccess.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OplMstr, OplLevelsEntity, LevelEntity, OplDetailsEntity, OplTypes])],
+  imports: [TypeOrmModule.forFeature([OplMstr, OplLevelsEntity, LevelEntity, OplDetailsEntity, OplTypes, OplUserAccessEntity])],
   controllers: [OplMstrController],
   providers: [OplMstrService],
   exports: [OplMstrService],
