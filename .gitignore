@@ -39,3 +39,6 @@ lerna-debug.log*
 
 # Auth
 .auth_info_baileys
+# TypeScript incremental build cache (must not be committed)
+tsconfig.build.tsbuildinfo
+*.tsbuildinfo
