@@ -230,12 +230,6 @@ export class CardController {
     );
   }
 
-  @Get('/count/:siteId')
-  @ApiParam({ name: 'siteId', description: 'Site ID' })
-  countCards(@Param('siteId') siteId: number, @Request() req) {
-    return this.cardService.countSiteCards(siteId, req.user.id);
-  }
-
   @Get('/:cardId')
   @SiteResourceAccess({
     resource: 'card',
