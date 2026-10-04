@@ -143,6 +143,50 @@ export class OplLevelsService {
     }
   }
 
+  async findLevelsByOplId(oplId: number): Promise<any[]> {
+    try {
+      const opl = await this.oplMstrRepository.findOne({
+        where: { id: oplId, deletedAt: IsNull() },
+      });
+      if (!opl) {
+        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
+      }
+
+      const oplLevels = await this.oplLevelsRepository.find({
+        where: { oplId, deletedAt: IsNull() },
+      });
+
+      if (!oplLevels || oplLevels.length === 0) {
+        return [];
+      }
+
+      const levelIds = [...new Set(oplLevels.map((ol) => ol.levelId))];
+      const levels = await this.levelRepository.find({
+        where: { id: In(levelIds), deletedAt: IsNull() },
+      });
+      const levelMap = new Map(levels.map((lvl) => [Number(lvl.id), lvl]));
+
+      return oplLevels.map((ol) => {
+        const level = levelMap.get(Number(ol.levelId));
+        return {
+          id: ol.id,
+          oplId: ol.oplId,
+          levelId: ol.levelId,
+          siteId: ol.siteId,
+          level: level
+            ? {
+                id: level.id,
+                name: level.name,
+                superiorId: level.superiorId,
+              }
+            : null,
+        };
+      });
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  }
+
   async remove(id: number) {
     try {
       const oplLevels = await this.oplLevelsRepository.findOne({

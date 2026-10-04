@@ -68,6 +68,23 @@ export class OplLevelsController {
     return await this.oplLevelsService.findOplMstrByLevelId(levelId);
   }
 
+  @Get('opl/:oplId')
+  @SiteResourceAccess({
+    resource: 'oplMaster',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'oplId',
+  })
+  @ApiOperation({ summary: 'Get all level relations by OPL ID' })
+  @ApiParam({ name: 'oplId', type: 'number', description: 'OPL ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of level relations associated with the OPL',
+  })
+  async findByOplId(@Param('oplId', ParseIntPipe) oplId: number) {
+    return await this.oplLevelsService.findLevelsByOplId(oplId);
+  }
+
   @Delete(':id')
   @RequireRoles(...SITE_ADMIN_ROLES)
   @SiteResourceAccess({
