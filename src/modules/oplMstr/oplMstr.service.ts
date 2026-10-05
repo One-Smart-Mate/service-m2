@@ -19,6 +19,9 @@ import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 import { OplMasterPersistence } from './opl-master.persistence';
 import { MailService } from '../mail/mail.service';
 import { UserEntity } from '../users/entities/user.entity';
+import { FirebaseService } from '../firebase/firebase.service';
+import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { stringConstants } from 'src/utils/string.constant';
 
 @Injectable()
 export class OplMstrService {
@@ -40,6 +43,7 @@ export class OplMstrService {
     private readonly mailService: MailService,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    private readonly firebaseService: FirebaseService,
   ) {}
 
   findAll = async () => {
@@ -252,32 +256,74 @@ export class OplMstrService {
   create = async (createOplDto: CreateOplMstrDTO, creatorId: number) => {
     try {
       const opl = await this.oplMasterPersistence.create(createOplDto, creatorId);
-      await this.notifyReviewerByEmail(opl?.reviewerId ?? null, opl?.title ?? createOplDto.title);
+      await this.notifyReviewer(opl?.reviewerId ?? null, opl?.title ?? createOplDto.title);
       return opl;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  private notifyReviewerByEmail = async (
+  private notifyReviewer = async (
     reviewerId: number | null,
     oplTitle: string,
   ) => {
     if (!reviewerId) {
       return;
     }
+    const reviewer = await this.userRepository.findOneBy({ id: reviewerId });
+    if (!reviewer) {
+      this.logger.warn(
+        `OPL reviewer ${reviewerId} not found; skipping notifications`,
+      );
+      return;
+    }
+
+    // Email notification (best-effort)
     try {
-      const reviewer = await this.userRepository.findOneBy({ id: reviewerId });
-      if (reviewer?.email) {
+      if (reviewer.email) {
         await this.mailService.sendOplReviewerAssignmentEmail(reviewer, oplTitle);
       } else {
         this.logger.warn(
-          `OPL reviewer ${reviewerId} has no email; skipping assignment notification`,
+          `OPL reviewer ${reviewerId} has no email; skipping email notification`,
         );
       }
     } catch (error) {
       this.logger.error(
         `Failed to send OPL reviewer assignment email to user ${reviewerId}: ${error?.message ?? error}`,
+      );
+    }
+
+    // Push notification (best-effort)
+    try {
+      const tokens = [
+        reviewer.androidToken
+          ? { token: reviewer.androidToken, type: stringConstants.OS_ANDROID }
+          : null,
+        reviewer.iosToken
+          ? { token: reviewer.iosToken, type: stringConstants.OS_IOS }
+          : null,
+        reviewer.webToken
+          ? { token: reviewer.webToken, type: stringConstants.OS_WEB }
+          : null,
+      ].filter((item) => item !== null) as { token: string; type: string }[];
+
+      if (tokens.length > 0) {
+        await this.firebaseService.sendMultipleMessage(
+          new NotificationDTO(
+            stringConstants.oplReviewNotificationTitle,
+            `${stringConstants.emailTemplates[stringConstants.LANG_ES].oplReviewAssignment.message} ${oplTitle}`,
+            stringConstants.oplReviewNotificationType,
+          ),
+          tokens,
+        );
+      } else {
+        this.logger.warn(
+          `OPL reviewer ${reviewerId} has no push tokens; skipping push notification`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to send OPL reviewer assignment push to user ${reviewerId}: ${error?.message ?? error}`,
       );
     }
   };
@@ -289,7 +335,7 @@ export class OplMstrService {
       const updated = await this.oplMasterPersistence.update(updateOplDto);
       const newReviewerId = updated?.reviewerId ?? null;
       if (newReviewerId && newReviewerId !== previousReviewerId) {
-        await this.notifyReviewerByEmail(
+        await this.notifyReviewer(
           newReviewerId,
           updated?.title ?? previous?.title ?? '',
         );
