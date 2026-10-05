@@ -2,6 +2,9 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# sharp (image thumbnails) needs libvips on Alpine/musl
+RUN apk add --no-cache vips-dev
+
 # Copiamos package.json y lockfile
 COPY package*.json ./
 
@@ -23,6 +26,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV HUSKY=0
+
+# sharp (image thumbnails) needs libvips at runtime on Alpine/musl
+RUN apk add --no-cache vips
 
 # Copiamos solo lo necesario desde builder
 COPY --from=builder /app/node_modules ./node_modules
