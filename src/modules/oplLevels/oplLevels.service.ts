@@ -181,6 +181,7 @@ export class OplLevelsService {
           levelId: ol.levelId,
           siteId: ol.siteId,
           usageCount: usageMap.get(Number(ol.levelId)) ?? 0,
+          oplDirectUsageCount: Number(opl.directUsageCount ?? 0),
           level: level
             ? {
                 id: level.id,
