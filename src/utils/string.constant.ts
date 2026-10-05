@@ -58,6 +58,9 @@ export const stringConstants = {
   ciltTitle: 'Notificación de Paro CILT',
   ciltNotificationType: 'CILT_STOPPAGE',
   updateAppNotificationType: 'UPDATE_APP',
+  //Notifications for OPL
+  oplReviewNotificationTitle: 'Nueva asignación de revisión de OPL',
+  oplReviewNotificationType: 'OPL_REVIEW_ASSIGNMENT',
   cardAssignedTitle: 'Card [card_id] has been assigned to you.',
   cardAssignedDescription: 'You have a new card assigned',
   emptyNotificationType: '',
