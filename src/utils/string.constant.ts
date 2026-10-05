@@ -218,6 +218,14 @@ export const stringConstants = {
         warning: 'Por favor, revisa esta situación lo antes posible.',
         help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
         team: '– El Equipo OSM'
+      },
+      oplReviewAssignment: {
+        subject: 'Nueva Asignación de Revisión de OPL',
+        greeting: 'Hola',
+        message: 'Se te ha asignado como revisor del OPL',
+        footer: 'Por favor, ingresa a la plataforma para revisarlo.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
       }
     },
     [LANG_EN]: {
@@ -252,6 +260,14 @@ export const stringConstants = {
         greeting: 'Hello',
         message: 'A stoppage condition has been reported in position',
         warning: 'Please review this situation as soon as possible.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      },
+      oplReviewAssignment: {
+        subject: 'New OPL Review Assignment',
+        greeting: 'Hello',
+        message: 'You have been assigned as the reviewer of the OPL',
+        footer: 'Please log in to the platform to review it.',
         help: 'Need help? Reach out to us anytime—we\'re here for you!',
         team: '– The OSM Team'
       }
