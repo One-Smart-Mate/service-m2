@@ -1,6 +1,9 @@
 import { Repository } from 'typeorm';
 import { AuthSessionService } from './auth-session.service';
 import { AuthSessionEntity } from './entities/auth-session.entity';
+import { UserEntity } from '../users/entities/user.entity';
+import { SiteEntity } from '../site/entities/site.entity';
+import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
 
 describe('AuthSessionService', () => {
   const manager = {
@@ -15,12 +18,28 @@ describe('AuthSessionService', () => {
   } as unknown as Repository<AuthSessionEntity>;
   const service = new AuthSessionService(repository);
 
+  const mockSessionLookups = (parent: Partial<AuthSessionEntity>) => {
+    manager.findOne.mockImplementation((entity, options) => {
+      if (entity === UserEntity) {
+        return Promise.resolve({
+          id: options.where.id,
+          status: 'A',
+          fastPasswordDigest: 'verified-digest',
+        });
+      }
+      if (entity === SiteEntity) return Promise.resolve({ id: 1, status: 'A' });
+      if (entity === UserHasSitesEntity)
+        return Promise.resolve({ status: 'A' });
+      return Promise.resolve(parent);
+    });
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('creates a fast session only below an active primary session', async () => {
-    manager.findOne.mockResolvedValue({
+    mockSessionLookups({
       id: 'primary-id',
       userId: 7,
       sessionType: 'primary',
@@ -38,6 +57,7 @@ describe('AuthSessionService', () => {
         },
         'primary-id',
         7,
+        { type: 'fastPassword', value: 'verified-digest', siteId: 1 },
       ),
     ).resolves.toBe(true);
     expect(manager.insert).toHaveBeenCalledWith(
@@ -51,7 +71,7 @@ describe('AuthSessionService', () => {
   });
 
   it('does not allow nested fast-password sessions', async () => {
-    manager.findOne.mockResolvedValue({
+    mockSessionLookups({
       id: 'fast-parent',
       userId: 8,
       sessionType: 'fast',
@@ -69,6 +89,7 @@ describe('AuthSessionService', () => {
         },
         'fast-parent',
         8,
+        { type: 'fastPassword', value: 'verified-digest', siteId: 1 },
       ),
     ).resolves.toBe(false);
     expect(manager.insert).not.toHaveBeenCalled();

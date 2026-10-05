@@ -61,19 +61,23 @@ describe('Catalog service assignment boundaries', () => {
       }),
       save: jest.fn(),
     };
-    const siteService = {
-      findById: jest.fn().mockResolvedValue({
-        id: 2,
-        companyId: 1,
-        status: 'A',
-        deletedAt: null,
-      }),
+    const hierarchyPersistence = {
+      inSite: jest.fn(async (_siteId, work) =>
+        work({
+          getRepository: () => repository,
+          findOneBy: jest.fn().mockResolvedValue({
+            id: 2,
+            companyId: 1,
+            status: 'A',
+            deletedAt: null,
+          }),
+        }),
+      ),
     };
     const service = new LevelService(
       repository as never,
-      {} as never,
+      hierarchyPersistence as never,
       usersService as never,
-      siteService as never,
       firebaseService as never,
     );
 

@@ -2,6 +2,7 @@ import { CiltConfigurationPersistence } from '../ciltMstr/cilt-configuration.per
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, IsNull } from 'typeorm';
+import { sanitizeExecutionRelations } from '../CiltSequencesExecutions/cilt-execution-relations.policy';
 import { CiltMstrPositionLevelsEntity } from './entities/ciltMstrPositionLevels.entity';
 import { CreateCiltMstrPositionLevelsDto } from './model/create.ciltMstrPositionLevels.dto';
 import { UpdateCiltMstrPositionLevelsDto } from './model/update.ciltMstrPositionLevels.dto';
@@ -17,8 +18,6 @@ export class CiltMstrPositionLevelsService {
   constructor(
     @InjectRepository(CiltMstrPositionLevelsEntity)
     private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
-    @InjectRepository(UsersPositionsEntity)
-    private readonly usersPositionsRepository: Repository<UsersPositionsEntity>,
     private readonly configurationPersistence: CiltConfigurationPersistence,
   ) {}
 
@@ -29,7 +28,7 @@ export class CiltMstrPositionLevelsService {
           where: { deletedAt: IsNull() },
           relations: ['position', 'level', 'ciltMstr', 'ciltMstr.sequences'],
         })
-        .then((rows) => rows.filter((row) => this.validAssignment(row)));
+        .then((rows) => this.sanitizeAssignments(rows));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -44,7 +43,7 @@ export class CiltMstrPositionLevelsService {
         },
         relations: ['position', 'level', 'ciltMstr', 'ciltMstr.sequences'],
       });
-      return results.filter((result) => this.validAssignment(result));
+      return this.sanitizeAssignments(results);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -60,7 +59,7 @@ export class CiltMstrPositionLevelsService {
           },
           relations: ['position', 'level', 'ciltMstr', 'ciltMstr.sequences'],
         })
-        .then((rows) => rows.filter((row) => this.validAssignment(row)));
+        .then((rows) => this.sanitizeAssignments(rows));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -76,7 +75,7 @@ export class CiltMstrPositionLevelsService {
           },
           relations: ['position', 'level', 'ciltMstr', 'ciltMstr.sequences'],
         })
-        .then((rows) => rows.filter((row) => this.validAssignment(row)));
+        .then((rows) => this.sanitizeAssignments(rows));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -92,7 +91,7 @@ export class CiltMstrPositionLevelsService {
           },
           relations: ['position', 'level', 'ciltMstr', 'ciltMstr.sequences'],
         })
-        .then((rows) => rows.filter((row) => this.validAssignment(row)));
+        .then((rows) => this.sanitizeAssignments(rows));
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -114,7 +113,7 @@ export class CiltMstrPositionLevelsService {
           NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS,
         );
       }
-      return positionLevel;
+      return this.sanitizeAssignments([positionLevel])[0];
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -173,82 +172,119 @@ export class CiltMstrPositionLevelsService {
     }
   }
 
+  private recentExecutionsQuery() {
+    return this.ciltMstrPositionLevelsRepository
+      .createQueryBuilder('cpl')
+      .innerJoinAndSelect(
+        'cpl.position',
+        'position',
+        "position.siteId = cpl.siteId AND position.status = 'A' AND position.deletedAt IS NULL",
+      )
+      .innerJoinAndSelect(
+        'cpl.level',
+        'level',
+        "level.siteId = cpl.siteId AND level.status = 'A' AND level.deletedAt IS NULL",
+      )
+      .innerJoinAndSelect(
+        'cpl.ciltMstr',
+        'ciltMstr',
+        "ciltMstr.siteId = cpl.siteId AND ciltMstr.status = 'A' AND ciltMstr.deletedAt IS NULL",
+      )
+      .leftJoinAndSelect(
+        'ciltMstr.sequences',
+        'sequences',
+        'sequences.siteId = cpl.siteId AND sequences.deletedAt IS NULL',
+      )
+      .leftJoinAndSelect(
+        'sequences.executions',
+        'executions',
+        'executions.siteId = cpl.siteId AND executions.ciltId = cpl.ciltMstrId AND executions.deletedAt IS NULL AND executions.createdAt >= :date',
+        { date: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      )
+      .leftJoinAndSelect(
+        'executions.evidences',
+        'evidences',
+        'evidences.siteId = executions.siteId AND evidences.ciltId = executions.ciltId AND evidences.positionId = executions.positionId AND evidences.deletedAt IS NULL',
+      )
+      .leftJoinAndSelect(
+        'executions.referenceOplSop',
+        'referenceOplSop',
+        'referenceOplSop.siteId = executions.siteId AND referenceOplSop.deletedAt IS NULL',
+      )
+      .leftJoinAndSelect(
+        'executions.remediationOplSop',
+        'remediationOplSop',
+        'remediationOplSop.siteId = executions.siteId AND remediationOplSop.deletedAt IS NULL',
+      )
+      .where("cpl.deletedAt IS NULL AND cpl.status = 'A'");
+  }
+
+  private sanitizeAssignments(rows: CiltMstrPositionLevelsEntity[]) {
+    return rows
+      .filter((row) => this.validAssignment(row))
+      .map((row) => {
+        row.ciltMstr.sequences = (row.ciltMstr.sequences ?? []).filter(
+          (sequence) =>
+            !sequence.deletedAt &&
+            Number(sequence.siteId) === Number(row.siteId) &&
+            Number(sequence.ciltMstrId) === Number(row.ciltMstrId),
+        );
+        for (const sequence of row.ciltMstr.sequences ?? []) {
+          if (sequence.executions) {
+            sequence.executions = sequence.executions.map(
+              sanitizeExecutionRelations,
+            );
+          }
+        }
+        return row;
+      });
+  }
+
   findByLevelIdWithRecentExecutions = async (levelId: number) => {
     try {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-      const results = await this.ciltMstrPositionLevelsRepository
-        .createQueryBuilder('cpl')
-        .leftJoinAndSelect('cpl.position', 'position')
-        .leftJoinAndSelect('cpl.level', 'level')
-        .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
-        .leftJoinAndSelect('ciltMstr.sequences', 'sequences')
-        .leftJoinAndSelect(
-          'sequences.executions',
-          'executions',
-          'executions.createdAt >= :date',
-          {
-            date: twentyFourHoursAgo,
-          },
-        )
-        .leftJoinAndSelect('executions.evidences', 'evidences')
-        .leftJoinAndSelect('executions.referenceOplSop', 'referenceOplSop')
-        .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
-        .where('cpl.levelId = :levelId AND cpl.deletedAt IS NULL', { levelId })
+      const rows = await this.recentExecutionsQuery()
+        .andWhere('cpl.levelId = :levelId', { levelId })
         .getMany();
-      return results.filter((result) => this.validAssignment(result));
+      return this.sanitizeAssignments(rows);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  findByUserIdWithRecentExecutions = async (userId: number) => {
+  findByUserIdWithRecentExecutions = async (
+    userId: number,
+    sessionSiteId?: number,
+  ) => {
     try {
-      const userPositions = await this.usersPositionsRepository.find({
-        where: {
-          userId,
-          deletedAt: IsNull(),
-        },
-        select: ['positionId'],
-      });
-
-      if (userPositions.length === 0) {
-        return [];
-      }
-
-      const positionIds = userPositions
-        .map((up) => up.positionId)
-        .filter((id) => id != null);
-
-      if (positionIds.length === 0) {
-        return [];
-      }
-
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-      const results = await this.ciltMstrPositionLevelsRepository
-        .createQueryBuilder('cpl')
-        .leftJoinAndSelect('cpl.position', 'position')
-        .leftJoinAndSelect('cpl.level', 'level')
-        .leftJoinAndSelect('cpl.ciltMstr', 'ciltMstr')
-        .leftJoinAndSelect('ciltMstr.sequences', 'sequences')
-        .leftJoinAndSelect(
-          'sequences.executions',
-          'executions',
-          'executions.createdAt >= :date',
-          {
-            date: twentyFourHoursAgo,
-          },
+      // Authorize the assignments in the same query that loads the graph.
+      // Old position links cannot grant access after a membership is revoked.
+      const query = this.recentExecutionsQuery()
+        .innerJoin(
+          UsersPositionsEntity,
+          'assignment',
+          'assignment.positionId = cpl.positionId AND assignment.siteId = cpl.siteId AND assignment.userId = :userId AND assignment.deletedAt IS NULL',
+          { userId },
         )
-        .leftJoinAndSelect('executions.evidences', 'evidences')
-        .leftJoinAndSelect('executions.referenceOplSop', 'referenceOplSop')
-        .leftJoinAndSelect('executions.remediationOplSop', 'remediationOplSop')
-        .where(
-          'cpl.positionId IN (:...positionIds) AND cpl.deletedAt IS NULL',
-          { positionIds },
+        .innerJoin(
+          'assignment.user',
+          'assignedUser',
+          "assignedUser.status = 'A' AND assignedUser.deletedAt IS NULL",
         )
-        .getMany();
-      return results.filter((result) => this.validAssignment(result));
+        .innerJoin(
+          'assignedUser.userHasSites',
+          'membership',
+          "membership.status = 'A' AND membership.deletedAt IS NULL",
+        )
+        .innerJoin(
+          'membership.site',
+          'site',
+          "site.id = cpl.siteId AND site.status = 'A' AND site.deletedAt IS NULL",
+        );
+      if (sessionSiteId !== undefined) {
+        query.andWhere('cpl.siteId = :sessionSiteId', { sessionSiteId });
+      }
+      const rows = await query.getMany();
+      return this.sanitizeAssignments(rows);
     } catch (exception) {
       HandleException.exception(exception);
     }

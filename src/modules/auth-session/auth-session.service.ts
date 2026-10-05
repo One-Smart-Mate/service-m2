@@ -1,7 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { EntityManager, IsNull, MoreThan, Repository } from 'typeorm';
 import { AuthSessionEntity } from './entities/auth-session.entity';
+import { UserEntity } from '../users/entities/user.entity';
+import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
+import { SiteEntity } from '../site/entities/site.entity';
+
+export interface VerifiedSessionCredential {
+  type: 'password' | 'fastPassword';
+  value: string;
+  siteId: number;
+}
 
 export interface CreateAuthSession {
   id: string;
@@ -20,11 +29,31 @@ export class AuthSessionService {
     private readonly sessionRepository: Repository<AuthSessionEntity>,
   ) {}
 
-  async createSession(data: CreateAuthSession): Promise<void> {
-    await this.sessionRepository.insert({
-      ...data,
-      createdAt: new Date(),
-      revokedAt: null,
+  async createSession(
+    data: CreateAuthSession,
+    credential: VerifiedSessionCredential,
+  ): Promise<boolean> {
+    return this.sessionRepository.manager.transaction(async (manager) => {
+      const users = await this.lockActiveUsers(manager, [data.userId]);
+      const user = users.get(Number(data.userId));
+      if (
+        data.sessionType !== 'primary' ||
+        credential.type !== 'password' ||
+        !user ||
+        !credential.value ||
+        user.password !== credential.value ||
+        !(await this.lockMemberships(manager, credential.siteId, [data.userId]))
+      ) {
+        return false;
+      }
+      await manager.insert(AuthSessionEntity, {
+        ...data,
+        actorId: null,
+        parentSessionId: null,
+        createdAt: new Date(),
+        revokedAt: null,
+      });
+      return true;
     });
   }
 
@@ -32,8 +61,27 @@ export class AuthSessionService {
     data: CreateAuthSession,
     parentSessionId: string,
     actorId: number,
+    credential: VerifiedSessionCredential,
   ): Promise<boolean> {
     return this.sessionRepository.manager.transaction(async (manager) => {
+      // Credential writers lock the user before sites and sessions. Keep that
+      // order, including both identities, before locking the parent session.
+      const users = await this.lockActiveUsers(manager, [actorId, data.userId]);
+      const target = users.get(Number(data.userId));
+      if (
+        data.sessionType !== 'fast' ||
+        credential.type !== 'fastPassword' ||
+        !target ||
+        !credential.value ||
+        target.fastPasswordDigest !== credential.value ||
+        !users.has(Number(actorId)) ||
+        !(await this.lockMemberships(manager, credential.siteId, [
+          actorId,
+          data.userId,
+        ]))
+      ) {
+        return false;
+      }
       const parent = await manager.findOne(AuthSessionEntity, {
         where: {
           id: parentSessionId,
@@ -60,6 +108,46 @@ export class AuthSessionService {
       });
       return true;
     });
+  }
+
+  private async lockActiveUsers(manager: EntityManager, ids: number[]) {
+    const users = new Map<number, UserEntity>();
+    for (const id of [...new Set(ids.map(Number))].sort((a, b) => a - b)) {
+      if (!Number.isSafeInteger(id) || id <= 0) continue;
+      const user = await manager.findOne(UserEntity, {
+        where: { id, status: 'A', deletedAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (user) users.set(id, user);
+    }
+    return users;
+  }
+
+  private async lockMemberships(
+    manager: EntityManager,
+    siteId: number,
+    ids: number[],
+  ) {
+    if (!Number.isSafeInteger(Number(siteId)) || Number(siteId) <= 0)
+      return false;
+    const site = await manager.findOne(SiteEntity, {
+      where: { id: Number(siteId), status: 'A', deletedAt: IsNull() },
+      lock: { mode: 'pessimistic_read' },
+    });
+    if (!site) return false;
+    for (const id of [...new Set(ids.map(Number))].sort((a, b) => a - b)) {
+      const membership = await manager.findOne(UserHasSitesEntity, {
+        where: {
+          user: { id },
+          site: { id: Number(siteId) },
+          status: 'A',
+          deletedAt: IsNull(),
+        },
+        lock: { mode: 'pessimistic_read' },
+      });
+      if (!membership) return false;
+    }
+    return true;
   }
 
   async isSessionActive(sessionId: string, userId: number): Promise<boolean> {
@@ -118,6 +206,14 @@ export class AuthSessionService {
     replacement: CreateAuthSession,
   ): Promise<boolean> {
     return this.sessionRepository.manager.transaction(async (manager) => {
+      // Serialize refresh with credential replacement and account disablement.
+      const users = await this.lockActiveUsers(manager, [userId]);
+      if (
+        !users.has(Number(userId)) ||
+        Number(replacement.userId) !== Number(userId)
+      ) {
+        return false;
+      }
       const revokedAt = new Date();
       const result = await manager.update(
         AuthSessionEntity,

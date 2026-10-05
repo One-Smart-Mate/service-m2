@@ -31,6 +31,7 @@ import { getActiveSiteMemberships } from 'src/common/auth/active-site-membership
 import {
   AuthSessionService,
   CreateAuthSession,
+  VerifiedSessionCredential,
 } from '../auth-session/auth-session.service';
 
 @Injectable()
@@ -44,6 +45,7 @@ export class AuthService {
 
   private async issueToken(
     payload: Omit<AuthTokenPayload, 'jti'>,
+    credential: VerifiedSessionCredential,
     options?: { expiresIn: string },
     parentSessionId?: string,
   ): Promise<string> {
@@ -70,12 +72,23 @@ export class AuthService {
         session,
         parentSessionId,
         payload.actorId,
+        credential,
       );
       if (!created) {
-        throw new UnauthorizedException('Primary session is no longer active');
+        throw new UnauthorizedException(
+          'Credentials or primary session are no longer active',
+        );
       }
     } else {
-      await this.authSessionService.createSession(session);
+      const created = await this.authSessionService.createSession(
+        session,
+        credential,
+      );
+      if (!created) {
+        throw new UnauthorizedException(
+          'Credentials or site access are no longer active',
+        );
+      }
     }
     return token;
   }
@@ -104,6 +117,11 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.WRONG_AUTH);
       }
 
+      const memberships = getActiveSiteMemberships(user);
+      const membership = memberships[0];
+      if (!membership)
+        throw new UnauthorizedException('User has no active site access');
+
       const now = new Date();
 
       if (data.platform === stringConstants.OS_WEB) {
@@ -129,20 +147,24 @@ export class AuthService {
         sessionType: PRIMARY_SESSION,
       };
 
-      const access_token = await this.issueToken(payload);
+      const access_token = await this.issueToken(payload, {
+        type: 'password',
+        value: user.password,
+        siteId: Number(membership.site.id),
+      });
 
       const companyName = await this.siteService.getCompanyName(
-        user.userHasSites[0].site.companyId,
+        membership.site.companyId,
       );
 
-      const site = user.userHasSites[0].site;
+      const site = membership.site;
       const dueDate = new Date(site.dueDate);
       const today = new Date();
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
       return new UserResponse(
-        user,
+        { ...user, userHasSites: memberships },
         access_token,
         roles,
         companyName,
@@ -162,9 +184,10 @@ export class AuthService {
     try {
       const authUser = await this.usersSevice.findByIdWithSites(userId);
       const actorMemberships = getActiveSiteMemberships(authUser);
-      const actorMembership = data.siteId !== undefined
-        ? actorMemberships.find(({ site }) => Number(site.id) === data.siteId)
-        : actorMemberships[0];
+      const actorMembership =
+        data.siteId !== undefined
+          ? actorMemberships.find(({ site }) => Number(site.id) === data.siteId)
+          : actorMemberships[0];
       if (!actorMembership) {
         throw new UnauthorizedException();
       }
@@ -220,6 +243,7 @@ export class AuthService {
 
       const access_token = await this.issueToken(
         payload,
+        { type: 'fastPassword', value: user.fastPasswordDigest, siteId },
         { expiresIn: FAST_SESSION_EXPIRES_IN },
         parentSessionId,
       );
@@ -239,7 +263,9 @@ export class AuthService {
           ...user,
           userHasSites: [
             targetMembership,
-            ...targetMemberships.filter(({ site }) => Number(site.id) !== siteId),
+            ...targetMemberships.filter(
+              ({ site }) => Number(site.id) !== siteId,
+            ),
           ],
         },
         access_token,

@@ -1,5 +1,6 @@
 import { CardTypesService } from '../cardTypes/cardTypes.service';
 import { LevelService } from '../level/level.service';
+import { LevelEntity } from '../level/entities/level.entity';
 import { PreclassifierService } from '../preclassifier/preclassifier.service';
 import { PriorityService } from '../priority/priority.service';
 import { NotFoundCustomException } from 'src/common/exceptions/types/notFound.exception';
@@ -180,6 +181,13 @@ describe('Catalog service lifecycle', () => {
     const manager = {
       update: jest.fn().mockResolvedValue({ affected: 1 }),
       save: jest.fn(async (_entity, value) => value),
+      getRepository: () => ({
+        findOne: jest.fn(),
+        findBy: jest
+          .fn()
+          .mockResolvedValue([level, { id: 11, superiorId: 10, siteId: 2 }]),
+        save: (value) => manager.save(LevelEntity, value),
+      }),
     };
     const repository = {
       findOneBy: jest.fn().mockResolvedValue(level),
@@ -191,9 +199,12 @@ describe('Catalog service lifecycle', () => {
     };
     const service = new LevelService(
       repository as never,
-      {} as never,
+      {
+        withLevel: jest.fn((_id, work) =>
+          repository.manager.transaction(() => work(manager, level)),
+        ),
+      } as never,
       usersService as never,
-      {} as never,
       firebaseService as never,
     );
 

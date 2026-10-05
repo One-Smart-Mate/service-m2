@@ -1,18 +1,31 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LevelEntity } from './entities/level.entity';
-import { CardEntity } from '../card/entities/card.entity';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, Not, Repository } from 'typeorm';
+import { LevelHierarchyPersistence } from './level-hierarchy.persistence';
+import {
+  collectLevelDescendants,
+  levelMapFrom,
+  MAX_LEVEL_HIERARCHY_DEPTH,
+  normalizeLevelId,
+  traceLevelHierarchy,
+  visitHierarchyLevel,
+} from './level-hierarchy.policy';
 import { HandleException } from 'src/common/exceptions/handler/handle.exception';
 import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
 import { UsersService } from '../users/users.service';
-import { SiteService } from '../site/site.service';
+import { SiteEntity } from '../site/entities/site.entity';
 import { stringConstants } from 'src/utils/string.constant';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
@@ -34,10 +47,8 @@ export class LevelService {
   constructor(
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
-    @InjectRepository(CardEntity)
-    private readonly cardRepository: Repository<CardEntity>,
+    private readonly hierarchyPersistence: LevelHierarchyPersistence,
     private readonly usersService: UsersService,
-    private readonly siteService: SiteService,
     private readonly firebaseService: FirebaseService,
   ) {}
 
@@ -52,7 +63,11 @@ export class LevelService {
     }
   };
 
-  findSiteActiveLevels = async (siteId: number, page: number = 1, limit: number = 50) => {
+  findSiteActiveLevels = async (
+    siteId: number,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
       const skip = (page - 1) * limit;
 
@@ -78,7 +93,11 @@ export class LevelService {
       HandleException.exception(exception);
     }
   };
-  findSiteLevels = async (siteId: number, page: number = 1, limit: number = 50) => {
+  findSiteLevels = async (
+    siteId: number,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
       const skip = (page - 1) * limit;
 
@@ -102,83 +121,111 @@ export class LevelService {
   };
   create = async (createLevelDTO: CreateLevelDto) => {
     try {
-      const site = await this.siteService.findById(createLevelDTO.siteId);
-      if (!site) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      }
-      assertActiveCatalogSite(site);
-
-      if (createLevelDTO.levelMachineId) {
-        const levelMachineIdExists = await this.levelRepository.findOne({
-          where: {
-            levelMachineId: createLevelDTO.levelMachineId,
-            siteId: createLevelDTO.siteId,
-          },
-        });
-        if (levelMachineIdExists) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
-          );
-        }
-      }
-
-      if (createLevelDTO.responsibleId) {
-        const responsible = await resolveCatalogAssignee(
-          this.usersService,
-          Number(createLevelDTO.responsibleId),
-          createLevelDTO.siteId,
-        );
-        createLevelDTO.responsibleName = responsible.name;
-      }
-      createLevelDTO.companyId = site.companyId;
-      createLevelDTO.createdAt = new Date();
-
-      if (createLevelDTO.superiorId) {
-        const parent = await this.levelRepository.findOneBy({
-          id: createLevelDTO.superiorId,
-        });
-        if (
-          !parent ||
-          Number(parent.siteId) !== Number(createLevelDTO.siteId) ||
-          parent.status !== stringConstants.A ||
-          parent.deletedAt != null
-        ) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-        }
-        createLevelDTO.level = Number(parent.level) + 1;
-      }
-
-      if (!createLevelDTO.levelMachineId) {
-        let levelMachineId = generateRandomHex(6);
-        let isUnique = false;
-        let attempts = 0;
-        const maxAttempts = 10;
-
-        while (!isUnique && attempts < maxAttempts) {
-          const existingLevel = await this.levelRepository.findOne({
-            where: {
-              levelMachineId,
-              siteId: createLevelDTO.siteId,
-            },
+      const responsible = createLevelDTO.responsibleId
+        ? await resolveCatalogAssignee(
+            this.usersService,
+            Number(createLevelDTO.responsibleId),
+            createLevelDTO.siteId,
+          )
+        : null;
+      const savedLevel = await this.hierarchyPersistence.inSite(
+        createLevelDTO.siteId,
+        async (manager) => {
+          const repository = manager.getRepository(LevelEntity);
+          const site = await manager.findOneBy(SiteEntity, {
+            id: createLevelDTO.siteId,
           });
-
-          if (!existingLevel) {
-            isUnique = true;
-          } else {
-            levelMachineId = generateRandomHex(6);
-            attempts++;
+          if (!site) {
+            throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
           }
-        }
+          assertActiveCatalogSite(site);
 
-        if (!isUnique) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+          if (createLevelDTO.levelMachineId) {
+            const levelMachineIdExists = await repository.findOne({
+              where: {
+                levelMachineId: createLevelDTO.levelMachineId,
+                siteId: createLevelDTO.siteId,
+              },
+            });
+            if (levelMachineIdExists) {
+              throw new ValidationException(
+                ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+              );
+            }
+          }
+
+          if (createLevelDTO.responsibleId) {
+            createLevelDTO.responsibleName = responsible.name;
+          }
+          createLevelDTO.companyId = site.companyId;
+          createLevelDTO.createdAt = new Date();
+
+          createLevelDTO.superiorId = normalizeLevelId(
+            createLevelDTO.superiorId ?? 0,
+            true,
           );
-        }
-        createLevelDTO.levelMachineId = levelMachineId;
-      }
+          createLevelDTO.level = 0;
+          if (createLevelDTO.superiorId) {
+            const parent = await repository.findOneBy({
+              id: createLevelDTO.superiorId,
+            });
+            if (
+              !parent ||
+              Number(parent.siteId) !== Number(createLevelDTO.siteId) ||
+              parent.status !== stringConstants.A ||
+              parent.deletedAt != null
+            ) {
+              throw new NotFoundCustomException(
+                NotFoundCustomExceptionType.LEVELS,
+              );
+            }
+            const levels = levelMapFrom(
+              await repository.findBy({ siteId: createLevelDTO.siteId }),
+            );
+            createLevelDTO.level = traceLevelHierarchy(
+              Number(parent.id),
+              levels,
+            ).length;
+            if (createLevelDTO.level >= MAX_LEVEL_HIERARCHY_DEPTH) {
+              throw new BadRequestException(
+                'Level hierarchy exceeds the maximum depth',
+              );
+            }
+          }
 
-      const savedLevel = await this.levelRepository.save(createLevelDTO);
+          if (!createLevelDTO.levelMachineId) {
+            let levelMachineId = generateRandomHex(6);
+            let isUnique = false;
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            while (!isUnique && attempts < maxAttempts) {
+              const existingLevel = await repository.findOne({
+                where: {
+                  levelMachineId,
+                  siteId: createLevelDTO.siteId,
+                },
+              });
+
+              if (!existingLevel) {
+                isUnique = true;
+              } else {
+                levelMachineId = generateRandomHex(6);
+                attempts++;
+              }
+            }
+
+            if (!isUnique) {
+              throw new ValidationException(
+                ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+              );
+            }
+            createLevelDTO.levelMachineId = levelMachineId;
+          }
+
+          return repository.save(createLevelDTO);
+        },
+      );
       await this.notifyCatalogChange(createLevelDTO.siteId);
       return savedLevel;
     } catch (exception) {
@@ -187,68 +234,73 @@ export class LevelService {
   };
   update = async (updateLevelDTO: UpdateLevelDTO) => {
     try {
-      const level = await this.levelRepository.findOneBy({
+      const snapshot = await this.levelRepository.findOneBy({
         id: updateLevelDTO.id,
       });
-      if (!level) {
+      if (!snapshot)
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
+      const responsible = updateLevelDTO.responsibleId
+        ? await resolveCatalogAssignee(
+            this.usersService,
+            Number(updateLevelDTO.responsibleId),
+            Number(snapshot.siteId),
+          )
+        : null;
+      const savedLevel = await this.hierarchyPersistence.withLevel(
+        updateLevelDTO.id,
+        async (manager, level) => {
+          const repository = manager.getRepository(LevelEntity);
+          level.responsibleName = null;
 
-      level.responsibleName = null;
+          if (updateLevelDTO.responsibleId) {
+            level.responsibleName = responsible.name;
+          }
 
-      if (updateLevelDTO.responsibleId) {
-        const responsible = await resolveCatalogAssignee(
-          this.usersService,
-          Number(updateLevelDTO.responsibleId),
-          level.siteId,
-        );
-        level.responsibleName = responsible.name;
-      }
+          if (updateLevelDTO.levelMachineId) {
+            const levelMachineIdExists = await repository.findOne({
+              where: {
+                levelMachineId: updateLevelDTO.levelMachineId,
+                siteId: level.siteId,
+                id: Not(level.id),
+              },
+            });
+            if (levelMachineIdExists) {
+              throw new ValidationException(
+                ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
+              );
+            }
+          }
 
-      if (updateLevelDTO.levelMachineId) {
-        const levelMachineIdExists = await this.levelRepository.findOne({
-          where: {
-            levelMachineId: updateLevelDTO.levelMachineId,
-            siteId: level.siteId,
-            id: Not(level.id),
-          },
-        });
-        if (levelMachineIdExists) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATED_LEVELMACHINEID,
-          );
-        }
-      }
+          level.name = updateLevelDTO.name;
+          level.description = updateLevelDTO.description;
+          level.levelMachineId = updateLevelDTO.levelMachineId;
+          level.notify = updateLevelDTO.notify;
 
-      level.name = updateLevelDTO.name;
-      level.description = updateLevelDTO.description;
-      level.levelMachineId = updateLevelDTO.levelMachineId;
-      level.notify = updateLevelDTO.notify;
+          // Update assignWhileCreate if provided
+          if (updateLevelDTO.assignWhileCreate !== undefined) {
+            level.assignWhileCreate = updateLevelDTO.assignWhileCreate;
+          }
 
-      // Update assignWhileCreate if provided
-      if (updateLevelDTO.assignWhileCreate !== undefined) {
-        level.assignWhileCreate = updateLevelDTO.assignWhileCreate;
-      }
+          const statusChanged = updateLevelDTO.status !== level.status;
+          let descendantIds: number[] = [];
+          if (statusChanged) {
+            const levels = levelMapFrom(
+              await repository.findBy({ siteId: Number(level.siteId) }),
+            );
+            const allLevels = collectLevelDescendants(Number(level.id), levels);
+            descendantIds = allLevels
+              .map(Number)
+              .filter((levelId) => levelId !== Number(level.id));
+          }
 
-      const statusChanged = updateLevelDTO.status !== level.status;
-      let descendantIds: number[] = [];
-      if (statusChanged) {
-        const allLevels = await this.findAllChildLevels(level.id);
-        descendantIds = allLevels
-          .map(Number)
-          .filter((levelId) => levelId !== Number(level.id));
-      }
+          level.responsibleId = updateLevelDTO.responsibleId;
+          const changedAt = new Date();
+          applyCatalogLifecycle(level, updateLevelDTO.status, changedAt);
 
-      level.responsibleId = updateLevelDTO.responsibleId;
-      const changedAt = new Date();
-      applyCatalogLifecycle(level, updateLevelDTO.status, changedAt);
-
-      const savedLevel = await this.levelRepository.manager.transaction(
-        async (manager) => {
           if (descendantIds.length > 0) {
             await manager.update(
               LevelEntity,
-              { id: In(descendantIds) },
+              { id: In(descendantIds), siteId: Number(level.siteId) },
               {
                 status: updateLevelDTO.status,
                 updatedAt: changedAt,
@@ -259,11 +311,11 @@ export class LevelService {
               },
             );
           }
-          return manager.save(LevelEntity, level);
+          return repository.save(level);
         },
       );
 
-      await this.notifyCatalogChange(level.siteId);
+      await this.notifyCatalogChange(Number(savedLevel.siteId));
       return savedLevel;
     } catch (exception) {
       HandleException.exception(exception);
@@ -297,35 +349,18 @@ export class LevelService {
   };
 
   getSuperiorLevelsById = (levelId: string, levelMap: Map<string, any>) => {
-    const array: string[] = [];
-    let level = levelMap.get(levelId);
-    
-    if (!level) {
-      const fallbackLevel = {
-        id: parseInt(levelId),
-        name: 'Unknown Level'
-      };
-      return {
-        area: fallbackLevel,
-        location: 'Unknown Level'
-      };
+    const levels = levelMapFrom([...levelMap.values()]);
+    const id = normalizeLevelId(levelId);
+    if (!levels.has(id)) {
+      return { area: { id, name: 'Unknown Level' }, location: 'Unknown Level' };
     }
-    
-    array.push(level.name);
-
-    while (level && level.superiorId > 0) {
-      level = levelMap.get(level.superiorId);
-      if (!level) {
-        break;
-      }
-      array.push(level.name);
-    }
-
-    array.reverse();
-
+    const path = traceLevelHierarchy(id, levels);
     return {
-      area: level,
-      location: array.join('/'),
+      area: path[path.length - 1],
+      location: [...path]
+        .reverse()
+        .map(({ name }) => name)
+        .join('/'),
     };
   };
   findAllLevelsBySite = async (siteId: number) => {
@@ -340,25 +375,20 @@ export class LevelService {
     return levelMap;
   };
   findAllChildLevels = async (superiorId: number) => {
-    const query = `
-      WITH RECURSIVE LevelCTE AS (
-        SELECT id, superior_id
-        FROM levels
-        WHERE id = ?
-
-        UNION ALL
-
-        SELECT l.id, l.superior_id
-        FROM levels l
-        INNER JOIN LevelCTE lc ON lc.id = l.superior_id
-      )
-      SELECT id FROM LevelCTE;
-    `;
-
-    const result = await this.levelRepository.query(query, [superiorId]);
-    return result.map((row) => row.id);
+    const root = await this.levelRepository.findOneBy({
+      id: normalizeLevelId(superiorId),
+    });
+    if (!root) return [];
+    const levels = await this.levelRepository.findBy({
+      siteId: Number(root.siteId),
+    });
+    return collectLevelDescendants(Number(root.id), levelMapFrom(levels));
   };
-  async findActiveLevelsWithCardLocation(siteId: number, page: number = 1, limit: number = 50) {
+  async findActiveLevelsWithCardLocation(
+    siteId: number,
+    page: number = 1,
+    limit: number = 50,
+  ) {
     try {
       const result = await this.findSiteActiveLevels(siteId, page, limit);
 
@@ -369,10 +399,9 @@ export class LevelService {
         deletedAt: IsNull(),
       });
 
-      const levelMap = new Map<number, any>();
-      allLevels.forEach(level => levelMap.set(level.id, level));
+      const levelMap = levelMapFrom(allLevels);
 
-      const dataWithLocation = result.data.map(level => ({
+      const dataWithLocation = result.data.map((level) => ({
         ...level,
         levelLocation: this.buildLevelLocation(level.id, levelMap),
       }));
@@ -389,202 +418,65 @@ export class LevelService {
       HandleException.exception(exception);
     }
   }
-  
-  private buildLevelLocation(levelId: number, levelMap: Map<number, any>): string {
-    const path: string[] = [];
-    let currentLevel = levelMap.get(levelId);
-    if (!currentLevel) {
-      return '';
-    }
-    while (currentLevel) {
-      path.unshift(currentLevel.name); 
-      if (!currentLevel.superiorId || currentLevel.superiorId === "0") {
-        break; 
-      }
-      currentLevel = levelMap.get(currentLevel.superiorId);
-    }
-  
-    return path.join('/'); 
+
+  private buildLevelLocation(
+    levelId: number,
+    levels: Map<number, LevelEntity>,
+  ): string {
+    if (!levels.has(normalizeLevelId(levelId))) return '';
+    return traceLevelHierarchy(Number(levelId), levels)
+      .reverse()
+      .map(({ name }) => name)
+      .join('/');
   }
-  findLastLevelFromNode =  async (levelId: number) => {
+
+  private async findAncestorPath(levelId: number): Promise<LevelEntity[]> {
+    let current = await this.levelRepository.findOneBy({
+      id: normalizeLevelId(levelId),
+    });
+    if (!current)
+      throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+    const siteId = Number(current.siteId);
+    const path: LevelEntity[] = [];
+    const visited = new Set<number>();
+    while (current) {
+      visitHierarchyLevel(current, visited, siteId);
+      path.push(current);
+      const parentId = normalizeLevelId(current.superiorId ?? 0, true);
+      if (!parentId) break;
+      current = await this.levelRepository.findOneBy({ id: parentId, siteId });
+      if (!current)
+        throw new ConflictException('Level hierarchy has a missing parent');
+    }
+    return path;
+  }
+
+  findLastLevelFromNode = async (levelId: number) => {
     try {
-      let currentLevel = await this.levelRepository.findOneBy({ id: levelId });
-      if (!currentLevel) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-  
-      while (currentLevel.superiorId && Number(currentLevel.superiorId) !== 0) {
-        const parent = await this.levelRepository.findOneBy({ id: currentLevel.superiorId });
-        if (!parent) {
-          break;
-        }
-        currentLevel = parent;
-      }
-  
-      return {
-        area_id: currentLevel.id,
-        area_name: currentLevel.name,
-      };
+      const path = await this.findAncestorPath(levelId);
+      const root = path[path.length - 1];
+      return { area_id: root.id, area_name: root.name };
     } catch (exception) {
       HandleException.exception(exception);
     }
-  }
-  
+  };
+
   getLevelPathById = async (levelId: number): Promise<string> => {
     try {
-      const path: string[] = [];
-      let currentLevel = await this.levelRepository.findOneBy({ id: levelId });
-
-      if (!currentLevel) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-
-      while (currentLevel) {
-        path.unshift(currentLevel.name);
-        if (!currentLevel.superiorId || Number(currentLevel.superiorId) === 0) {
-          break;
-        }
-        currentLevel = await this.levelRepository.findOneBy({ id: currentLevel.superiorId });
-      }
-
-      return path.join('/');
+      return (await this.findAncestorPath(levelId))
+        .reverse()
+        .map(({ name }) => name)
+        .join('/');
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  private updateCardsForLevel = async (levelId: number, levelMap: Map<string, any>) => {
+  moveLevel = async (input: MoveLevelDto) => {
     try {
-      const level = levelMap.get(String(levelId));
-      if (!level) return;
-
-      const { area, location } = this.getSuperiorLevelsById(String(levelId), levelMap);
-
-      const cardSuperiorId = level.superiorId === 0 ? levelId : level.superiorId;
-
-      await this.cardRepository.update(
-        { nodeId: levelId },
-        {
-          cardLocation: location,
-          areaId: area.id,
-          areaName: area.name,
-          nodeName: level.name,
-          level: level.level,
-          superiorId: cardSuperiorId,
-          updatedAt: new Date()
-        }
-      );
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
-  };
-
-  moveLevel = async (moveLevelDto: MoveLevelDto) => {
-    try {
-      const levelToMove = await this.findById(moveLevelDto.levelId);
-      if (!levelToMove || levelToMove.deletedAt !== null) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-
-      if (moveLevelDto.newSuperiorId !== 0) {
-        const newSuperior = await this.findById(moveLevelDto.newSuperiorId);
-        if (!newSuperior) {
-          throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-        }
-
-        if (levelToMove.siteId !== newSuperior.siteId) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATE_RECORD,
-          );
-        }
-
-        const allChildLevels = await this.findAllChildLevels(moveLevelDto.levelId);
-        if (allChildLevels.includes(moveLevelDto.newSuperiorId)) {
-          throw new ValidationException(
-            ValidationExceptionType.DUPLICATE_RECORD,
-          );
-        }
-      }
-
-      if (levelToMove.superiorId === moveLevelDto.newSuperiorId) {
-        return {
-          message: 'The level is already in the requested position',
-          level: levelToMove,
-        };
-      }
-
-      const childLevels = await this.levelRepository.find({
-        where: { superiorId: moveLevelDto.levelId }
-      });
-
-      // Capture child IDs and their descendants BEFORE reassigning
-      const reassignedLevelIds: number[] = [];
-      if (childLevels.length > 0) {
-        for (const child of childLevels) {
-          const childAndDescendants = await this.findAllChildLevels(child.id);
-          reassignedLevelIds.push(...childAndDescendants);
-        }
-      }
-
-      const oldSuperiorId = levelToMove.superiorId;
-      levelToMove.superiorId = moveLevelDto.newSuperiorId;
-
-      if (moveLevelDto.newSuperiorId === 0) {
-        levelToMove.level = 0;
-      } else {
-        levelToMove.level = await this.getActualLevelBySuperiorId(moveLevelDto.newSuperiorId);
-      }
-
-      levelToMove.updatedAt = new Date();
-
-      const movedLevel = await this.levelRepository.save(levelToMove);
-
-      if (childLevels.length > 0) {
-        await this.levelRepository.update(
-          { superiorId: moveLevelDto.levelId },
-          {
-            superiorId: oldSuperiorId,
-            updatedAt: new Date()
-          }
-        );
-
-        for (const childLevel of childLevels) {
-          if (oldSuperiorId === 0) {
-            childLevel.level = 0;
-          } else {
-            childLevel.level = await this.getActualLevelBySuperiorId(oldSuperiorId);
-          }
-          await this.levelRepository.save(childLevel);
-        }
-      }
-
-      // Get all levels affected by the move:
-      // 1. The moved level and its descendants (that stayed with it)
-      // 2. The reassigned children and their descendants
-      const movedLevelAndDescendants = await this.findAllChildLevels(moveLevelDto.levelId);
-      const allAffectedLevels = [...new Set([...movedLevelAndDescendants, ...reassignedLevelIds])];
-
-      const levelMap = await this.findAllLevelsBySite(levelToMove.siteId);
-
-      for (const affectedLevelId of allAffectedLevels) {
-        await this.updateCardsForLevel(affectedLevelId, levelMap);
-      }
-
-      const tokens = await this.usersService.getSiteUsersTokens(levelToMove.siteId, true); // Exclude web tokens - web always loads data online
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.catalogsTitle,
-          stringConstants.catalogsDescription,
-          stringConstants.catalogsNotificationType,
-        ),
-        tokens,
-      );
-
-      return {
-        level: movedLevel,
-        childrenUpdated: childLevels.length,
-        cardsUpdated: allAffectedLevels.length,
-      };
+      const { siteId, response } = await this.hierarchyPersistence.move(input);
+      await this.notifyCatalogChange(siteId);
+      return response;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -604,22 +496,10 @@ export class LevelService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
       }
 
-      // Get the full path from this level to the root
-      const pathString = await this.getLevelPathById(level.id);
-
-      // Build the hierarchy - get all levels in the path
-      const levelPath: LevelEntity[] = [];
-      let currentLevel = level;
-      levelPath.unshift(currentLevel);
-
-      while (currentLevel.superiorId && Number(currentLevel.superiorId) !== 0) {
-        const parent = await this.levelRepository.findOne({
-          where: { id: currentLevel.superiorId },
-        });
-        if (!parent) break;
-        levelPath.unshift(parent);
-        currentLevel = parent;
-      }
+      const levelPath = (
+        await this.findAncestorPath(Number(level.id))
+      ).reverse();
+      const pathString = levelPath.map(({ name }) => name).join('/');
 
       return {
         level,
@@ -632,8 +512,21 @@ export class LevelService {
   };
 
   // Get level tree with lazy loading - only loads specified depth
-  getLevelTreeLazy = async (siteId: number, parentId?: number, depth: number = 2, page: number = 1, limit: number = 50) => {
+  getLevelTreeLazy = async (
+    siteId: number,
+    parentId?: number,
+    depth: number = 2,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
+      if (
+        !Number.isSafeInteger(depth) ||
+        depth < 1 ||
+        depth > MAX_LEVEL_HIERARCHY_DEPTH
+      ) {
+        throw new BadRequestException('Invalid level tree depth');
+      }
       const skip = (page - 1) * limit;
 
       // Count total root levels
@@ -642,7 +535,9 @@ export class LevelService {
           siteId: siteId,
           status: stringConstants.A,
           deletedAt: IsNull(),
-          ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
+          ...(parentId
+            ? { superiorId: parentId }
+            : { superiorId: In([0, null]) }),
         },
       });
 
@@ -652,51 +547,70 @@ export class LevelService {
           siteId: siteId,
           status: stringConstants.A,
           deletedAt: IsNull(),
-          ...(parentId ? { superiorId: parentId } : { superiorId: In([0, null]) })
+          ...(parentId
+            ? { superiorId: parentId }
+            : { superiorId: In([0, null]) }),
         },
         skip,
         take: limit,
       });
 
       // Recursively load children up to specified depth
-      const loadChildrenRecursive = async (levels: LevelEntity[], currentDepth: number): Promise<any[]> => {
+      const loadChildrenRecursive = async (
+        levels: LevelEntity[],
+        currentDepth: number,
+        ancestors = new Set<number>(),
+      ): Promise<any[]> => {
         if (currentDepth <= 0) {
           // Just mark if they have children without loading them
-          return Promise.all(levels.map(async (level) => {
-            const childCount = await this.levelRepository.count({
+          return Promise.all(
+            levels.map(async (level) => {
+              visitHierarchyLevel(level, new Set(ancestors), Number(siteId));
+              const childCount = await this.levelRepository.count({
+                where: {
+                  superiorId: level.id,
+                  siteId,
+                  status: stringConstants.A,
+                  deletedAt: IsNull(),
+                },
+              });
+              return {
+                ...level,
+                hasChildren: childCount > 0,
+                childrenCount: childCount,
+                children: [],
+              };
+            }),
+          );
+        }
+
+        return Promise.all(
+          levels.map(async (level) => {
+            const visited = new Set(ancestors);
+            visitHierarchyLevel(level, visited, Number(siteId));
+            const children = await this.levelRepository.find({
               where: {
                 superiorId: level.id,
+                siteId,
                 status: stringConstants.A,
                 deletedAt: IsNull(),
               },
             });
+
+            const childrenWithNested = await loadChildrenRecursive(
+              children,
+              currentDepth - 1,
+              visited,
+            );
+
             return {
               ...level,
-              hasChildren: childCount > 0,
-              childrenCount: childCount,
-              children: []
+              hasChildren: children.length > 0,
+              childrenCount: children.length,
+              children: childrenWithNested,
             };
-          }));
-        }
-
-        return Promise.all(levels.map(async (level) => {
-          const children = await this.levelRepository.find({
-            where: {
-              superiorId: level.id,
-              status: stringConstants.A,
-              deletedAt: IsNull(),
-            },
-          });
-
-          const childrenWithNested = await loadChildrenRecursive(children, currentDepth - 1);
-
-          return {
-            ...level,
-            hasChildren: children.length > 0,
-            childrenCount: children.length,
-            children: childrenWithNested
-          };
-        }));
+          }),
+        );
       };
 
       const treeData = await loadChildrenRecursive(rootLevels, depth - 1);
@@ -710,7 +624,7 @@ export class LevelService {
         totalPages: Math.ceil(totalCount / limit),
         hasMore: page * limit < totalCount,
         parentId: parentId || null,
-        depth: depth
+        depth: depth,
       };
     } catch (exception) {
       HandleException.exception(exception);
@@ -718,7 +632,12 @@ export class LevelService {
   };
 
   // Get only direct children of a level
-  getChildrenLevels = async (siteId: number, parentId: number, page: number = 1, limit: number = 50) => {
+  getChildrenLevels = async (
+    siteId: number,
+    parentId: number,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
       const skip = (page - 1) * limit;
 
@@ -734,21 +653,23 @@ export class LevelService {
       });
 
       // For each child, check if it has children
-      const childrenWithMeta = await Promise.all(children.map(async (child) => {
-        const grandchildrenCount = await this.levelRepository.count({
-          where: {
-            superiorId: child.id,
-            status: stringConstants.A,
-            deletedAt: IsNull(),
-          },
-        });
+      const childrenWithMeta = await Promise.all(
+        children.map(async (child) => {
+          const grandchildrenCount = await this.levelRepository.count({
+            where: {
+              superiorId: child.id,
+              status: stringConstants.A,
+              deletedAt: IsNull(),
+            },
+          });
 
-        return {
-          ...child,
-          hasChildren: grandchildrenCount > 0,
-          childrenCount: grandchildrenCount
-        };
-      }));
+          return {
+            ...child,
+            hasChildren: grandchildrenCount > 0,
+            childrenCount: grandchildrenCount,
+          };
+        }),
+      );
 
       return {
         data: childrenWithMeta,
@@ -764,7 +685,11 @@ export class LevelService {
   };
 
   // Get statistics about levels
-  getLevelStats = async (siteId: number, page: number = 1, limit: number = 50) => {
+  getLevelStats = async (
+    siteId: number,
+    page: number = 1,
+    limit: number = 50,
+  ) => {
     try {
       const skip = (page - 1) * limit;
 
@@ -789,33 +714,23 @@ export class LevelService {
           status: stringConstants.A,
           deletedAt: IsNull(),
           superiorId: In([0, null]),
-        }
+        },
       });
 
-      // Get max depth
-      const query = `
-        WITH RECURSIVE level_depth AS (
-          SELECT id, superior_id, 1 as depth
-          FROM levels
-          WHERE site_id = ?
-            AND (superior_id = 0 OR superior_id IS NULL)
-            AND status = 'A'
-            AND deleted_at IS NULL
-
-          UNION ALL
-
-          SELECT l.id, l.superior_id, ld.depth + 1
-          FROM levels l
-          INNER JOIN level_depth ld ON l.superior_id = ld.id
-          WHERE l.site_id = ?
-            AND l.status = 'A'
-            AND l.deleted_at IS NULL
-        )
-        SELECT MAX(depth) as maxDepth FROM level_depth;
-      `;
-
-      const maxDepthResult = await this.levelRepository.query(query, [siteId, siteId]);
-      const maxDepth = maxDepthResult[0]?.maxDepth || 0;
+      const activeTree = levelMapFrom(
+        await this.levelRepository.findBy({
+          siteId,
+          status: stringConstants.A,
+          deletedAt: IsNull(),
+        }),
+      );
+      let maxDepth = 0;
+      for (const id of activeTree.keys()) {
+        maxDepth = Math.max(
+          maxDepth,
+          traceLevelHierarchy(id, activeTree).length,
+        );
+      }
 
       return {
         data: levels,
@@ -830,81 +745,50 @@ export class LevelService {
           inactiveLevels: totalLevels - activeLevels,
           rootLevels,
           maxDepth,
-          performanceWarning: totalLevels > 1000
-        }
+          performanceWarning: totalLevels > 1000,
+        },
       };
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  // Clone a level with all its descendants recursively
   cloneLevel = async (levelId: number, nameSuffix: string = ' (Copy)') => {
     try {
-      // 1. Find the original level
-      const originalLevel = await this.levelRepository.findOne({
-        where: { id: levelId }
-      });
-
-      if (!originalLevel) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-
-      // 2. Start a transaction
-      const queryRunner = this.levelRepository.manager.connection.createQueryRunner();
-      await queryRunner.connect();
-      await queryRunner.startTransaction();
-
-      try {
-        // 3. Clone the main level and all its descendants recursively
-        // The cloned level will be a sibling (same parent) of the original
-        // Calculate parent level: if superiorId is 0, parent level doesn't matter (will be 0)
-        // Otherwise, parent level = original level - 1
-        const parentLevel = originalLevel.superiorId === 0 ? 0 : (originalLevel.level || 1) - 1;
-
-        const clonedLevelId = await this.cloneLevelRecursive(
-          originalLevel,
-          originalLevel.superiorId, // Use the same parent as the original
-          nameSuffix,
-          queryRunner,
-          null, // oldToNewIdMap
-          parentLevel // Pass the parent's level
-        );
-
-        // 4. Commit the transaction
-        await queryRunner.commitTransaction();
-
-        // 5. Get the cloned level with all its data
-        const clonedLevel = await this.levelRepository.findOne({
-          where: { id: clonedLevelId }
-        });
-
-        // 6. Get all descendants of the cloned level
-        const allClonedDescendants = await this.findAllChildLevels(clonedLevelId);
-
-        // 7. Send notification
-        const tokens = await this.usersService.getSiteUsersTokens(originalLevel.siteId, true); // Exclude web tokens - web always loads data online
-        await this.firebaseService.sendMultipleMessage(
-          new NotificationDTO(
-            stringConstants.catalogsTitle,
-            stringConstants.catalogsDescription,
-            stringConstants.catalogsNotificationType,
-          ),
-          tokens,
-        );
-
-        return {
-          clonedLevel,
-          totalCloned: allClonedDescendants.length
-        };
-      } catch (error) {
-        // Rollback in case of error
-        await queryRunner.rollbackTransaction();
-        throw error;
-      } finally {
-        // Release the query runner
-        await queryRunner.release();
-      }
+      const result = await this.hierarchyPersistence.withLevel(
+        levelId,
+        async (manager, originalLevel) => {
+          const levels = levelMapFrom(
+            await manager.findBy(LevelEntity, {
+              siteId: Number(originalLevel.siteId),
+            }),
+          );
+          const path = traceLevelHierarchy(Number(originalLevel.id), levels);
+          collectLevelDescendants(Number(originalLevel.id), levels);
+          const oldToNewIdMap = new Map<number, number>();
+          const clonedLevelId = await this.cloneLevelRecursive(
+            originalLevel,
+            normalizeLevelId(originalLevel.superiorId ?? 0, true),
+            nameSuffix,
+            manager,
+            oldToNewIdMap,
+            Math.max(0, path.length - 2),
+          );
+          const clonedLevel = await manager.findOneBy(LevelEntity, {
+            id: clonedLevelId,
+          });
+          return {
+            siteId: Number(originalLevel.siteId),
+            clonedLevel,
+            totalCloned: oldToNewIdMap.size,
+          };
+        },
+      );
+      await this.notifyCatalogChange(result.siteId);
+      return {
+        clonedLevel: result.clonedLevel,
+        totalCloned: result.totalCloned,
+      };
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -915,18 +799,30 @@ export class LevelService {
     originalLevel: LevelEntity,
     newSuperiorId: number,
     nameSuffix: string,
-    queryRunner: any,
+    manager: EntityManager,
     oldToNewIdMap: Map<number, number> | null,
-    parentLevel: number = 0
+    parentLevel: number = 0,
   ): Promise<number> => {
     // Initialize the map on the first call
     if (!oldToNewIdMap) {
       oldToNewIdMap = new Map<number, number>();
     }
 
+    const sourceId = normalizeLevelId(originalLevel.id);
+    if (
+      oldToNewIdMap.has(sourceId) ||
+      parentLevel >= MAX_LEVEL_HIERARCHY_DEPTH - 1
+    ) {
+      throw new BadRequestException(
+        'Level hierarchy contains a cycle or exceeds the maximum depth',
+      );
+    }
     // 1. Create the cloned level (without id, timestamps)
-    const { id, createdAt, updatedAt, deletedAt, ...levelData } = originalLevel;
-    console.log(`Cloning level ${id} - timestamps: ${createdAt}, ${updatedAt}, ${deletedAt}`);
+    const levelData = { ...originalLevel };
+    delete levelData.id;
+    delete levelData.createdAt;
+    delete levelData.updatedAt;
+    delete levelData.deletedAt;
 
     // 2. Calculate the new level depth based on parent
     let newLevel = 0;
@@ -945,11 +841,11 @@ export class LevelService {
       const maxAttempts = 10;
 
       while (!isUnique && attempts < maxAttempts) {
-        const existingLevel = await this.levelRepository.findOne({
+        const existingLevel = await manager.findOne(LevelEntity, {
           where: {
             levelMachineId,
-            siteId: originalLevel.siteId
-          }
+            siteId: originalLevel.siteId,
+          },
         });
 
         if (!existingLevel) {
@@ -971,32 +867,30 @@ export class LevelService {
       createdAt: new Date(),
     });
 
-    const savedLevel = await queryRunner.manager.save(LevelEntity, newLevelData);
+    const savedLevel = await manager.save(LevelEntity, newLevelData);
 
     // Store the mapping from old ID to new ID
-    oldToNewIdMap.set(originalLevel.id, savedLevel.id);
+    oldToNewIdMap.set(sourceId, normalizeLevelId(savedLevel.id));
 
     // 5. Find all direct children of the original level (not just active ones)
-    const children = await this.levelRepository.find({
-      where: { superiorId: originalLevel.id },
-      order: { id: 'ASC' }
+    const children = await manager.find(LevelEntity, {
+      where: { superiorId: sourceId, siteId: Number(originalLevel.siteId) },
+      order: { id: 'ASC' },
     });
-
-    console.log(`Found ${children.length} children for level ${originalLevel.id}`);
 
     // 6. Recursively clone all children
     for (const child of children) {
       await this.cloneLevelRecursive(
         child,
-        savedLevel.id, // The new parent is the cloned level
+        normalizeLevelId(savedLevel.id), // The new parent is the cloned level
         nameSuffix,
-        queryRunner,
+        manager,
         oldToNewIdMap,
-        savedLevel.level // Pass the parent's level for calculating child levels
+        savedLevel.level, // Pass the parent's level for calculating child levels
       );
     }
 
-    return savedLevel.id;
+    return normalizeLevelId(savedLevel.id);
   };
 
   private async notifyCatalogChange(siteId: number): Promise<void> {

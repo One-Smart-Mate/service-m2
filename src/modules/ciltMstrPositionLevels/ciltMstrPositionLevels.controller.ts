@@ -49,7 +49,10 @@ export class CiltMstrPositionLevelsController {
   @Get('position/user')
   @ApiOperation({ summary: 'Get all CILT Position Levels for current user positions with executions from last 24 hours' })
   async findByUserPositionsWithRecentExecutions(@Request() req) {
-    return await this.ciltMstrPositionLevelsService.findByUserIdWithRecentExecutions(req.user.id);
+    return await this.ciltMstrPositionLevelsService.findByUserIdWithRecentExecutions(
+      req.user.id,
+      req.user.fastSiteId,
+    );
   }
 
   @Get('position/:positionId')
