@@ -93,6 +93,23 @@ const getEmailTemplate = (lang: typeof stringConstants.LANG_ES | typeof stringCo
         <p style="font-size: 14px; color: #666;">${t.ciltStoppage.help}</p>
         <p style="font-size: 14px; color: #333;">${t.ciltStoppage.team}</p>
       </div>
+    </div>`,
+
+    sendOplReviewAssignmentMessage: (userName: string, oplTitle: string, primaryColor: string) => `
+    <div style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background-color: #fff;">
+      <div style="background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: #fff; font-size: 28px; margin: 0;">${t.oplReviewAssignment.subject}</h1>
+      </div>
+      <div style="padding: 20px; text-align: center;">
+        <p style="font-size: 16px; color: #666; margin-bottom: 20px;">
+          ${t.oplReviewAssignment.greeting} <strong>${userName}</strong>,<br />
+          ${t.oplReviewAssignment.message} <strong>${oplTitle}</strong>. ${t.oplReviewAssignment.footer}
+        </p>
+      </div>
+      <div style="background-color: #f9f9f9; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 14px; color: #666;">${t.oplReviewAssignment.help}</p>
+        <p style="font-size: 14px; color: #333;">${t.oplReviewAssignment.team}</p>
+      </div>
     </div>`
   };
 };

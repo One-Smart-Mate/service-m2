@@ -15,6 +15,8 @@ import { OplUserAccessEntity } from './entities/oplUserAccess.entity';
 import { LevelEntity } from '../level/entities/level.entity';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 import { OplMasterPersistence } from './opl-master.persistence';
+import { MailService } from '../mail/mail.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class OplMstrService {
@@ -32,6 +34,8 @@ export class OplMstrService {
     @InjectRepository(LevelEntity)
     private readonly levelRepository: Repository<LevelEntity>,
     private readonly oplMasterPersistence: OplMasterPersistence,
+    private readonly mailService: MailService,
+    private readonly usersService: UsersService,
   ) {}
 
   findAll = async () => {
@@ -288,15 +292,50 @@ export class OplMstrService {
 
   create = async (createOplDto: CreateOplMstrDTO, creatorId: number) => {
     try {
-      return await this.oplMasterPersistence.create(createOplDto, creatorId);
+      const opl = await this.oplMasterPersistence.create(createOplDto, creatorId);
+      await this.notifyReviewerByEmail(opl?.reviewerId ?? null, opl?.title ?? createOplDto.title);
+      return opl;
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
+  private notifyReviewerByEmail = async (
+    reviewerId: number | null,
+    oplTitle: string,
+  ) => {
+    if (!reviewerId) {
+      return;
+    }
+    try {
+      const reviewer = await this.usersService.findById(reviewerId);
+      if (reviewer?.email) {
+        await this.mailService.sendOplReviewerAssignmentEmail(reviewer, oplTitle);
+      } else {
+        this.logger.warn(
+          `OPL reviewer ${reviewerId} has no email; skipping assignment notification`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to send OPL reviewer assignment email to user ${reviewerId}: ${error?.message ?? error}`,
+      );
+    }
+  };
+
   update = async (updateOplDto: UpdateOplMstrDTO) => {
     try {
-      return await this.oplMasterPersistence.update(updateOplDto);
+      const previous = await this.oplRepository.findOneBy({ id: updateOplDto.id });
+      const previousReviewerId = previous?.reviewerId ?? null;
+      const updated = await this.oplMasterPersistence.update(updateOplDto);
+      const newReviewerId = updated?.reviewerId ?? null;
+      if (newReviewerId && newReviewerId !== previousReviewerId) {
+        await this.notifyReviewerByEmail(
+          newReviewerId,
+          updated?.title ?? previous?.title ?? '',
+        );
+      }
+      return updated;
     } catch (exception) {
       HandleException.exception(exception);
     }
