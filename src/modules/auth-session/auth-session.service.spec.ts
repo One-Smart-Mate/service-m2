@@ -94,4 +94,25 @@ describe('AuthSessionService', () => {
     ).resolves.toBe(false);
     expect(manager.insert).not.toHaveBeenCalled();
   });
+  it('does not rotate a session after site access is removed', async () => {
+    mockSessionLookups({});
+    manager.findOne.mockImplementation((entity) =>
+      Promise.resolve(entity === UserEntity ? { id: 7, status: 'A' } : null),
+    );
+    await expect(
+      service.rotateSession(
+        'primary-id',
+        7,
+        {
+          id: 'replacement',
+          userId: 7,
+          sessionType: 'primary',
+          platform: 'ANDROID',
+        },
+        1,
+      ),
+    ).resolves.toBe(false);
+    expect(manager.update).not.toHaveBeenCalled();
+    expect(manager.insert).not.toHaveBeenCalled();
+  });
 });

@@ -50,6 +50,7 @@ export class CiltQueryService {
     const ciltSequences = await this.ciltSequencesRepository.find({
       where: { 
         ciltMstrId: In(ciltMasterIds),
+        status: 'A',
         deletedAt: IsNull()
       },
       order: { order: 'ASC' }

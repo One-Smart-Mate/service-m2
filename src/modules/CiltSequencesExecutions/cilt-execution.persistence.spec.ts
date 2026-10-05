@@ -1,3 +1,7 @@
+import { LevelEntity } from '../level/entities/level.entity';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
 import { BadRequestException } from '@nestjs/common';
 import { CiltExecutionPersistence } from './cilt-execution.persistence';
 import { CiltSequencesExecutionsEntity } from './entities/ciltSequencesExecutions.entity';
@@ -20,6 +24,15 @@ describe('CILT transactional identity and references', () => {
     status: 'A',
     referenceOplSopId: null,
   };
+  const schedule = {
+    id: 9,
+    siteId: 7,
+    ciltId: 1,
+    secuenceId: 2,
+    status: 'A',
+    schedule: '08:00:00',
+  } as CiltSecuencesScheduleEntity;
+  const provenance = { assignmentId: 7, schedule };
   let persistence: CiltExecutionPersistence;
   let repository: any;
   let manager: any;
@@ -32,7 +45,11 @@ describe('CILT transactional identity and references', () => {
     const queued = new Set<string>();
     manager = {
       getRepository: jest.fn(() => repository),
-      findOne: jest.fn().mockResolvedValue({ id: 7 }),
+      findOne: jest.fn((entity) =>
+        Promise.resolve(
+          entity === CiltSecuencesScheduleEntity ? schedule : { id: 7 },
+        ),
+      ),
       exists: jest.fn((entity, options) =>
         Promise.resolve(
           entity === NotificationOutboxEntity
@@ -48,14 +65,15 @@ describe('CILT transactional identity and references', () => {
       }),
     };
     persistence = new CiltExecutionPersistence({
-      transaction: (fn) => fn(manager),
+      transaction: (isolationOrWork, work?) =>
+        (work ?? isolationOrWork)(manager),
     } as never);
   });
   it('locks the site before looking up the full schedule identity and assigning its folio', async () => {
     repository.findOne
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ siteExecutionId: '20' });
-    const saved = await persistence.create(input, true);
+    const saved = await persistence.create(input, true, undefined, provenance);
     expect(manager.findOne).toHaveBeenNthCalledWith(
       1,
       SiteEntity,
@@ -75,7 +93,9 @@ describe('CILT transactional identity and references', () => {
   it('returns an existing schedule without resetting completion or allocating a new folio', async () => {
     const existing = { ...input, id: 22, status: 'R', siteExecutionId: 20 };
     repository.findOne.mockResolvedValue(existing);
-    await expect(persistence.create(input, true)).resolves.toBe(existing);
+    await expect(
+      persistence.create(input, true, undefined, provenance),
+    ).resolves.toBe(existing);
     expect(repository.save).not.toHaveBeenCalled();
   });
   it('keeps simultaneous generation idempotent while preserving distinct levels', async () => {
@@ -99,26 +119,108 @@ describe('CILT transactional identity and references', () => {
     });
     // Model the serialization guaranteed by the site row lock, without using a database.
     let previous = Promise.resolve();
-    const transaction = (fn) => {
+    const transaction = (isolationOrWork, callback?) => {
+      const fn = callback ?? isolationOrWork;
       const work = previous.then(() => fn(manager));
       previous = work.then(() => undefined);
       return work;
     };
     const service = new CiltExecutionPersistence({ transaction } as never);
     await Promise.all(
-      Array.from({ length: 10 }, () => service.create(input, true)),
+      Array.from({ length: 10 }, () =>
+        service.create(input, true, undefined, provenance),
+      ),
     );
-    await service.create({ ...input, levelId: 6 }, true);
+    await service.create({ ...input, levelId: 6 }, true, undefined, provenance);
     expect(rows).toHaveLength(2);
     expect(rows.map((row) => row.siteExecutionId)).toEqual([1, 2]);
     expect(rows.map((row) => row.levelId)).toEqual([4, 6]);
   });
-  it('rejects a foreign OPL before saving', async () => {
+  it('rejects a removed schedule before saving a stale generator snapshot', async () => {
     manager.findOne.mockImplementation((entity) =>
-      Promise.resolve(entity === OplMstr ? null : { id: 7 }),
+      Promise.resolve(
+        entity === CiltSecuencesScheduleEntity ? null : { id: 7 },
+      ),
     );
     await expect(
-      persistence.create({ ...input, referenceOplSopId: 99 }, true),
+      persistence.create(input, true, undefined, provenance),
+    ).rejects.toThrow('Schedule changed');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+  it('rejects a changed schedule without relying on second-resolution updatedAt', async () => {
+    manager.findOne.mockImplementation((entity) =>
+      Promise.resolve(
+        entity === CiltSecuencesScheduleEntity
+          ? { ...schedule, toleranceBeforeMinutes: 10 }
+          : { id: 7 },
+      ),
+    );
+    await expect(
+      persistence.create(input, true, undefined, provenance),
+    ).rejects.toThrow('Schedule changed');
+  });
+  it.each([CiltMstrPositionLevelsEntity, UsersPositionsEntity])(
+    'rejects a withdrawn assignment before saving',
+    async (entity) => {
+      manager.findOne.mockImplementation((candidate) =>
+        Promise.resolve(
+          candidate === entity
+            ? null
+            : candidate === CiltSecuencesScheduleEntity
+              ? schedule
+              : { id: 7 },
+        ),
+      );
+      await expect(
+        persistence.create(input, true, undefined, provenance),
+      ).rejects.toThrow('assignment is no longer active');
+      expect(repository.save).not.toHaveBeenCalled();
+    },
+  );
+  it('rejects a template edited after the generator took its snapshot', async () => {
+    await expect(
+      persistence.create(input, true, undefined, {
+        ...provenance,
+        sequence: { standardTime: 30 } as any,
+      }),
+    ).rejects.toThrow('Sequence template changed');
+    expect(repository.save).not.toHaveBeenCalled();
+  });
+  it.each([PositionEntity, LevelEntity])(
+    'rejects a position or level deactivated during generation',
+    async (entity) => {
+      manager.findOne.mockImplementation((candidate) =>
+        Promise.resolve(
+          candidate === entity
+            ? null
+            : candidate === CiltSecuencesScheduleEntity
+              ? schedule
+              : { id: 7 },
+        ),
+      );
+      await expect(
+        persistence.create(input, true, undefined, provenance),
+      ).rejects.toThrow('position and level must be active');
+      expect(repository.save).not.toHaveBeenCalled();
+    },
+  );
+  it('rejects a foreign OPL before saving', async () => {
+    manager.findOne.mockImplementation((entity) =>
+      Promise.resolve(
+        entity === OplMstr
+          ? null
+          : entity === CiltSecuencesScheduleEntity
+            ? schedule
+            : { id: 7 },
+      ),
+    );
+    await expect(
+      persistence.create(
+        { ...input, referenceOplSopId: 99 },
+        true,
+        undefined,
+        provenance,
+      ),
     ).rejects.toThrow(BadRequestException);
     expect(repository.save).not.toHaveBeenCalled();
   });

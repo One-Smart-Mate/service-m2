@@ -1,8 +1,11 @@
 import { DataSource } from 'typeorm';
 import { createDatabaseTlsOptions } from './transport-security.config';
+import { utcMysqlDriver } from './database-utc.config';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
+  driver: utcMysqlDriver,
+  timezone: 'Z',
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT),
   username: process.env.DB_USERNAME,

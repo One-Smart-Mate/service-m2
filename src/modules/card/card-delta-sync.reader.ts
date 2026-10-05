@@ -13,6 +13,9 @@ import { CardEntity } from './entities/card.entity';
 interface CardChangeRow {
   id: number | string;
   changedAt: Date | string;
+  revision: string;
+  cardUUID: string;
+  deletedAt: Date | string | null;
 }
 
 export interface CardDeltaUpsert {
@@ -56,41 +59,43 @@ export class CardDeltaSyncReader {
     cursor?: string,
     requestedLimit?: number,
   ): Promise<CardDeltaSyncResponse> {
-    const decodedCursor = CardSyncCursorPolicy.decode(cursor);
+    const decodedCursor = CardSyncCursorPolicy.decode(cursor, siteId);
     const limit = CardSyncCursorPolicy.normalizeLimit(requestedLimit);
 
-    return this.dataSource.transaction(
-      'REPEATABLE READ',
-      async (manager) => {
-        const syncUntil = await this.readSnapshotUpperBound(manager);
-        await this.assertActiveSite(manager, siteId);
-        const rows = await this.readChangedCards(
-          manager,
-          siteId,
-          decodedCursor.changedAt,
-          decodedCursor.id,
-          syncUntil,
-          limit + 1,
-        );
-        const hasMore = rows.length > limit;
-        const pageRows = rows.slice(0, limit);
-        const changes = await this.hydrateChanges(manager, siteId, pageRows);
-        const nextCursor = this.createNextCursor(
-          pageRows,
-          hasMore,
-          syncUntil,
-        );
+    return this.dataSource.transaction('REPEATABLE READ', async (manager) => {
+      const syncUntil = await this.readSnapshotUpperBound(manager);
+      await this.assertActiveSite(manager, siteId);
+      const [clock] = await manager.query(
+        'SELECT CAST(revision AS CHAR) AS revision FROM card_sync_clock WHERE site_id = ?',
+        [siteId],
+      );
+      const rows = await this.readChangedCards(
+        manager,
+        siteId,
+        decodedCursor.revision,
+        decodedCursor.id,
+        String(clock?.revision ?? '0'),
+        limit + 1,
+      );
+      const hasMore = rows.length > limit;
+      const pageRows = rows.slice(0, limit);
+      const changes = await this.hydrateChanges(manager, siteId, pageRows);
+      const nextCursor = this.createNextCursor(
+        pageRows,
+        hasMore,
+        String(clock?.revision ?? '0'),
+        siteId,
+      );
 
-        return {
-          schemaVersion: 1,
-          siteId,
-          generatedAt: syncUntil.toISOString(),
-          nextCursor,
-          hasMore,
-          changes,
-        };
-      },
-    );
+      return {
+        schemaVersion: 1,
+        siteId,
+        generatedAt: syncUntil.toISOString(),
+        nextCursor,
+        hasMore,
+        changes,
+      };
+    });
   }
 
   private async assertActiveSite(
@@ -112,65 +117,27 @@ export class CardDeltaSyncReader {
     }
   }
 
-  private async readSnapshotUpperBound(
-    manager: EntityManager,
-  ): Promise<Date> {
-    const result = await manager.query(
-      'SELECT UTC_TIMESTAMP(6) AS syncUntil',
-    );
+  private async readSnapshotUpperBound(manager: EntityManager): Promise<Date> {
+    const result = await manager.query('SELECT UTC_TIMESTAMP(6) AS syncUntil');
     return this.toDate(result[0]?.syncUntil, 'snapshot timestamp');
   }
 
   private readChangedCards(
     manager: EntityManager,
     siteId: number,
-    cursorDate: Date,
+    revision: string,
     cursorId: string,
-    syncUntil: Date,
+    upperRevision: string,
     limit: number,
   ): Promise<CardChangeRow[]> {
     return manager.query(
-      `
-        SELECT
-          changes.id,
-          MAX(changes.changedAt) AS changedAt
-        FROM (
-          SELECT c.id, c.sync_changed_at AS changedAt
-          FROM cards c
-          WHERE c.site_id = ?
-            AND c.sync_changed_at <= ?
-            AND (
-              c.sync_changed_at > ?
-              OR (c.sync_changed_at = ? AND c.id > ?)
-            )
-          UNION ALL
-          SELECT e.card_id AS id, MAX(e.sync_changed_at) AS changedAt
-          FROM evidences e
-          WHERE e.site_id = ?
-            AND e.sync_changed_at <= ?
-            AND (
-              e.sync_changed_at > ?
-              OR (e.sync_changed_at = ? AND e.card_id > ?)
-            )
-          GROUP BY e.card_id
-        ) changes
-        GROUP BY changes.id
-        ORDER BY changedAt ASC, changes.id ASC
-        LIMIT ?
-      `,
-      [
-        siteId,
-        syncUntil,
-        cursorDate,
-        cursorDate,
-        cursorId,
-        siteId,
-        syncUntil,
-        cursorDate,
-        cursorDate,
-        cursorId,
-        limit,
-      ],
+      `SELECT card_id AS id, CAST(revision AS CHAR) AS revision,
+              changed_at AS changedAt, card_uuid AS cardUUID, deleted_at AS deletedAt
+       FROM card_sync_changes
+       WHERE site_id = ? AND revision <= CAST(? AS UNSIGNED)
+         AND (revision > CAST(? AS UNSIGNED) OR (revision = CAST(? AS UNSIGNED) AND card_id > CAST(? AS UNSIGNED)))
+       ORDER BY revision ASC, card_id ASC LIMIT ?`,
+      [siteId, upperRevision, revision, revision, cursorId, limit],
     );
   }
 
@@ -213,19 +180,18 @@ export class CardDeltaSyncReader {
 
     return rows.map((row) => {
       const card = cardById.get(String(row.id));
-      if (!card) {
-        throw new Error(`Card ${row.id} disappeared during delta snapshot`);
-      }
+      if (!card && !row.deletedAt)
+        throw new Error('Card sync journal is inconsistent');
 
       const changedAt = this.toDate(row.changedAt, 'card change timestamp');
-      if (card.deletedAt) {
+      if (row.deletedAt || card?.deletedAt) {
         return {
           type: 'delete',
-          id: card.id,
-          cardUUID: card.cardUUID,
-          siteId: card.siteId,
+          id: Number(row.id),
+          cardUUID: row.cardUUID,
+          siteId,
           deletedAt: this.toDate(
-            card.deletedAt,
+            row.deletedAt || card.deletedAt,
             'card deletion timestamp',
           ).toISOString(),
           changedAt: changedAt.toISOString(),
@@ -246,31 +212,22 @@ export class CardDeltaSyncReader {
   private createNextCursor(
     rows: CardChangeRow[],
     hasMore: boolean,
-    syncUntil: Date,
+    upperRevision: string,
+    siteId: number,
   ): string {
-    if (rows.length === 0) {
-      return CardSyncCursorPolicy.encode({ changedAt: syncUntil, id: '0' });
-    }
-
-    const lastRow = rows[rows.length - 1];
-    const lastChangedAt = this.toDate(
-      lastRow.changedAt,
-      'card change timestamp',
+    const last = rows[rows.length - 1];
+    return CardSyncCursorPolicy.encode(
+      hasMore
+        ? { revision: String(last.revision), id: String(last.id) }
+        : {
+            revision: upperRevision,
+            id:
+              last && String(last.revision) === upperRevision
+                ? String(last.id)
+                : '0',
+          },
+      siteId,
     );
-    if (!hasMore) {
-      return CardSyncCursorPolicy.encode({
-        changedAt: syncUntil,
-        id:
-          lastChangedAt.getTime() === syncUntil.getTime()
-            ? String(lastRow.id)
-            : '0',
-      });
-    }
-
-    return CardSyncCursorPolicy.encode({
-      changedAt: lastChangedAt,
-      id: String(lastRow.id),
-    });
   }
 
   private toDate(value: unknown, description: string): Date {

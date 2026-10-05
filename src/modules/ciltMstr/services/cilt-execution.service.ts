@@ -1,3 +1,4 @@
+import { CiltSecuencesScheduleEntity } from '../../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
 import { SiteEntity } from '../../site/entities/site.entity';
 import {
   assertSiteTimezone,
@@ -16,6 +17,7 @@ import { CiltExecutionPersistence } from '../../CiltSequencesExecutions/cilt-exe
 import { CustomLoggerService } from 'src/common/logger/logger.service';
 
 export interface ScheduleDetails {
+  source?: CiltSecuencesScheduleEntity;
   ciltId: number;
   secuenceId: number;
   schedule?: string;
@@ -44,6 +46,7 @@ export class CiltExecutionService {
     scheduleEntities: any[],
   ): ScheduleDetails[] {
     return scheduleEntities.map((entity) => ({
+      source: { ...entity },
       ciltId: entity.ciltId,
       secuenceId: entity.secuenceId,
       schedule: entity.schedule,
@@ -312,6 +315,6 @@ export class CiltExecutionService {
       specialWarning: seq.specialWarning,
     };
 
-    await this.executionPersistence.create(dto, true, timezone);
+    await this.executionPersistence.create(dto, true, timezone, { assignmentId: Number(cpl.id), schedule: scheduleDetails?.source, sequence: seq });
   }
 }

@@ -162,7 +162,7 @@ export class CiltSecuencesScheduleService {
         .innerJoin('schedule.sequence', 'sequence', 'sequence.siteId = schedule.siteId AND sequence.ciltMstrId = schedule.ciltId')
         .where('schedule.status = :status', { status: 'A' })
         .andWhere('schedule.deletedAt IS NULL')
-        .andWhere('sequence.deletedAt IS NULL')
+        .andWhere("sequence.deletedAt IS NULL AND sequence.status = 'A' AND master.deletedAt IS NULL AND master.status = 'A'")
         // Only include schedules that haven't expired
         .andWhere(
           '(schedule.endDate IS NULL OR DATE(schedule.endDate) >= :currentDate)',
@@ -424,53 +424,16 @@ export class CiltSecuencesScheduleService {
 
   delete = async (id: number) => {
     try {
-      const schedule = await this.findById(id);
-      schedule.status = stringConstants.inactiveStatus;
-      schedule.deletedAt = new Date();
-      return await this.ciltSecuencesScheduleRepository.save(schedule);
+      return await this.configurationPersistence.deleteSchedule(id);
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  updateOrder = async (updateOrderDto: UpdateScheduleOrderDTO) => {
+  updateOrder = async (input: UpdateScheduleOrderDTO) => {
     try {
-      // Find the schedule to update
-      const scheduleToUpdate = await this.ciltSecuencesScheduleRepository.findOneBy({
-        id: updateOrderDto.scheduleId,
-      });
-      if (!scheduleToUpdate) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SECUENCES_SCHEDULE,
-        );
-      }
-
-      // Find the schedule that currently has the new order
-      const scheduleWithNewOrder = await this.ciltSecuencesScheduleRepository.findOne({
-        where: {
-          secuenceId: scheduleToUpdate.secuenceId,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (scheduleWithNewOrder) {
-        // Swap orders
-        const oldOrder = scheduleToUpdate.order;
-        scheduleToUpdate.order = updateOrderDto.newOrder;
-        scheduleWithNewOrder.order = oldOrder;
-
-        // Save both schedules
-        await this.ciltSecuencesScheduleRepository.save(scheduleWithNewOrder);
-        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
-      } else {
-        // If no schedule has the new order, just update the order
-        scheduleToUpdate.order = updateOrderDto.newOrder;
-        return await this.ciltSecuencesScheduleRepository.save(scheduleToUpdate);
-      }
+      return await this.configurationPersistence.updateScheduleOrder(input);
     } catch (exception) {
-      if (exception instanceof ValidationException || exception instanceof NotFoundCustomException) {
-        throw exception;
-      }
       HandleException.exception(exception);
     }
   };

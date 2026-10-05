@@ -128,38 +128,9 @@ export class PositionService {
     }
   };
 
-  updateOrder = async (updateOrderDto: UpdatePositionOrderDTO) => {
+  updateOrder = async (input: UpdatePositionOrderDTO) => {
     try {
-      // Find the position to update
-      const positionToUpdate = await this.positionRepository.findOneBy({
-        id: updateOrderDto.positionId,
-      });
-      if (!positionToUpdate) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-      }
-
-      // Find the position that currently has the new order
-      const positionWithNewOrder = await this.positionRepository.findOne({
-        where: {
-          siteId: positionToUpdate.siteId,
-          order: updateOrderDto.newOrder,
-        },
-      });
-
-      if (positionWithNewOrder) {
-        // Swap orders
-        const oldOrder = positionToUpdate.order;
-        positionToUpdate.order = updateOrderDto.newOrder;
-        positionWithNewOrder.order = oldOrder;
-
-        // Save both positions
-        await this.positionRepository.save(positionWithNewOrder);
-        return await this.positionRepository.save(positionToUpdate);
-      } else {
-        // If no position has the new order, just update the order
-        positionToUpdate.order = updateOrderDto.newOrder;
-        return await this.positionRepository.save(positionToUpdate);
-      }
+      return await this.positionPersistence.updateOrder(input);
     } catch (exception) {
       HandleException.exception(exception);
     }

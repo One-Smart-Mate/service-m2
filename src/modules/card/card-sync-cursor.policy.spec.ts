@@ -4,20 +4,20 @@ import { CardSyncCursorPolicy } from './card-sync-cursor.policy';
 describe('CardSyncCursorPolicy', () => {
   it('uses the beginning of time when no cursor is provided', () => {
     expect(CardSyncCursorPolicy.decode()).toEqual({
-      changedAt: new Date(0),
+      revision: '0',
       id: '0',
     });
   });
 
   it('round-trips an opaque cursor without losing a bigint id', () => {
     const value = {
-      changedAt: new Date('2026-09-24T12:34:56.789Z'),
+      revision: '18446744073709551615',
       id: '18446744073709551615',
     };
 
-    expect(CardSyncCursorPolicy.decode(CardSyncCursorPolicy.encode(value))).toEqual(
-      value,
-    );
+    expect(
+      CardSyncCursorPolicy.decode(CardSyncCursorPolicy.encode(value, 25), 25),
+    ).toEqual(value);
   });
 
   it.each([
@@ -39,6 +39,26 @@ describe('CardSyncCursorPolicy', () => {
     ).toString('base64url'),
   ])('rejects a malformed or unsupported cursor', (cursor) => {
     expect(() => CardSyncCursorPolicy.decode(cursor)).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('forces a complete resync for the imprecise legacy cursor', () => {
+    const legacy = Buffer.from(
+      JSON.stringify({
+        version: 1,
+        changedAt: '2026-09-24T12:34:56.789Z',
+        id: '9',
+      }),
+    ).toString('base64url');
+    expect(CardSyncCursorPolicy.decode(legacy, 25)).toEqual({
+      revision: '0',
+      id: '0',
+    });
+  });
+  it('rejects a cursor issued for another site', () => {
+    const cursor = CardSyncCursorPolicy.encode({ revision: '20', id: '9' }, 25);
+    expect(() => CardSyncCursorPolicy.decode(cursor, 26)).toThrow(
       BadRequestException,
     );
   });

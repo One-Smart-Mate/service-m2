@@ -1,3 +1,5 @@
+import { FAST_SESSION } from '../models/auth-token.payload';
+import { FAST_SITE_SCOPED_KEY } from 'src/common/decorators/fast-site-scoped.decorator';
 import {
   BadRequestException,
   CanActivate,
@@ -92,9 +94,11 @@ export class SiteAccessGuard implements CanActivate {
       SKIP_SITE_ACCESS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    if (skipSiteAccess) {
+    if (
+      skipSiteAccess &&
+      context.switchToHttp().getRequest().user?.sessionType !== FAST_SESSION
+    )
       return true;
-    }
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
@@ -103,6 +107,11 @@ export class SiteAccessGuard implements CanActivate {
       throw new UnauthorizedException('User not authenticated');
     }
 
+    const fast = user.sessionType === FAST_SESSION;
+    const scoped = this.reflector.getAllAndOverride<boolean>(
+      FAST_SITE_SCOPED_KEY,
+      [context.getHandler(), context.getClass()],
+    );
     const siteIds = this.extractSiteIds(request);
     const resourceAccessMetadata =
       this.reflector.getAllAndOverride<SiteResourceAccessMetadata>(
@@ -130,13 +139,28 @@ export class SiteAccessGuard implements CanActivate {
           resourceAccess,
         );
         if (resourceSiteIds.length === 0) {
-          if (await this.hasGlobalSiteAccess(user.id)) {
+          if (!fast && (await this.hasGlobalSiteAccess(user.id))) {
             continue;
           }
           throw new ForbiddenException('Resource has no accessible site');
         }
-        siteIds.push(...resourceSiteIds);
+        if (fast && scoped && resourceAccess.resource === 'user') {
+          if (!resourceSiteIds.includes(Number(user.fastSiteId)))
+            throw new ForbiddenException('Site access denied');
+          siteIds.push(Number(user.fastSiteId));
+        } else siteIds.push(...resourceSiteIds);
       }
+    }
+
+    if (fast) {
+      if (
+        (!siteIds.length && !scoped) ||
+        siteIds.some((id) => id !== Number(user.fastSiteId))
+      )
+        throw new ForbiddenException(
+          'Fast sessions are restricted to their selected site',
+        );
+      return true;
     }
 
     if (siteIds.length === 0) {
@@ -256,10 +280,7 @@ export class SiteAccessGuard implements CanActivate {
       return [Number(resource.siteId)];
     }
 
-    if (
-      options.resource === 'oplDetail' ||
-      options.resource === 'oplLevel'
-    ) {
+    if (options.resource === 'oplDetail' || options.resource === 'oplLevel') {
       if (options.lookup !== 'id') {
         throw new BadRequestException('Unsupported resource lookup');
       }
@@ -389,9 +410,8 @@ export class SiteAccessGuard implements CanActivate {
     siteIds: number[],
     userId: number,
   ): Promise<void> {
-    const accessibleSiteIds = await this.usersService.getAccessibleSiteIds(
-      userId,
-    );
+    const accessibleSiteIds =
+      await this.usersService.getAccessibleSiteIds(userId);
     if (accessibleSiteIds === null) {
       return;
     }

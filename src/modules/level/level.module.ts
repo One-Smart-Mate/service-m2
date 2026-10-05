@@ -8,12 +8,14 @@ import { UsersModule } from '../users/users.module';
 import { SiteModule } from '../site/site.module';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { LevelHierarchyPersistence } from './level-hierarchy.persistence';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     UsersModule,
     SiteModule,
     FirebaseModule,
+    NotificationsModule,
     TypeOrmModule.forFeature([LevelEntity, CardEntity]),
   ],
   controllers: [LevelController],

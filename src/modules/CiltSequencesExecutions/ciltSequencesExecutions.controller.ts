@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request } from '@nestjs/common';
 import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
@@ -100,6 +101,7 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findByCiltSequenceIdAndDate(ciltSequenceId, date);
   }
 
+  @FastSiteScoped()
   @Get('of-day')
   @ApiOperation({ summary: 'Get data for day' })
   @ApiResponse({ status: 200, description: 'Day chart data' })
@@ -120,6 +122,7 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.findById(+id);
   }
 
+  @FastSiteScoped()
   @Post("/create")
   @RequireSiteAccess()
   @CiltExecutionOwner({
@@ -169,6 +172,7 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.create(createCiltSequencesExecutionDTO);
   }
 
+  @FastSiteScoped()
   @Post("/generate")
   @CiltExecutionOwner({
     resource: 'newExecution',
@@ -217,6 +221,7 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.start(startDTO);
   }
 
+  @FastSiteScoped()
   @Put("/update")
   @CiltExecutionOwner({
     resource: 'execution',
@@ -316,6 +321,7 @@ export class CiltSequencesExecutionsController {
     return this.ciltSequencesExecutionsService.softDelete(+id);
   }
 
+  @FastSiteScoped()
   @Get('user/:userId/date/:date')
   @SelfOrRoles({
     source: 'params',
@@ -331,8 +337,8 @@ export class CiltSequencesExecutionsController {
   @ApiOperation({ summary: 'Get all CILT sequence executions by user ID and date' })
   @ApiParam({ name: 'userId', type: 'number', description: 'User ID' })
   @ApiParam({ name: 'date', type: 'string', description: 'Date in YYYY-MM-DD format' })
-  findAllByUserIdAndDate(@Param('userId') userId: number, @Param('date') date: string) {
-    return this.ciltSequencesExecutionsService.findAllByUserIdAndDate(userId, date);
+  findAllByUserIdAndDate(@Param('userId') userId: number, @Param('date') date: string, @Request() req) {
+    return this.ciltSequencesExecutionsService.findAllByUserIdAndDate(userId, date, req.user.fastSiteId);
   }
 
   @Post('evidence/create')

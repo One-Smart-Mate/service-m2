@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import {
   BadRequestException,
   ConflictException,
@@ -29,6 +30,7 @@ import { SiteEntity } from '../site/entities/site.entity';
 import { stringConstants } from 'src/utils/string.constant';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
+import { NotificationOutboxService } from '../notifications/notification-outbox.service';
 import {
   ValidationException,
   ValidationExceptionType,
@@ -50,6 +52,7 @@ export class LevelService {
     private readonly hierarchyPersistence: LevelHierarchyPersistence,
     private readonly usersService: UsersService,
     private readonly firebaseService: FirebaseService,
+    private readonly notificationOutbox: NotificationOutboxService,
   ) {}
 
   findByLeveleMachineId = async (siteId: number, levelMachineId: string) => {
@@ -777,6 +780,21 @@ export class LevelService {
           const clonedLevel = await manager.findOneBy(LevelEntity, {
             id: clonedLevelId,
           });
+          await this.notificationOutbox.enqueueWithManager(manager, {
+            deduplicationKey: `level-clone:${originalLevel.siteId}:${clonedLevelId}`,
+            payload: {
+              audience: {
+                type: 'site',
+                siteId: Number(originalLevel.siteId),
+                excludeWeb: true,
+              },
+              notification: {
+                title: stringConstants.catalogsTitle,
+                description: stringConstants.catalogsDescription,
+                type: stringConstants.catalogsNotificationType,
+              },
+            },
+          });
           return {
             siteId: Number(originalLevel.siteId),
             clonedLevel,
@@ -784,7 +802,6 @@ export class LevelService {
           };
         },
       );
-      await this.notifyCatalogChange(result.siteId);
       return {
         clonedLevel: result.clonedLevel,
         totalCloned: result.totalCloned,
@@ -910,7 +927,7 @@ export class LevelService {
     } catch (error) {
       this.logger.warn(
         `Level ${siteId} was saved but catalog notification failed`,
-        error instanceof Error ? error.stack : undefined,
+        JSON.stringify(errorDiagnostics(error)),
       );
     }
   }

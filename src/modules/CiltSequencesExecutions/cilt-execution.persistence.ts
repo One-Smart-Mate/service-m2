@@ -1,3 +1,10 @@
+import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
+import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
+import {
+  scheduleFingerprint,
+  sequenceFingerprint,
+} from '../ciltSecuencesSchedule/schedule-snapshot.policy';
+import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import {
   assertSiteTimezone,
   DEFAULT_SITE_TIMEZONE,
@@ -29,6 +36,7 @@ import { stringConstants } from 'src/utils/string.constant';
 import { CiltExecutionStatePolicy } from './cilt-execution-state.policy';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
 import { StopCiltSequencesExecutionDTO } from './models/dto/stop.ciltSequencesExecution.dto';
+import { retryDatabaseTransaction } from '../../common/database/site-transaction';
 
 type ExecutionInput = DeepPartial<CiltSequencesExecutionsEntity>;
 
@@ -40,8 +48,13 @@ export class CiltExecutionPersistence {
     input: ExecutionInput,
     scheduled = false,
     scheduledTimezone?: string,
+    provenance?: {
+      assignmentId: number;
+      schedule?: CiltSecuencesScheduleEntity;
+      sequence?: CiltSequencesEntity;
+    },
   ): Promise<CiltSequencesExecutionsEntity> {
-    return this.dataSource.transaction(async (manager) => {
+    return retryDatabaseTransaction(this.dataSource, async (manager) => {
       const siteId = Number(input.siteId);
       if (!Number.isSafeInteger(siteId) || siteId <= 0)
         throw new BadRequestException('Valid site is required');
@@ -87,6 +100,107 @@ export class CiltExecutionPersistence {
         if (!scheduledAt)
           throw new BadRequestException('Execution schedule is required');
       }
+      // Configuration mutations share the site lock with generation. A stale
+      // generator snapshot must not create work after deactivation commits.
+      if (input.ciltId || input.ciltSecuenceId) {
+        const master = await manager.findOne(CiltMstrEntity, {
+          where: {
+            id: Number(input.ciltId),
+            siteId,
+            status: 'A',
+            deletedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_read' },
+        });
+        const sequence = await manager.findOne(CiltSequencesEntity, {
+          where: {
+            id: Number(input.ciltSecuenceId),
+            siteId,
+            ciltMstrId: Number(input.ciltId),
+            status: 'A',
+            deletedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_read' },
+        });
+        if (!master || !sequence)
+          throw new ConflictException(
+            'Only active CILT masters and sequences can generate executions',
+          );
+        if (
+          provenance?.sequence &&
+          sequenceFingerprint(sequence) !==
+            sequenceFingerprint(provenance.sequence)
+        )
+          throw new ConflictException(
+            'Sequence template changed; regenerate executions',
+          );
+      }
+      if (input.ciltId || input.ciltSecuenceId) {
+        for (const [entity, id] of [
+          [PositionEntity, input.positionId],
+          [LevelEntity, input.levelId],
+        ] as const) {
+          if (
+            !(await manager.findOne(entity as any, {
+              where: {
+                id: Number(id),
+                siteId,
+                status: 'A',
+                deletedAt: IsNull(),
+              },
+            }))
+          )
+            throw new ConflictException(
+              'Execution position and level must be active',
+            );
+        }
+        const assignment = await manager.findOne(CiltMstrPositionLevelsEntity, {
+          where: {
+            ...(provenance ? { id: provenance.assignmentId } : {}),
+            siteId,
+            ciltMstrId: Number(input.ciltId),
+            positionId: Number(input.positionId),
+            levelId: Number(input.levelId),
+            status: 'A',
+            deletedAt: IsNull(),
+          },
+        });
+        const userPosition = await manager.findOne(UsersPositionsEntity, {
+          where: {
+            siteId,
+            userId: Number(input.userId),
+            positionId: Number(input.positionId),
+            deletedAt: IsNull(),
+          },
+        });
+        if (!assignment || !userPosition)
+          throw new ConflictException(
+            'CILT or user position assignment is no longer active',
+          );
+        if (scheduled) {
+          if (!provenance?.schedule)
+            throw new BadRequestException('Schedule provenance is required');
+          const schedule = await manager.findOne(CiltSecuencesScheduleEntity, {
+            where: {
+              id: provenance.schedule.id,
+              siteId,
+              ciltId: Number(input.ciltId),
+              secuenceId: Number(input.ciltSecuenceId),
+              status: 'A',
+              deletedAt: IsNull(),
+            },
+          });
+          if (
+            !schedule ||
+            scheduleFingerprint(schedule) !==
+              scheduleFingerprint(provenance.schedule)
+          )
+            throw new ConflictException(
+              'Schedule changed; regenerate executions',
+            );
+        }
+      }
+      await this.validateRelations(manager, input, siteId);
       if (
         scheduledAt &&
         ['ciltId', 'ciltSecuenceId', 'userId', 'levelId', 'positionId'].every(
@@ -107,7 +221,6 @@ export class CiltExecutionPersistence {
         // A cancelled/deleted schedule is not recreated by the daily generator.
         if (existing) return existing;
       }
-      await this.validateRelations(manager, input, siteId);
       const last = await repository.findOne({
         where: { siteId },
         order: { siteExecutionId: 'DESC' },

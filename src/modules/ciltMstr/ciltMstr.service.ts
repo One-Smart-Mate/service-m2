@@ -90,7 +90,7 @@ export class CiltMstrService {
     }
   };
 
-  async findCiltsByUserId(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
+  async findCiltsByUserId(userId: number, date: string, timezone?: string, sessionSiteId?: number): Promise<CiltUserResponse> {
     try {
       this.logger.logProcess('STARTING FIND CILTS BY USER ID', { userId, date, timezone });
       
@@ -101,7 +101,7 @@ export class CiltMstrService {
       const user = await this.ciltValidationService.validateUser(userId);
   
       // 2) Get user positions
-      const userPositions = await this.ciltPositionLevelService.getUserPositions(userId);
+      const userPositions = (await this.ciltPositionLevelService.getUserPositions(userId)).filter(link => sessionSiteId === undefined || Number(link.position?.siteId) === Number(sessionSiteId));
       if (!userPositions.length) {
         return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
       }
@@ -180,7 +180,7 @@ export class CiltMstrService {
     }
   }
 
-  async findCiltsByUserIdReadOnly(userId: number, date: string, timezone?: string): Promise<CiltUserResponse> {
+  async findCiltsByUserIdReadOnly(userId: number, date: string, timezone?: string, sessionSiteId?: number): Promise<CiltUserResponse> {
     try {
       this.logger.logProcess('STARTING FIND CILTS BY USER ID (READ ONLY)', { userId, date, timezone });
       
@@ -191,7 +191,7 @@ export class CiltMstrService {
       const user = await this.ciltValidationService.validateUser(userId);
   
       // 2) Get user positions
-      const userPositions = await this.ciltPositionLevelService.getUserPositions(userId);
+      const userPositions = (await this.ciltPositionLevelService.getUserPositions(userId)).filter(link => sessionSiteId === undefined || Number(link.position?.siteId) === Number(sessionSiteId));
       if (!userPositions.length) {
         return { userInfo: { id: user.id, name: user.name, email: user.email }, positions: [] };
       }
@@ -389,7 +389,7 @@ export class CiltMstrService {
       if (!cilt) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR);
       }
-      return await this.ciltRepository.softDelete(id);
+      return await this.ciltMasterPersistence.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

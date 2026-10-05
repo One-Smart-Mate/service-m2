@@ -1,3 +1,4 @@
+import { InternalServerErrorException } from '@nestjs/common';
 import { IsNull, Repository } from 'typeorm';
 import { EvidenceEntity } from '../evidence/entities/evidence.entity';
 import { UserEntity } from '../users/entities/user.entity';
@@ -271,9 +272,7 @@ describe('CardService create scope', () => {
       created: true,
     });
 
-    await service.createOptimized(
-      createCard({ notifyResponsible: true }),
-    );
+    await service.createOptimized(createCard({ notifyResponsible: true }));
 
     expect(cardCreationPersistence.persist).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -290,8 +289,7 @@ describe('CardService create scope', () => {
             }),
           }),
           expect.objectContaining({
-            deduplicationKey:
-              'card-created:mobile-card-uuid:responsible:8',
+            deduplicationKey: 'card-created:mobile-card-uuid:responsible:8',
             payload: expect.objectContaining({
               audience: { type: 'user', userId: 8 },
             }),
@@ -531,10 +529,7 @@ describe('CardService mutation scope', () => {
       status: 'D',
     });
 
-    await service.discardCard(
-      { cardId: 12, amDiscardReasonId: 3 },
-      7,
-    );
+    await service.discardCard({ cardId: 12, amDiscardReasonId: 3 }, 7);
 
     expect(discardReasonRepository.findOne).toHaveBeenCalledWith({
       where: expect.arrayContaining([
@@ -543,5 +538,26 @@ describe('CardService mutation scope', () => {
       ]),
     });
     expect(cardMutationPersistence.discard).toHaveBeenCalled();
+  });
+  it('does not disclose internal messages in a partial offline sync response', async () => {
+    const failure = jest
+      .spyOn(service as any, 'createOptimizedResult')
+      .mockRejectedValueOnce(
+        new InternalServerErrorException('raw-private-sql-parameter'),
+      );
+    try {
+      const result = await service.syncOfflineCards(
+        [{ cardUUID: 'offline-safe-failure' }] as any,
+        7,
+      );
+      expect(JSON.stringify(result)).not.toContain('raw-private-sql-parameter');
+      expect(result.results[0]).toMatchObject({
+        success: false,
+        statusCode: 500,
+        message: 'Unable to synchronize card',
+      });
+    } finally {
+      failure.mockRestore();
+    }
   });
 });

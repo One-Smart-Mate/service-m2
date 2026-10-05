@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import {
   Body,
   Controller,
@@ -54,8 +55,8 @@ export class UsersController {
 
   @Get('/all/:siteId')
   @ApiParam({ name: 'siteId', example: 1 })
-  findAllBySiteIdResponsibleData(@Param('siteId') siteId: number) {
-    const users = this.usersService.findSiteUsersResponsibleData(siteId);
+  async findAllBySiteIdResponsibleData(@Param('siteId') siteId: number) {
+    const users = await this.usersService.findSiteUsersResponsibleData(siteId);
     return plainToClass(UserResponsible, users, {
       excludeExtraneousValues: true,
     });
@@ -221,6 +222,7 @@ export class UsersController {
       req.user.jti,
     );
   }
+  @FastSiteScoped()
   @Get('/:userId/positions')
   @SelfOrRoles({
     source: 'params',
@@ -235,8 +237,8 @@ export class UsersController {
   })
   @ApiParam({ name: 'userId', type: 'number' })
   @ApiOkResponse({ type: [PositionResponseDTO] })
-  getUserPositions(@Param('userId') userId: number) {
-    return this.usersService.findPositionsByUserId(+userId);
+  getUserPositions(@Param('userId') userId: number, @Request() req) {
+    return this.usersService.findPositionsByUserId(+userId, req.user.fastSiteId);
   }
 
   @Get('/site/:siteId/positions')

@@ -1,3 +1,4 @@
+import { errorDiagnostics } from '../common/exceptions/error-details';
 import {
   Injectable,
   NestInterceptor,
@@ -81,6 +82,7 @@ export class IncidentInterceptor implements NestInterceptor {
         platform = 'ios';
       }
 
+      const diagnostics = errorDiagnostics(error);
       const errorDetails = {
         timestamp,
         controller: controller,
@@ -105,11 +107,12 @@ export class IncidentInterceptor implements NestInterceptor {
           email: sanitizeForLogging({ email: user?.email || 'N/A' }).email,
         },
         error: {
-          name: error.name,
-          message: sanitizeTextForLogging(error.message),
+          name: diagnostics.errorType,
+          message: 'Request processing failed',
           status: error.status,
           statusCode: error.statusCode,
-          stack: sanitizeTextForLogging(error.stack),
+          stack: diagnostics.locations.join('\n'),
+          driverCode: diagnostics.driverCode,
         },
       };
 
@@ -161,7 +164,7 @@ ${errorDetails.userAgent}
         userId,
         userName,
         platform,
-        errorMessage: error.message,
+        errorMessage: diagnostics.errorType,
         url: request.url,
       });
 

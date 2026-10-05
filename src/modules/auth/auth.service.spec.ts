@@ -95,7 +95,11 @@ describe('AuthService token refresh', () => {
       status: 'A',
       userHasSites: [
         {
+          status: 'A',
+          deletedAt: null,
           site: {
+            status: 'A',
+            deletedAt: null,
             id: 1,
             name: 'Site',
             logo: 'logo.png',
@@ -124,6 +128,33 @@ describe('AuthService token refresh', () => {
       }),
     );
     expect(response.token).toBe('new-token');
+  });
+
+  it('keeps the old session valid when response enrichment fails', async () => {
+    jest
+      .mocked(jwtService.verifyAsync)
+      .mockResolvedValue({
+        id: 10,
+        jti: 'primary-session',
+        sessionType: PRIMARY_SESSION,
+      } as any);
+    jest
+      .mocked(usersService.findByIdWithSites)
+      .mockResolvedValue({
+        id: 10,
+        status: 'A',
+        userHasSites: [
+          { status: 'A', site: { id: 1, status: 'A', companyId: 2 } },
+        ],
+      } as any);
+    jest.mocked(usersService.getUserRoles).mockResolvedValue([]);
+    jest
+      .mocked(siteService.getCompanyName)
+      .mockRejectedValueOnce(new Error('DB unavailable'));
+    await expect(
+      service.refreshToken({ token: 'valid-token' }, 10, 'primary-session'),
+    ).rejects.toThrow();
+    expect(authSessionService.rotateSession).not.toHaveBeenCalled();
   });
 
   it('updates last login only for the authenticated user', async () => {

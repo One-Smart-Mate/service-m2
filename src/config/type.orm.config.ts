@@ -2,12 +2,15 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createDatabaseTlsOptions } from './transport-security.config';
 import { shouldSynchronizeDatabase } from './database-synchronize.config';
+import { utcMysqlDriver } from './database-utc.config';
 
 const typeOrmConfig = TypeOrmModule.forRootAsync({
   imports: [ConfigModule],
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     type: 'mysql' as const,
+    driver: utcMysqlDriver,
+    timezone: 'Z',
     username: configService.get<string>('DB_USERNAME'),
     password: configService.get<string>('DB_PASSWORD'),
     port: Number(configService.get<string>('DB_PORT')),
@@ -28,9 +31,8 @@ const typeOrmConfig = TypeOrmModule.forRootAsync({
     }),
     extra: {
       connectionLimit: 10,
-      acquireTimeout: 5000,
-      timeout: 30000,
-      reconnect: true,
+      connectTimeout: 5000,
+      enableKeepAlive: true,
       idleTimeout: 300000,
       maxIdle: 3,
     },

@@ -1,10 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
-import {
-  NotFoundCustomException,
-  NotFoundCustomExceptionType,
-} from 'src/common/exceptions/types/notFound.exception';
 import { LevelEntity } from '../level/entities/level.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
@@ -12,14 +12,21 @@ import { UsersPositionsEntity } from '../users/entities/users.positions.entity';
 import { PositionEntity } from './entities/position.entity';
 import { CreatePositionDto } from './models/dto/create.position.dto';
 import { UpdatePositionDto } from './models/dto/update.position.dto';
+import { UpdatePositionOrderDTO } from './models/dto/update-order.dto';
+import { UserEntity } from '../users/entities/user.entity';
+import {
+  validateOrder,
+  withSiteResourceTransaction,
+  withSiteTransaction,
+} from '../../common/database/site-transaction';
 
 @Injectable()
 export class PositionPersistence {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   create(input: CreatePositionDto): Promise<PositionEntity> {
-    return this.dataSource.transaction(async (manager) => {
-      const siteId = this.requiredId(input.siteId, 'siteId');
+    const siteId = this.requiredId(input.siteId, 'siteId');
+    return withSiteTransaction(this.dataSource, siteId, async (manager) => {
       const derived = await this.validateRelations(manager, input, siteId);
       const repository = manager.getRepository(PositionEntity);
       const last = await repository.findOne({
@@ -30,7 +37,7 @@ export class PositionPersistence {
       const position = repository.create({
         ...fields,
         ...derived,
-        order: Number(last?.order ?? 0) + 1,
+        order: validateOrder(Number(last?.order ?? 0) + 1),
         createdAt: new Date(),
       });
       const saved = await repository.save(position);
@@ -40,44 +47,78 @@ export class PositionPersistence {
   }
 
   update(input: UpdatePositionDto): Promise<PositionEntity> {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(PositionEntity);
-      const position = await repository.findOne({
-        where: { id: this.requiredId(input.id, 'id'), deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!position) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.POSITION);
-      }
-      const siteId = this.requiredId(position.siteId, 'siteId');
-      if (input.siteId !== undefined && Number(input.siteId) !== siteId) {
-        throw new BadRequestException('Position site cannot be reassigned');
-      }
+    return withSiteResourceTransaction(
+      this.dataSource,
+      PositionEntity,
+      input.id,
+      async (manager, position) => {
+        const repository = manager.getRepository(PositionEntity);
+        const siteId = this.requiredId(position.siteId, 'siteId');
+        if (input.siteId !== undefined && Number(input.siteId) !== siteId) {
+          throw new BadRequestException('Position site cannot be reassigned');
+        }
 
-      const replaceUsers =
-        input.userIds !== undefined && input.userIds !== null;
-      const userIds = replaceUsers
-        ? this.normalizeUserIds(input.userIds)
-        : this.normalizeUserIds(
-            (
-              await manager.find(UsersPositionsEntity, {
-                where: { positionId: position.id, deletedAt: IsNull() },
-              })
-            ).map(({ userId }) => userId),
+        const replaceUsers =
+          input.userIds !== undefined && input.userIds !== null;
+        const userIds = replaceUsers
+          ? this.normalizeUserIds(input.userIds)
+          : this.normalizeUserIds(
+              (
+                await manager.find(UsersPositionsEntity, {
+                  where: { positionId: position.id, deletedAt: IsNull() },
+                })
+              ).map(({ userId }) => userId),
+            );
+        const derived = await this.validateRelations(
+          manager,
+          { ...position, ...input, userIds },
+          siteId,
+        );
+        const fields = { ...input };
+        delete fields.userIds;
+        delete fields.id;
+        Object.assign(position, fields, derived, { updatedAt: new Date() });
+        const saved = await repository.save(position);
+        if (replaceUsers) await this.replaceUsers(manager, saved, userIds);
+        return saved;
+      },
+    );
+  }
+
+  updateOrder(input: UpdatePositionOrderDTO): Promise<PositionEntity> {
+    const newOrder = validateOrder(input.newOrder);
+    return withSiteResourceTransaction(
+      this.dataSource,
+      PositionEntity,
+      input.positionId,
+      async (manager, position) => {
+        if (position.status !== 'A')
+          throw new ConflictException('Only active positions can be reordered');
+        if (Number(position.order) === newOrder) return position;
+        const target = await manager.findOne(PositionEntity, {
+          where: {
+            siteId: Number(position.siteId),
+            status: 'A',
+            deletedAt: IsNull(),
+            order: newOrder,
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const updatedAt = new Date();
+        if (target)
+          await manager.update(
+            PositionEntity,
+            { id: target.id, deletedAt: IsNull() },
+            { order: position.order, updatedAt },
           );
-      const derived = await this.validateRelations(
-        manager,
-        { ...position, ...input, userIds },
-        siteId,
-      );
-      const fields = { ...input };
-      delete fields.userIds;
-      delete fields.id;
-      Object.assign(position, fields, derived, { updatedAt: new Date() });
-      const saved = await repository.save(position);
-      if (replaceUsers) await this.replaceUsers(manager, saved, userIds);
-      return saved;
-    });
+        await manager.update(
+          PositionEntity,
+          { id: position.id, deletedAt: IsNull() },
+          { order: newOrder, updatedAt },
+        );
+        return Object.assign(position, { order: newOrder, updatedAt });
+      },
+    );
   }
 
   private async validateRelations(
@@ -133,20 +174,24 @@ export class PositionPersistence {
     for (const id of memberIds) {
       const membership = await manager.findOne(UserHasSitesEntity, {
         where: {
-          user: { id, status: 'A', deletedAt: IsNull() },
+          user: { id },
           site: { id: siteId },
           status: 'A',
           deletedAt: IsNull(),
         },
-        relations: { user: true },
         lock: { mode: 'pessimistic_read' },
       });
-      if (!membership) {
+      // Do not lock a joined user after the site: credential writers acquire
+      // users before sites. READ COMMITTED observes the account independently.
+      const user = await manager.findOne(UserEntity, {
+        where: { id, status: 'A', deletedAt: IsNull() },
+      });
+      if (!membership || !user) {
         throw new BadRequestException(
           'Position users must be active members of its site',
         );
       }
-      if (id === responsibleId) responsibleName = membership.user.name;
+      if (id === responsibleId) responsibleName = user.name;
     }
     const root = levels[levels.length - 1];
     return {

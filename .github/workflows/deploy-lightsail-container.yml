@@ -6,6 +6,10 @@ on:
       - develop
       - main
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -23,7 +27,10 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Block critical production vulnerabilities
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Block production vulnerabilities of moderate severity or higher
         run: npm run audit:prod
 
       - name: Configure AWS credentials
@@ -60,12 +67,63 @@ jobs:
           echo "✅ APP_VERSION=$VERSION"
 
 
+      - name: Validate required deployment configuration
+        env:
+          LIGHTSAIL_SERVICE_NAME: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_HOST_IA: ${{ secrets.DB_HOST_IA }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_NAME_IA: ${{ secrets.DB_NAME_IA }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PASSWORD_IA: ${{ secrets.DB_PASSWORD_IA }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_PORT_IA: ${{ secrets.DB_PORT_IA }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_USERNAME_IA: ${{ secrets.DB_USERNAME_IA }}
+          FIREBASE_AUTH_PROVIDER: ${{ secrets.FIREBASE_AUTH_PROVIDER }}
+          FIREBASE_AUTH_URI: ${{ secrets.FIREBASE_AUTH_URI }}
+          FIREBASE_CLIENT: ${{ secrets.FIREBASE_CLIENT }}
+          FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
+          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_TOKEN_URI: ${{ secrets.FIREBASE_TOKEN_URI }}
+          FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MAIL_MAILER: ${{ secrets.MAIL_MAILER }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_ENCRYPTION: ${{ secrets.MAIL_ENCRYPTION }}
+          MAIL_FROM_ADDRESS: ${{ secrets.MAIL_FROM_ADDRESS }}
+          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME }}
+          URL_WEB: ${{ secrets.URL_WEB }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          USER_ONE: ${{ secrets.USER_ONE }}
+          USER_TWO: ${{ secrets.USER_TWO }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_WABA_ID: ${{ secrets.WHATSAPP_WABA_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          CLOUDFLARE_R2_PUBLIC_URL: ${{ secrets.CLOUDFLARE_R2_PUBLIC_URL }}
+          CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+          DB_SSL_ENABLED: ${{ secrets.DB_SSL_ENABLED }}
+          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+          DB_IA_SSL_ENABLED: ${{ secrets.DB_IA_SSL_ENABLED }}
+          DB_IA_SSL_CA: ${{ secrets.DB_IA_SSL_CA }}
+        run: node scripts/lightsail-deployment.cjs --verify
+
       - name: Build Docker image
         env:
           LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
         run: |
-          IMAGE=$LIGHTSAIL_SERVICE:${{ env.APP_VERSION }}
-          docker build -t $IMAGE .
+          IMAGE="$LIGHTSAIL_SERVICE:$APP_VERSION"
+          docker build -t "$IMAGE" .
 
       - name: Install lightsailctl plugin
         run: |
@@ -80,7 +138,7 @@ jobs:
           LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          IMAGE=$LIGHTSAIL_SERVICE:${{ env.APP_VERSION }}
+          IMAGE="$LIGHTSAIL_SERVICE:$APP_VERSION"
           OUTPUT=$(aws lightsail push-container-image \
             --service-name "$LIGHTSAIL_SERVICE" \
             --label "$LIGHTSAIL_SERVICE" \
@@ -99,76 +157,117 @@ jobs:
           echo "✅ Image registered as: $IMAGE_URI"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
+      - name: Verify configuration and database before deployment
+        env:
+          LIGHTSAIL_SERVICE_NAME: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_HOST_IA: ${{ secrets.DB_HOST_IA }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_NAME_IA: ${{ secrets.DB_NAME_IA }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PASSWORD_IA: ${{ secrets.DB_PASSWORD_IA }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_PORT_IA: ${{ secrets.DB_PORT_IA }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_USERNAME_IA: ${{ secrets.DB_USERNAME_IA }}
+          FIREBASE_AUTH_PROVIDER: ${{ secrets.FIREBASE_AUTH_PROVIDER }}
+          FIREBASE_AUTH_URI: ${{ secrets.FIREBASE_AUTH_URI }}
+          FIREBASE_CLIENT: ${{ secrets.FIREBASE_CLIENT }}
+          FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
+          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_TOKEN_URI: ${{ secrets.FIREBASE_TOKEN_URI }}
+          FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MAIL_MAILER: ${{ secrets.MAIL_MAILER }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_ENCRYPTION: ${{ secrets.MAIL_ENCRYPTION }}
+          MAIL_FROM_ADDRESS: ${{ secrets.MAIL_FROM_ADDRESS }}
+          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME }}
+          URL_WEB: ${{ secrets.URL_WEB }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          USER_ONE: ${{ secrets.USER_ONE }}
+          USER_TWO: ${{ secrets.USER_TWO }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_WABA_ID: ${{ secrets.WHATSAPP_WABA_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          CLOUDFLARE_R2_PUBLIC_URL: ${{ secrets.CLOUDFLARE_R2_PUBLIC_URL }}
+          CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+          DB_SSL_ENABLED: ${{ secrets.DB_SSL_ENABLED }}
+          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+          DB_IA_SSL_ENABLED: ${{ secrets.DB_IA_SSL_ENABLED }}
+          DB_IA_SSL_CA: ${{ secrets.DB_IA_SSL_CA }}
+        run: |
+          node scripts/lightsail-deployment.cjs --verify
+          IMAGE="$LIGHTSAIL_SERVICE_NAME:$APP_VERSION"
+          docker run --rm \
+            --env DB_HOST --env DB_NAME --env DB_PASSWORD --env DB_PORT --env DB_USERNAME \
+            --env DB_SSL_ENABLED --env DB_SSL_CA \
+            "$IMAGE" node dist/scripts/verify-database-readiness.js
+
       - name: Create deployment
         env:
-          LIGHTSAIL_SERVICE: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          LIGHTSAIL_SERVICE_NAME: ${{ secrets.LIGHTSAIL_SERVICE_NAME }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_HOST_IA: ${{ secrets.DB_HOST_IA }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_NAME_IA: ${{ secrets.DB_NAME_IA }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_PASSWORD_IA: ${{ secrets.DB_PASSWORD_IA }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_PORT_IA: ${{ secrets.DB_PORT_IA }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_USERNAME_IA: ${{ secrets.DB_USERNAME_IA }}
+          FIREBASE_AUTH_PROVIDER: ${{ secrets.FIREBASE_AUTH_PROVIDER }}
+          FIREBASE_AUTH_URI: ${{ secrets.FIREBASE_AUTH_URI }}
+          FIREBASE_CLIENT: ${{ secrets.FIREBASE_CLIENT }}
+          FIREBASE_CLIENT_ID: ${{ secrets.FIREBASE_CLIENT_ID }}
+          FIREBASE_EMAIL: ${{ secrets.FIREBASE_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          FIREBASE_PRIVATE_KEY_ID: ${{ secrets.FIREBASE_PRIVATE_KEY_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_TOKEN_URI: ${{ secrets.FIREBASE_TOKEN_URI }}
+          FIREBASE_UNIVERSE_DOMAIN: ${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          MAIL_MAILER: ${{ secrets.MAIL_MAILER }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_PORT: ${{ secrets.MAIL_PORT }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          MAIL_ENCRYPTION: ${{ secrets.MAIL_ENCRYPTION }}
+          MAIL_FROM_ADDRESS: ${{ secrets.MAIL_FROM_ADDRESS }}
+          MAIL_FROM_NAME: ${{ secrets.MAIL_FROM_NAME }}
+          URL_WEB: ${{ secrets.URL_WEB }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          USER_ONE: ${{ secrets.USER_ONE }}
+          USER_TWO: ${{ secrets.USER_TWO }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
+          WHATSAPP_WABA_ID: ${{ secrets.WHATSAPP_WABA_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ secrets.CLOUDFLARE_R2_BUCKET_NAME }}
+          CLOUDFLARE_R2_PUBLIC_URL: ${{ secrets.CLOUDFLARE_R2_PUBLIC_URL }}
+          CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+          DB_SSL_ENABLED: ${{ secrets.DB_SSL_ENABLED }}
+          DB_SSL_CA: ${{ secrets.DB_SSL_CA }}
+          DB_IA_SSL_ENABLED: ${{ secrets.DB_IA_SSL_ENABLED }}
+          DB_IA_SSL_CA: ${{ secrets.DB_IA_SSL_CA }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          IMAGE=${{ env.IMAGE_URI }}
-
-          echo '{
-            "'"$LIGHTSAIL_SERVICE"'": {
-              "image": "'"$IMAGE"'",
-              "ports": { "3000": "HTTP" },
-              "environment": {
-                 "DEPLOY_ENV": "'"${{ env.DEPLOY_ENV }}"'",
-                 "APP_VERSION": "'"${{ env.APP_VERSION }}"'",
-                 "DB_HOST": "'"${{ secrets.DB_HOST }}"'",
-                 "DB_HOST_IA": "'"${{ secrets.DB_HOST_IA }}"'",
-                 "DB_NAME": "'"${{ secrets.DB_NAME }}"'",
-                 "DB_NAME_IA": "'"${{ secrets.DB_NAME_IA }}"'",
-                 "DB_PASSWORD": "'"${{ secrets.DB_PASSWORD }}"'",
-                 "DB_PASSWORD_IA": "'"${{ secrets.DB_PASSWORD_IA }}"'",
-                 "DB_PORT": "'"${{ secrets.DB_PORT }}"'",
-                 "DB_PORT_IA": "'"${{ secrets.DB_PORT_IA }}"'",
-                 "DB_USERNAME": "'"${{ secrets.DB_USERNAME }}"'",
-                 "DB_USERNAME_IA": "'"${{ secrets.DB_USERNAME_IA }}"'",
-                 "FIREBASE_AUTH_PROVIDER": "'"${{ secrets.FIREBASE_AUTH_PROVIDER }}"'",
-                 "FIREBASE_AUTH_URI": "'"${{ secrets.FIREBASE_AUTH_URI }}"'",
-                 "FIREBASE_CLIENT": "'"${{ secrets.FIREBASE_CLIENT }}"'",
-                 "FIREBASE_CLIENT_ID": "'"${{ secrets.FIREBASE_CLIENT_ID }}"'",
-                 "FIREBASE_EMAIL": "'"${{ secrets.FIREBASE_EMAIL }}"'",
-                 "FIREBASE_PRIVATE_KEY": "'"${{ secrets.FIREBASE_PRIVATE_KEY }}"'",
-                 "FIREBASE_PRIVATE_KEY_ID": "'"${{ secrets.FIREBASE_PRIVATE_KEY_ID }}"'",
-                 "FIREBASE_PROJECT_ID": "'"${{ secrets.FIREBASE_PROJECT_ID }}"'",
-                 "FIREBASE_TOKEN_URI": "'"${{ secrets.FIREBASE_TOKEN_URI }}"'",
-                 "FIREBASE_UNIVERSE_DOMAIN": "'"${{ secrets.FIREBASE_UNIVERSE_DOMAIN }}"'",
-                 "GEMINI_API_KEY": "'"${{ secrets.GEMINI_API_KEY }}"'",
-                 "MAIL_MAILER": "'"${{ secrets.MAIL_MAILER }}"'",
-                 "MAIL_HOST": "'"${{ secrets.MAIL_HOST }}"'",
-                 "MAIL_PORT": "'"${{ secrets.MAIL_PORT }}"'",
-                 "MAIL_USERNAME": "'"${{ secrets.MAIL_USERNAME }}"'",
-                 "MAIL_PASSWORD": "'"${{ secrets.MAIL_PASSWORD }}"'",
-                 "MAIL_ENCRYPTION": "'"${{ secrets.MAIL_ENCRYPTION }}"'",
-                 "MAIL_FROM_ADDRESS": "'"${{ secrets.MAIL_FROM_ADDRESS }}"'",
-                 "MAIL_FROM_NAME": "'"${{ secrets.MAIL_FROM_NAME }}"'",
-                 "URL_WEB": "'"${{ secrets.URL_WEB }}"'",
-                 "JWT_EXPIRES_IN": "'"${{ secrets.JWT_EXPIRES_IN }}"'",
-                 "JWT_SECRET": "'"${{ secrets.JWT_SECRET }}"'",
-                 "USER_ONE": "'"${{ secrets.USER_ONE }}"'",
-                 "USER_TWO": "'"${{ secrets.USER_TWO }}"'",
-                 "WHATSAPP_ACCESS_TOKEN": "'"${{ secrets.WHATSAPP_ACCESS_TOKEN }}"'",
-                 "WHATSAPP_PHONE_NUMBER_ID": "'"${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"'",
-                 "WHATSAPP_WABA_ID": "'"${{ secrets.WHATSAPP_WABA_ID }}"'"
-              }
-            }
-          }' > containers.json
-
-          echo '{
-            "containerName": "'"$LIGHTSAIL_SERVICE"'",
-            "containerPort": 3000,
-            "healthCheck": {
-              "path": "/api",
-              "successCodes": "200",
-              "healthyThreshold": 2,
-              "unhealthyThreshold": 2,
-              "timeoutSeconds": 5,
-              "intervalSeconds": 10
-            }
-          }' > public.json
-
+          node scripts/lightsail-deployment.cjs
           aws lightsail create-container-service-deployment \
-            --service-name "$LIGHTSAIL_SERVICE" \
+            --service-name "$LIGHTSAIL_SERVICE_NAME" \
             --containers file://containers.json \
             --public-endpoint file://public.json \
             --region "$AWS_REGION"

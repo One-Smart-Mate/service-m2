@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { TransformInterceptor } from './interceptors/transform.interceptor';
-import { HttpExceptionFilter } from './common/exceptions/http.exception.filter';
 
 async function main() {
   const app = await NestFactory.create(AppModule, { cors: true });
@@ -24,7 +23,6 @@ async function main() {
       transform: true,
     }),
   );
-  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector),new TransformInterceptor());
   const document = SwaggerModule.createDocument(app, config, {
     operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,

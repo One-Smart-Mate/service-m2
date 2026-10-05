@@ -1,3 +1,4 @@
+import { FAST_SESSION } from '../models/auth-token.payload';
 import {
   CanActivate,
   ExecutionContext,
@@ -58,14 +59,24 @@ export class RolesGuard implements CanActivate {
       normalizeRole,
     );
 
-    if (userRoles.includes(PLATFORM_ADMIN_ROLE)) {
+    if (
+      request.user.sessionType !== FAST_SESSION &&
+      userRoles.includes(PLATFORM_ADMIN_ROLE)
+    ) {
       return true;
     }
 
     const allowedRoles = (selfOrRoles?.roles ?? requiredRoles ?? []).map(
       normalizeRole,
     );
-    if (allowedRoles.some((role) => userRoles.includes(role))) {
+    if (
+      allowedRoles.some(
+        (role) =>
+          userRoles.includes(role) &&
+          (request.user.sessionType !== FAST_SESSION ||
+            role !== PLATFORM_ADMIN_ROLE),
+      )
+    ) {
       return true;
     }
 

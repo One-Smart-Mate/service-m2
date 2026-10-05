@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PriorityEntity } from './entities/priority.entity';
@@ -169,7 +170,7 @@ export class PriorityService {
     } catch (error) {
       this.logger.warn(
         `Priority ${siteId} was saved but catalog notification failed`,
-        error instanceof Error ? error.stack : undefined,
+        JSON.stringify(errorDiagnostics(error)),
       );
     }
   }

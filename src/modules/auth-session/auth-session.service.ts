@@ -204,13 +204,15 @@ export class AuthSessionService {
     currentSessionId: string,
     userId: number,
     replacement: CreateAuthSession,
+    siteId: number,
   ): Promise<boolean> {
     return this.sessionRepository.manager.transaction(async (manager) => {
       // Serialize refresh with credential replacement and account disablement.
       const users = await this.lockActiveUsers(manager, [userId]);
       if (
         !users.has(Number(userId)) ||
-        Number(replacement.userId) !== Number(userId)
+        Number(replacement.userId) !== Number(userId) ||
+        !(await this.lockMemberships(manager, siteId, [userId]))
       ) {
         return false;
       }

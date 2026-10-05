@@ -57,4 +57,45 @@ describe('IncidentInterceptor sensitive data', () => {
     expect(description).not.toContain('url-token');
     expect(description).not.toContain('jwt-value');
   });
+  it('never persists SQL, bound parameters or the raw error message', async () => {
+    const create = jest.fn().mockResolvedValue(undefined);
+    const interceptor = new IncidentInterceptor(
+      { create } as any,
+      { logProcess: jest.fn(), logException: jest.fn() } as any,
+      {} as any,
+    );
+    const error = Object.assign(
+      new Error(
+        'SELECT password FROM users WHERE password = raw-bound-credential',
+      ),
+      {
+        name: 'QueryFailedError',
+        query: 'SELECT secret FROM users',
+        parameters: ['raw-bound-credential'],
+        driverError: {
+          code: 'ER_PARSE_ERROR',
+          sqlMessage: 'raw-bound-credential',
+        },
+      },
+    );
+    const context = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          method: 'POST',
+          url: '/fixture',
+          headers: {},
+          body: {},
+          query: {},
+          params: {},
+        }),
+      }),
+      getClass: () => ({ name: 'Fixture' }),
+      getHandler: () => ({ name: 'fixture' }),
+    };
+    await (interceptor as any).processIncident(error, context);
+    const description = create.mock.calls[0][0].description;
+    expect(description).not.toContain('raw-bound-credential');
+    expect(description).not.toContain('SELECT secret');
+    expect(description).not.toContain('SELECT password');
+  });
 });

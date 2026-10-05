@@ -1,3 +1,5 @@
+import { OplMstr } from './entities/oplMstr.entity';
+import { LevelEntity } from '../level/entities/level.entity';
 import { BadRequestException } from '@nestjs/common';
 import { SITE_RESOURCE_ACCESS_KEY } from 'src/common/decorators/site-resource-access.decorator';
 import { OplLevelsController } from '../oplLevels/oplLevels.controller';
@@ -198,11 +200,26 @@ describe('OPL read tenant isolation', () => {
   });
 
   it('rejects an OPL-to-level relation across sites', async () => {
+    const opl = { id: 11, siteId: 7 };
+    const source: any = {
+      getRepository: () => ({ findOne: jest.fn().mockResolvedValue(opl) }),
+      transaction: (_isolation, work) =>
+        work({
+          findOne: (entity: unknown) =>
+            Promise.resolve(
+              entity === OplMstr
+                ? opl
+                : entity === LevelEntity
+                  ? { id: 41, siteId: 8 }
+                  : { id: 7 },
+            ),
+        }),
+    };
     const service = new OplLevelsService(
-      { create: jest.fn(), save: jest.fn() } as any,
-      { findOneBy: jest.fn().mockResolvedValue({ id: 11, siteId: 7 }) } as any,
+      { manager: { connection: source } } as any,
       {} as any,
-      { findOneBy: jest.fn().mockResolvedValue({ id: 41, siteId: 8 }) } as any,
+      {} as any,
+      {} as any,
     );
 
     await expect(

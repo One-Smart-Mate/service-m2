@@ -1,3 +1,8 @@
+import {
+  validateOrder,
+  positiveDatabaseId,
+} from '../../common/database/site-transaction';
+import { withLockedOpl } from '../oplMstr/opl-transaction';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, IsNull } from 'typeorm';
@@ -5,7 +10,6 @@ import {
   NotFoundCustomException,
   NotFoundCustomExceptionType,
 } from 'src/common/exceptions/types/notFound.exception';
-import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { OplDetailsEntity } from './entities/oplDetails.entity';
 import { CreateOplDetailsDTO } from './models/dto/createOplDetails.dto';
 import { UpdateOplDetailOrderDTO } from './models/dto/update-order.dto';
@@ -16,14 +20,7 @@ export class OplDetailPersistence {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   create(dto: CreateOplDetailsDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const opl = await manager.getRepository(OplMstr).findOne({
-        where: { id: dto.oplId, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_read' },
-      });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
+    return withLockedOpl(this.dataSource, dto.oplId, async (manager, opl) => {
       const repository = manager.getRepository(OplDetailsEntity);
       const lastDetail = await repository.findOne({
         where: { oplId: opl.id, deletedAt: IsNull() },
@@ -38,24 +35,14 @@ export class OplDetailPersistence {
           ...clientData,
           siteId: opl.siteId,
           oplId: opl.id,
-          order: (lastDetail?.order ?? 0) + 1,
+          order: validateOrder(Number(lastDetail?.order ?? 0) + 1),
         }),
       );
     });
   }
 
   update(dto: UpdateOplDetailsDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(OplDetailsEntity);
-      const detail = await repository.findOne({
-        where: { id: dto.id, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!detail) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.OPL_DETAILS,
-        );
-      }
+    return this.withDetail(dto.id, async (repository, detail) => {
       if (
         dto.oplId !== undefined &&
         Number(dto.oplId) !== Number(detail.oplId)
@@ -75,17 +62,8 @@ export class OplDetailPersistence {
   }
 
   updateOrder(dto: UpdateOplDetailOrderDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(OplDetailsEntity);
-      const detail = await repository.findOne({
-        where: { id: dto.detailId, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!detail) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.OPL_DETAILS,
-        );
-      }
+    validateOrder(dto.newOrder);
+    return this.withDetail(dto.detailId, async (repository, detail) => {
       if (detail.order === dto.newOrder) {
         return detail;
       }
@@ -102,11 +80,46 @@ export class OplDetailPersistence {
       detail.order = dto.newOrder;
       if (target) {
         target.order = previousOrder;
-        await repository.save([target, detail]);
+        await repository.update(target.id, { order: previousOrder });
+        await repository.update(detail.id, { order: dto.newOrder });
       } else {
-        await repository.save(detail);
+        await repository.update(detail.id, { order: dto.newOrder });
       }
       return detail;
+    });
+  }
+  delete(id: number) {
+    return this.withDetail(id, (repository, detail) =>
+      repository.softDelete(detail.id),
+    );
+  }
+
+  private async withDetail<T>(
+    rawId: number,
+    work: (
+      repository: import('typeorm').Repository<OplDetailsEntity>,
+      detail: OplDetailsEntity,
+    ) => Promise<T>,
+  ): Promise<T> {
+    const id = positiveDatabaseId(rawId);
+    const snapshot = await this.dataSource
+      .getRepository(OplDetailsEntity)
+      .findOne({ where: { id, deletedAt: IsNull() } });
+    if (!snapshot)
+      throw new NotFoundCustomException(
+        NotFoundCustomExceptionType.OPL_DETAILS,
+      );
+    return withLockedOpl(this.dataSource, snapshot.oplId, async (manager) => {
+      const repository = manager.getRepository(OplDetailsEntity);
+      const detail = await repository.findOne({
+        where: { id, oplId: snapshot.oplId, deletedAt: IsNull() },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!detail)
+        throw new NotFoundCustomException(
+          NotFoundCustomExceptionType.OPL_DETAILS,
+        );
+      return work(repository, detail);
     });
   }
 }

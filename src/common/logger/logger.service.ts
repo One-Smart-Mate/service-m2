@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { sanitizeForLogging, sanitizeTextForLogging } from './log-sanitizer';
+import { errorDiagnostics } from '../exceptions/error-details';
 
 @Injectable()
 export class CustomLoggerService extends Logger {
@@ -68,8 +69,7 @@ export class CustomLoggerService extends Logger {
 
   logException(context: string, method: string, error: any) {
     this.error(
-      `Error in ${context}.${method}: ${sanitizeTextForLogging(error?.message)}`,
-      sanitizeTextForLogging(error?.stack),
+      { event: 'request.error', context, method, ...errorDiagnostics(error) },
       context,
     );
   }

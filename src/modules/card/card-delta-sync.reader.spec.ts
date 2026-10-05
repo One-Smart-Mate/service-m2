@@ -27,10 +27,27 @@ describe('CardDeltaSyncReader', () => {
       .mocked(manager.query)
       .mockResolvedValueOnce([{ syncUntil }])
       .mockResolvedValueOnce([{ id: 25 }])
+      .mockResolvedValueOnce([{ revision: '3' }])
       .mockResolvedValueOnce([
-        { id: '1', changedAt: firstChange },
-        { id: '2', changedAt: secondChange },
-        { id: '3', changedAt: new Date('2026-09-24T11:45:00.000Z') },
+        {
+          id: '1',
+          revision: '1',
+          changedAt: firstChange,
+          cardUUID: 'active-card',
+          deletedAt: null,
+        },
+        {
+          id: '2',
+          revision: '2',
+          changedAt: secondChange,
+          cardUUID: 'deleted-card',
+          deletedAt: new Date('2026-09-24T11:29:00.000Z'),
+        },
+        {
+          id: '3',
+          revision: '3',
+          changedAt: new Date('2026-09-24T11:45:00.000Z'),
+        },
       ]);
     jest
       .mocked(manager.find)
@@ -91,31 +108,17 @@ describe('CardDeltaSyncReader', () => {
         },
       ],
     });
-    expect(CardSyncCursorPolicy.decode(result.nextCursor)).toEqual({
-      changedAt: secondChange,
+    expect(CardSyncCursorPolicy.decode(result.nextCursor, 25)).toEqual({
+      revision: '2',
       id: '2',
     });
 
-    const deltaCall = jest.mocked(manager.query).mock.calls[2];
-    expect(String(deltaCall[0])).toContain('c.sync_changed_at');
-    expect(String(deltaCall[0])).toContain('e.sync_changed_at');
-    expect(String(deltaCall[0])).toContain('UNION ALL');
+    const deltaCall = jest.mocked(manager.query).mock.calls[3];
+    expect(String(deltaCall[0])).toContain('card_sync_changes');
     expect(String(deltaCall[0])).toContain(
-      'ORDER BY changedAt ASC, changes.id ASC',
+      'ORDER BY revision ASC, card_id ASC',
     );
-    expect(deltaCall[1]).toEqual([
-      25,
-      syncUntil,
-      new Date(0),
-      new Date(0),
-      '0',
-      25,
-      syncUntil,
-      new Date(0),
-      new Date(0),
-      '0',
-      3,
-    ]);
+    expect(deltaCall[1]).toEqual([25, '3', '0', '0', '0', 3]);
     expect(manager.find).toHaveBeenNthCalledWith(
       2,
       EvidenceEntity,
@@ -135,14 +138,15 @@ describe('CardDeltaSyncReader', () => {
       .mocked(manager.query)
       .mockResolvedValueOnce([{ syncUntil }])
       .mockResolvedValueOnce([{ id: 25 }])
+      .mockResolvedValueOnce([{ revision: '3' }])
       .mockResolvedValueOnce([]);
 
     const result = await reader.read(25);
 
     expect(result.changes).toEqual([]);
     expect(result.hasMore).toBe(false);
-    expect(CardSyncCursorPolicy.decode(result.nextCursor)).toEqual({
-      changedAt: syncUntil,
+    expect(CardSyncCursorPolicy.decode(result.nextCursor, 25)).toEqual({
+      revision: '3',
       id: '0',
     });
     expect(manager.find).not.toHaveBeenCalled();
@@ -154,21 +158,27 @@ describe('CardDeltaSyncReader', () => {
       .mocked(manager.query)
       .mockResolvedValueOnce([{ syncUntil }])
       .mockResolvedValueOnce([{ id: 25 }])
-      .mockResolvedValueOnce([{ id: '9', changedAt: syncUntil }]);
-    jest.mocked(manager.find).mockResolvedValueOnce([
-      {
-        id: 9,
-        siteId: 25,
-        cardUUID: 'card-at-boundary',
-        nodeName: 'Machine',
-        deletedAt: null,
-      } as CardEntity,
-    ]).mockResolvedValueOnce([]);
+      .mockResolvedValueOnce([{ revision: '3' }])
+      .mockResolvedValueOnce([
+        { id: '9', revision: '3', changedAt: syncUntil },
+      ]);
+    jest
+      .mocked(manager.find)
+      .mockResolvedValueOnce([
+        {
+          id: 9,
+          siteId: 25,
+          cardUUID: 'card-at-boundary',
+          nodeName: 'Machine',
+          deletedAt: null,
+        } as CardEntity,
+      ])
+      .mockResolvedValueOnce([]);
 
     const result = await reader.read(25);
 
-    expect(CardSyncCursorPolicy.decode(result.nextCursor)).toEqual({
-      changedAt: syncUntil,
+    expect(CardSyncCursorPolicy.decode(result.nextCursor, 25)).toEqual({
+      revision: '3',
       id: '9',
     });
   });
@@ -194,6 +204,7 @@ describe('CardDeltaSyncReader', () => {
         { syncUntil: new Date('2026-09-24T12:00:00.000Z') },
       ])
       .mockResolvedValueOnce([{ id: 25 }])
+      .mockResolvedValueOnce([{ revision: '3' }])
       .mockRejectedValueOnce(new Error('delta read failed'));
 
     await expect(reader.read(25)).rejects.toThrow('delta read failed');

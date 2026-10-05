@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import { Controller, Get, Post, Put, Param, Body, Delete, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltMstrService } from './ciltMstr.service';
@@ -35,6 +36,7 @@ export class CiltMstrController {
     return await this.ciltMstrService.findBySiteId(siteId);
   }
 
+  @FastSiteScoped()
   @Post('user')
   @SelfOrRoles({
     source: 'body',
@@ -54,10 +56,12 @@ export class CiltMstrController {
     return await this.ciltMstrService.findCiltsByUserId(
       findByUserDto.userId,
       findByUserDto.date,
-      userTimezone
+      userTimezone,
+      req.user.fastSiteId,
     );
   }
   
+  @FastSiteScoped()
   @Get('user-read-only/:userId/:date')
   @SelfOrRoles({
     source: 'params',
@@ -82,7 +86,8 @@ export class CiltMstrController {
     return await this.ciltMstrService.findCiltsByUserIdReadOnly(
       userId,
       date,
-      userTimezone
+      userTimezone,
+      req.user.fastSiteId,
     );
   }
 

@@ -152,7 +152,7 @@ export class CiltMstrPositionLevelsService {
           NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS,
         );
       }
-      await this.ciltMstrPositionLevelsRepository.softDelete(id);
+      await this.configurationPersistence.deleteAssignment(id);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -166,7 +166,7 @@ export class CiltMstrPositionLevelsService {
           NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS,
         );
       }
-      return await this.ciltMstrPositionLevelsRepository.softDelete(id);
+      return await this.configurationPersistence.deleteAssignment(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { OplAccessPersistence } from './opl-access.persistence';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -86,7 +87,7 @@ export class OplMstrService {
       // Record this user's access to the OPL (best-effort; never block the read).
       if (userId) {
         this.recordUserAccess(Number(userId), opl).catch((e) =>
-          this.logger.warn(`Failed to record OPL access: ${e?.message ?? e}`),
+          this.logger.warn(`Failed to record OPL access: ${JSON.stringify(errorDiagnostics(e))}`),
         );
       }
 
@@ -237,24 +238,7 @@ export class OplMstrService {
       return await this.attachDetailsAndLevels(opls, siteId);
     } catch (exception) {
       if (exception instanceof QueryFailedError) {
-        const driverError = exception.driverError as {
-          code?: string;
-          sqlState?: string;
-          sqlMessage?: string;
-        };
-        // Keep the underlying SQL cause in server logs, not in the API response.
-        // Bound search parameters are intentionally omitted.
-        this.logger.error(
-          {
-            message: 'OPL search database query failed',
-            siteId,
-            code: driverError.code,
-            sqlState: driverError.sqlState,
-            detail: driverError.sqlMessage ?? exception.message,
-            sql: exception.query,
-          },
-          exception.stack,
-        );
+        this.logger.error({ event: 'opl.search.failed', siteId, ...errorDiagnostics(exception) });
       }
       HandleException.exception(exception);
     }
@@ -286,12 +270,7 @@ export class OplMstrService {
 
   delete = async (id: number) => {
     try {
-      const opl = await this.oplRepository.findOneBy({ id });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-
-      return await this.oplRepository.softDelete(id);
+      return await this.oplMasterPersistence.delete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

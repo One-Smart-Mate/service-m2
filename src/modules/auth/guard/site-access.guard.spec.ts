@@ -1,3 +1,5 @@
+import { FAST_SITE_SCOPED_KEY } from 'src/common/decorators/fast-site-scoped.decorator';
+import { FAST_SESSION } from '../models/auth-token.payload';
 import {
   BadRequestException,
   ExecutionContext,
@@ -29,6 +31,7 @@ import {
 
 describe('SiteAccessGuard', () => {
   const metadata = {
+    fastSiteScoped: false,
     isPublic: false,
     skipSiteAccess: false,
     requireSiteAccess: false,
@@ -36,6 +39,7 @@ describe('SiteAccessGuard', () => {
   };
   const reflector = {
     getAllAndOverride: jest.fn((key: string) => {
+      if (key === FAST_SITE_SCOPED_KEY) return metadata.fastSiteScoped;
       if (key === IS_PUBLIC_KEY) return metadata.isPublic;
       if (key === SKIP_SITE_ACCESS_KEY) return metadata.skipSiteAccess;
       if (key === REQUIRE_SITE_ACCESS_KEY) return metadata.requireSiteAccess;
@@ -96,6 +100,7 @@ describe('SiteAccessGuard', () => {
     }) as unknown as ExecutionContext;
 
   beforeEach(() => {
+    metadata.fastSiteScoped = false;
     metadata.isPublic = false;
     metadata.skipSiteAccess = false;
     metadata.requireSiteAccess = false;
@@ -458,5 +463,46 @@ describe('SiteAccessGuard', () => {
       NotFoundException,
     );
     expect(usersService.getUserRoles).not.toHaveBeenCalled();
+  });
+  it('denies another site even when the effective fast user is a platform admin', async () => {
+    jest.mocked(usersService.getAccessibleSiteIds).mockResolvedValue(null);
+    await expect(
+      guard.canActivate(
+        createContext({
+          user: { id: 7, sessionType: FAST_SESSION, fastSiteId: 2 },
+          params: { siteId: 3 },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+  it('denies global endpoints and skip-site metadata for fast sessions', async () => {
+    metadata.skipSiteAccess = true;
+    await expect(
+      guard.canActivate(
+        createContext({
+          user: { id: 7, sessionType: FAST_SESSION, fastSiteId: 2 },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+  it('allows fast operations only in the signed site', async () => {
+    await expect(
+      guard.canActivate(
+        createContext({
+          user: { id: 7, sessionType: FAST_SESSION, fastSiteId: 2 },
+          body: { siteId: 2 },
+        }),
+      ),
+    ).resolves.toBe(true);
+  });
+  it('allows an explicitly scoped self handler without expanding membership scope', async () => {
+    metadata.fastSiteScoped = true;
+    await expect(
+      guard.canActivate(
+        createContext({
+          user: { id: 7, sessionType: FAST_SESSION, fastSiteId: 2 },
+        }),
+      ),
+    ).resolves.toBe(true);
   });
 });

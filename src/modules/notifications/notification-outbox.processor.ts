@@ -22,6 +22,7 @@ export class NotificationOutboxProcessor {
   private static readonly BATCH_SIZE = 20;
   private static readonly MAX_ATTEMPTS = 8;
   private static readonly STALE_LOCK_MILLISECONDS = 5 * 60 * 1000;
+  private static readonly LEASE_RENEWAL_MILLISECONDS = 60_000;
   private readonly logger = new Logger(NotificationOutboxProcessor.name);
   private processing = false;
 
@@ -92,6 +93,15 @@ export class NotificationOutboxProcessor {
         return null;
       }
 
+      if (event.attempts >= NotificationOutboxProcessor.MAX_ATTEMPTS) {
+        event.status = NotificationOutboxStatus.DEAD;
+        event.lockedAt = null;
+        event.lastError = 'Notification attempt limit reached';
+        event.updatedAt = now;
+        await manager.save(NotificationOutboxEntity, event);
+        return null;
+      }
+
       event.status = NotificationOutboxStatus.PROCESSING;
       event.lockedAt = now;
       event.attempts += 1;
@@ -101,21 +111,46 @@ export class NotificationOutboxProcessor {
   }
 
   private async processEvent(event: NotificationOutboxEntity): Promise<void> {
+    let renewing = false;
+    let leaseLost = false;
+    const timer = setInterval(() => {
+      if (renewing || leaseLost) return;
+      renewing = true;
+      const now = new Date();
+      void this.dataSource
+        .getRepository(NotificationOutboxEntity)
+        .update(this.attemptCriteria(event), { lockedAt: now, updatedAt: now })
+        .then((result) => {
+          if (result.affected !== 1) leaseLost = true;
+        })
+        .catch(() => {
+          leaseLost = true;
+          this.logger.warn(
+            `Could not renew outbox event ${event.id} attempt ${event.attempts}`,
+          );
+        })
+        .finally(() => {
+          renewing = false;
+        });
+    }, NotificationOutboxProcessor.LEASE_RENEWAL_MILLISECONDS);
+    timer.unref();
     try {
       if (event.payload.email) {
         const email = event.payload.email;
         const user = await this.usersService.findById(email.userId);
         if (!user || user.status !== 'A')
           throw new Error('Notification recipient is unavailable');
+        if (leaseLost) return;
         await this.mailService.sendCiltStoppageNotification(
           user,
           email.positionName,
           email.translation,
         );
-        await this.markSent(event.id);
+        await this.markSent(event);
         return;
       }
       const tokens = await this.resolveTokens(event.payload.audience);
+      if (leaseLost) return;
       if (tokens.length > 0) {
         const notification = new NotificationDTO(
           event.payload.notification.title,
@@ -132,12 +167,14 @@ export class NotificationOutboxProcessor {
           throw new Error('Firebase rejected one or more recipients');
         }
       }
-      await this.markSent(event.id);
+      await this.markSent(event);
     } catch {
       await this.markFailed(event);
       this.logger.warn(
         `Notification outbox event ${event.id} failed on attempt ${event.attempts}`,
       );
+    } finally {
+      clearInterval(timer);
     }
   }
 
@@ -183,18 +220,27 @@ export class NotificationOutboxProcessor {
     return [...new Map(tokens.map((token) => [token.token, token])).values()];
   }
 
-  private markSent(id: number): Promise<unknown> {
+  private attemptCriteria(event: NotificationOutboxEntity) {
+    // The counter increments under the claim lock, so each attempt has its own
+    // identity. A recovered worker cannot finalize or renew a newer attempt.
+    return {
+      id: event.id,
+      status: NotificationOutboxStatus.PROCESSING,
+      attempts: event.attempts,
+    };
+  }
+
+  private markSent(event: NotificationOutboxEntity): Promise<unknown> {
     const now = new Date();
-    return this.dataSource.getRepository(NotificationOutboxEntity).update(
-      { id, status: NotificationOutboxStatus.PROCESSING },
-      {
+    return this.dataSource
+      .getRepository(NotificationOutboxEntity)
+      .update(this.attemptCriteria(event), {
         status: NotificationOutboxStatus.SENT,
         sentAt: now,
         lockedAt: null,
         lastError: null,
         updatedAt: now,
-      },
-    );
+      });
   }
 
   private markFailed(event: NotificationOutboxEntity): Promise<unknown> {
@@ -202,9 +248,9 @@ export class NotificationOutboxProcessor {
     const exhausted =
       event.attempts >= NotificationOutboxProcessor.MAX_ATTEMPTS;
     const delaySeconds = Math.min(2 ** event.attempts * 5, 3_600);
-    return this.dataSource.getRepository(NotificationOutboxEntity).update(
-      { id: event.id, status: NotificationOutboxStatus.PROCESSING },
-      {
+    return this.dataSource
+      .getRepository(NotificationOutboxEntity)
+      .update(this.attemptCriteria(event), {
         status: exhausted
           ? NotificationOutboxStatus.DEAD
           : NotificationOutboxStatus.FAILED,
@@ -212,7 +258,6 @@ export class NotificationOutboxProcessor {
         lockedAt: null,
         lastError: 'Notification dispatch failed',
         updatedAt: now,
-      },
-    );
+      });
   }
 }

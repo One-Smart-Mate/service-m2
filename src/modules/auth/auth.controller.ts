@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDTO } from './models/dto/login.dto';
@@ -47,6 +48,7 @@ export class AuthController {
     );
   }
 
+  @FastSiteScoped()
   @Post('update-last-login')
   @ApiBody({ type: UpdateLastLoginDTO })
   updateLastLogin(

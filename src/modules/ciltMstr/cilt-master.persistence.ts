@@ -9,6 +9,11 @@ import { stringConstants } from 'src/utils/string.constant';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { CiltMstrEntity } from './entities/ciltMstr.entity';
+import {
+  validateOrder,
+  withSiteResourceTransaction,
+  withSiteTransaction,
+} from '../../common/database/site-transaction';
 import { CreateCiltMstrDTO } from './models/dto/create.ciltMstr.dto';
 import { UpdateCiltOrderDTO } from './models/dto/update-order.dto';
 import { UpdateCiltMstrDTO } from './models/dto/update.ciltMstr.dto';
@@ -22,7 +27,7 @@ export class CiltMasterPersistence {
       throw new BadRequestException('siteId is required');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    return withSiteTransaction(this.dataSource, dto.siteId, async (manager) => {
       const creator = await this.findActiveCreator(manager, creatorId);
       const repository = manager.getRepository(CiltMstrEntity);
       const lastCilt = await repository.findOne({
@@ -40,140 +45,144 @@ export class CiltMasterPersistence {
           ...clientData,
           creatorId: creator.id,
           creatorName: creator.name,
-          order: (lastCilt?.order ?? 0) + 1,
+          order: validateOrder(Number(lastCilt?.order ?? 0) + 1),
         }),
       );
     });
   }
 
   update(dto: UpdateCiltMstrDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(CiltMstrEntity);
-      const cilt = await repository.findOne({
-        where: { id: dto.id, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!cilt) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_MSTR,
-        );
-      }
-      if (
-        dto.siteId !== undefined &&
-        Number(dto.siteId) !== Number(cilt.siteId)
-      ) {
-        throw new BadRequestException('A CILT cannot be moved to another site');
-      }
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltMstrEntity,
+      dto.id,
+      async (manager, cilt) => {
+        const repository = manager.getRepository(CiltMstrEntity);
+        if (
+          dto.siteId !== undefined &&
+          Number(dto.siteId) !== Number(cilt.siteId)
+        ) {
+          throw new BadRequestException(
+            'A CILT cannot be moved to another site',
+          );
+        }
 
-      const changes = { ...dto };
-      delete changes.id;
-      delete changes.siteId;
-      delete changes.creatorId;
-      delete changes.creatorName;
-      Object.assign(cilt, changes);
-      return repository.save(cilt);
-    });
+        const changes = { ...dto };
+        delete changes.id;
+        delete changes.siteId;
+        delete changes.creatorId;
+        delete changes.creatorName;
+        Object.assign(cilt, changes);
+        return repository.save(cilt);
+      },
+    );
   }
 
   updateOrder(dto: UpdateCiltOrderDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(CiltMstrEntity);
-      const cilt = await repository.findOne({
-        where: { id: dto.ciltMstrId, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!cilt) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_MSTR,
-        );
-      }
-      if (cilt.order === dto.newOrder) {
-        return cilt;
-      }
+    validateOrder(dto.newOrder);
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltMstrEntity,
+      dto.ciltMstrId,
+      async (manager, cilt) => {
+        const repository = manager.getRepository(CiltMstrEntity);
+        if (cilt.order === dto.newOrder) {
+          return cilt;
+        }
 
-      const target = await repository.findOne({
-        where: {
-          siteId: cilt.siteId,
-          order: dto.newOrder,
-          deletedAt: IsNull(),
-        },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const previousOrder = cilt.order;
-      cilt.order = dto.newOrder;
-      if (target) {
-        target.order = previousOrder;
-        await repository.save([target, cilt]);
-      } else {
-        await repository.save(cilt);
-      }
-      return cilt;
-    });
+        const target = await repository.findOne({
+          where: {
+            siteId: cilt.siteId,
+            order: dto.newOrder,
+            deletedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const previousOrder = cilt.order;
+        cilt.order = dto.newOrder;
+        if (target) {
+          target.order = previousOrder;
+          await repository.save([target, cilt]);
+        } else {
+          await repository.save(cilt);
+        }
+        return cilt;
+      },
+    );
   }
 
   clone(id: number, creatorId: number) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(CiltMstrEntity);
-      const sequenceRepository = manager.getRepository(CiltSequencesEntity);
-      const original = await repository.findOne({
-        where: { id, deletedAt: IsNull() },
-        relations: ['sequences'],
-        lock: { mode: 'pessimistic_read' },
-      });
-      if (!original) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_MSTR,
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltMstrEntity,
+      id,
+      async (manager, original) => {
+        const repository = manager.getRepository(CiltMstrEntity);
+        const sequenceRepository = manager.getRepository(CiltSequencesEntity);
+        original.sequences = await sequenceRepository.findBy({
+          ciltMstrId: id,
+          siteId: Number(original.siteId),
+          deletedAt: IsNull(),
+        });
+        const creator = await this.findActiveCreator(manager, creatorId);
+        const lastCilt = await repository.findOne({
+          where: { siteId: original.siteId, deletedAt: IsNull() },
+          order: { order: 'DESC' },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const copy = await repository.save(
+          repository.create({
+            siteId: original.siteId,
+            ciltName: `${original.ciltName} (Copy)`,
+            ciltDescription: original.ciltDescription,
+            creatorId: creator.id,
+            creatorName: creator.name,
+            reviewerId: original.reviewerId,
+            reviewerName: original.reviewerName,
+            approvedById: original.approvedById,
+            approvedByName: original.approvedByName,
+            ciltDueDate: original.ciltDueDate,
+            standardTime: original.standardTime,
+            urlImgLayout: original.urlImgLayout,
+            order: validateOrder(Number(lastCilt?.order ?? 0) + 1),
+            status: original.status,
+          }),
         );
-      }
-      const creator = await this.findActiveCreator(manager, creatorId);
-      const lastCilt = await repository.findOne({
-        where: { siteId: original.siteId, deletedAt: IsNull() },
-        order: { order: 'DESC' },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const copy = await repository.save(
-        repository.create({
-          siteId: original.siteId,
-          ciltName: `${original.ciltName} (Copy)`,
-          ciltDescription: original.ciltDescription,
-          creatorId: creator.id,
-          creatorName: creator.name,
-          reviewerId: original.reviewerId,
-          reviewerName: original.reviewerName,
-          approvedById: original.approvedById,
-          approvedByName: original.approvedByName,
-          ciltDueDate: original.ciltDueDate,
-          standardTime: original.standardTime,
-          urlImgLayout: original.urlImgLayout,
-          order: (lastCilt?.order ?? 0) + 1,
-          status: original.status,
-        }),
-      );
 
-      const sequences = [];
-      for (const originalSequence of [...(original.sequences ?? [])].sort(
-        (left, right) => left.order - right.order,
-      )) {
-        const sequenceData = { ...originalSequence };
-        delete sequenceData.id;
-        delete sequenceData.createdAt;
-        delete sequenceData.updatedAt;
-        delete sequenceData.deletedAt;
-        delete sequenceData.ciltMstr;
-        delete sequenceData.executions;
-        sequences.push(
-          await sequenceRepository.save(
-            sequenceRepository.create({
-              ...sequenceData,
-              ciltMstrId: copy.id,
-              ciltMstrName: copy.ciltName,
-            }),
-          ),
-        );
-      }
+        const sequences = [];
+        for (const originalSequence of [...(original.sequences ?? [])].sort(
+          (left, right) => left.order - right.order,
+        )) {
+          const sequenceData = { ...originalSequence };
+          delete sequenceData.id;
+          delete sequenceData.createdAt;
+          delete sequenceData.updatedAt;
+          delete sequenceData.deletedAt;
+          delete sequenceData.ciltMstr;
+          delete sequenceData.executions;
+          sequences.push(
+            await sequenceRepository.save(
+              sequenceRepository.create({
+                ...sequenceData,
+                ciltMstrId: copy.id,
+                ciltMstrName: copy.ciltName,
+              }),
+            ),
+          );
+        }
 
-      return { ciltMaster: copy, sequences };
-    });
+        return { ciltMaster: copy, sequences };
+      },
+    );
+  }
+
+  softDelete(id: number) {
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltMstrEntity,
+      id,
+      (manager, master) => manager.softDelete(CiltMstrEntity, master.id),
+    );
   }
 
   private async findActiveCreator(manager: EntityManager, creatorId: number) {

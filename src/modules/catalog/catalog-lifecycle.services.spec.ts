@@ -206,6 +206,7 @@ describe('Catalog service lifecycle', () => {
       } as never,
       usersService as never,
       firebaseService as never,
+      { enqueueWithManager: jest.fn() } as never,
     );
 
     await service.update({

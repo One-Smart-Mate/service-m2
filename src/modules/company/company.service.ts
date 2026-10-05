@@ -102,7 +102,7 @@ export class CompanyService {
 
       return await this.companyRepository.save(company);
     } catch (exception) {
-      console.log(exception);
+
       HandleException.exception(exception);
     }
   };

@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager, IsNull } from 'typeorm';
-import { SiteEntity } from '../site/entities/site.entity';
+import { DataSource, EntityManager } from 'typeorm';
+import { PositionEntity } from '../position/entities/position.entity';
+import { withSiteTransaction } from '../../common/database/site-transaction';
 import { CardEntity } from '../card/entities/card.entity';
 import { LevelEntity } from './entities/level.entity';
 import { MoveLevelDto } from './models/dto/move.level.dto';
@@ -24,18 +25,7 @@ export class LevelHierarchyPersistence {
     siteId: number,
     work: (manager: EntityManager) => Promise<T>,
   ): Promise<T> {
-    return this.dataSource.transaction('READ COMMITTED', async (manager) => {
-      const site = await manager.findOne(SiteEntity, {
-        where: {
-          id: normalizeLevelId(siteId),
-          status: 'A',
-          deletedAt: IsNull(),
-        },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!site) throw new BadRequestException('Level site must be active');
-      return work(manager);
-    });
+    return withSiteTransaction(this.dataSource, siteId, work);
   }
 
   async withLevel<T>(
@@ -131,6 +121,20 @@ export class LevelHierarchyPersistence {
             nodeName: affected.name,
             level: affected.level,
             superiorId: Number(affected.superiorId) || affectedId,
+            updatedAt: changedAt,
+          },
+        );
+        await manager.update(
+          PositionEntity,
+          { levelId: affectedId, siteId },
+          {
+            levelName: affected.name,
+            areaId: Number(root.id),
+            areaName: root.name,
+            route: [...path]
+              .reverse()
+              .map(({ name }) => name)
+              .join('/'),
             updatedAt: changedAt,
           },
         );

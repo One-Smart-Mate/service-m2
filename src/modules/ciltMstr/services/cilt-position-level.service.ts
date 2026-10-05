@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { hasActiveSiteMembership } from '../../../common/auth/active-site-membership.policy';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -180,7 +181,7 @@ export class CiltPositionLevelService {
         } catch (error) {
           this.logger.logProcess('ERROR GETTING LEVEL PATH', {
             levelId: cpl.levelId,
-            error: error.message,
+            error: errorDiagnostics(error),
           });
           return {
             ciltMstrId: cpl.ciltMstrId,

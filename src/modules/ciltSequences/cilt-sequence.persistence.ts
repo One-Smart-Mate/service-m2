@@ -12,6 +12,11 @@ import { CiltTypesEntity } from '../ciltTypes/entities/ciltTypes.entity';
 import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { SiteEntity } from '../site/entities/site.entity';
 import { CiltSequencesEntity } from './entities/ciltSequences.entity';
+import {
+  validateOrder,
+  withSiteResourceTransaction,
+  withSiteTransaction,
+} from '../../common/database/site-transaction';
 import { CreateCiltSequenceDTO } from './models/dto/createCiltSequence.dto';
 import { UpdateSequenceOrderDTO } from './models/dto/update-order.dto';
 import { UpdateCiltSequenceDTO } from './models/dto/updateCiltSequence.dto';
@@ -34,7 +39,7 @@ export class CiltSequencePersistence {
       throw new BadRequestException('siteId and ciltMstrId are required');
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    return withSiteTransaction(this.dataSource, dto.siteId, async (manager) => {
       const relations = await this.validateRelations(manager, dto, dto.siteId);
       const repository = manager.getRepository(CiltSequencesEntity);
       const lastSequence = await repository.findOne({
@@ -43,89 +48,93 @@ export class CiltSequencePersistence {
         lock: { mode: 'pessimistic_write' },
       });
       const sequence = repository.create(this.sanitize(dto, relations));
-      sequence.order = (lastSequence?.order ?? 0) + 1;
+      sequence.order = validateOrder(Number(lastSequence?.order ?? 0) + 1);
       return repository.save(sequence);
     });
   }
 
   update(dto: UpdateCiltSequenceDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(CiltSequencesEntity);
-      const sequence = await repository.findOne({
-        where: { id: dto.id, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!sequence) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SEQUENCES,
-        );
-      }
-      if (
-        dto.siteId !== undefined &&
-        Number(dto.siteId) !== Number(sequence.siteId)
-      ) {
-        throw new BadRequestException(
-          'A CILT sequence cannot be moved to another site',
-        );
-      }
-      if (
-        dto.ciltMstrId !== undefined &&
-        Number(dto.ciltMstrId) !== Number(sequence.ciltMstrId)
-      ) {
-        throw new BadRequestException(
-          'A CILT sequence cannot be moved to another master',
-        );
-      }
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSequencesEntity,
+      dto.id,
+      async (manager, sequence) => {
+        const repository = manager.getRepository(CiltSequencesEntity);
+        if (
+          dto.siteId !== undefined &&
+          Number(dto.siteId) !== Number(sequence.siteId)
+        ) {
+          throw new BadRequestException(
+            'A CILT sequence cannot be moved to another site',
+          );
+        }
+        if (
+          dto.ciltMstrId !== undefined &&
+          Number(dto.ciltMstrId) !== Number(sequence.ciltMstrId)
+        ) {
+          throw new BadRequestException(
+            'A CILT sequence cannot be moved to another master',
+          );
+        }
 
-      const normalized = {
-        ...dto,
-        siteId: sequence.siteId,
-        ciltMstrId: sequence.ciltMstrId,
-      };
-      const relations = await this.validateRelations(
-        manager,
-        normalized,
-        sequence.siteId,
-      );
-      Object.assign(sequence, this.sanitize(normalized, relations));
-      return repository.save(sequence);
-    });
+        const normalized = {
+          ...dto,
+          siteId: sequence.siteId,
+          ciltMstrId: sequence.ciltMstrId,
+        };
+        const relations = await this.validateRelations(
+          manager,
+          normalized,
+          sequence.siteId,
+        );
+        Object.assign(sequence, this.sanitize(normalized, relations));
+        return repository.save(sequence);
+      },
+    );
   }
 
   updateOrder(dto: UpdateSequenceOrderDTO) {
-    return this.dataSource.transaction(async (manager) => {
-      const repository = manager.getRepository(CiltSequencesEntity);
-      const sequence = await repository.findOne({
-        where: { id: dto.sequenceId, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!sequence) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CILT_SEQUENCES,
-        );
-      }
-      if (sequence.order === dto.newOrder) {
-        return sequence;
-      }
+    validateOrder(dto.newOrder);
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSequencesEntity,
+      dto.sequenceId,
+      async (manager, sequence) => {
+        const repository = manager.getRepository(CiltSequencesEntity);
+        if (sequence.order === dto.newOrder) {
+          return sequence;
+        }
 
-      const target = await repository.findOne({
-        where: {
-          ciltMstrId: sequence.ciltMstrId,
-          order: dto.newOrder,
-          deletedAt: IsNull(),
-        },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const previousOrder = sequence.order;
-      sequence.order = dto.newOrder;
-      if (target) {
-        target.order = previousOrder;
-        await repository.save([target, sequence]);
-      } else {
-        await repository.save(sequence);
-      }
-      return sequence;
-    });
+        const target = await repository.findOne({
+          where: {
+            ciltMstrId: sequence.ciltMstrId,
+            siteId: Number(sequence.siteId),
+            order: dto.newOrder,
+            deletedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const previousOrder = sequence.order;
+        sequence.order = dto.newOrder;
+        if (target) {
+          target.order = previousOrder;
+          await repository.save([target, sequence]);
+        } else {
+          await repository.save(sequence);
+        }
+        return sequence;
+      },
+    );
+  }
+
+  softDelete(id: number) {
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSequencesEntity,
+      id,
+      (manager, sequence) =>
+        manager.softDelete(CiltSequencesEntity, sequence.id),
+    );
   }
 
   private async validateRelations(

@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import {
   ciltLocalDateAt,
   DEFAULT_SITE_TIMEZONE,
@@ -11,7 +12,6 @@ import { CustomLoggerService } from '../../common/logger/logger.service';
 
 @Injectable()
 export class TaskService {
-  private readonly processedDates = new Map<number, string>();
   private processing = false;
 
   constructor(
@@ -51,7 +51,6 @@ export class TaskService {
             currentDate,
             site.timezone || DEFAULT_SITE_TIMEZONE,
           );
-          if (this.processedDates.get(Number(site.id)) === siteDate) continue;
           this.logger.logProcess(
             `[SITE-${site.id}] Starting processing for ${siteDate}...`,
           );
@@ -64,14 +63,13 @@ export class TaskService {
 
           totalCiltsGenerated += ciltCount;
           processedSites++;
-          this.processedDates.set(Number(site.id), siteDate);
 
           this.logger.logProcess(
             `[SITE-${site.id}] Completed - CILTs generated: ${ciltCount}`,
           );
         } catch (error) {
           errorSites++;
-          this.logger.logProcess(`[SITE-${site.id}] Error: ${error.message}`);
+          this.logger.logProcess(`[SITE-${site.id}] Error: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`);
         }
       }
 
@@ -91,11 +89,11 @@ export class TaskService {
       );
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      this.logger.logProcess(`[CRON] Critical error in task: ${error.message}`);
+      this.logger.logProcess(`[CRON] Critical error in task: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`);
 
       // Send critical error notification
       await this.sendTaskErrorNotification(
-        error.message,
+        errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType,
         processedSites,
         totalCiltsGenerated,
         executionTime,
@@ -131,7 +129,7 @@ export class TaskService {
       );
     } catch (error) {
       this.logger.logProcess(
-        `[WHATSAPP] Error sending notification: ${error.message}`,
+        `[WHATSAPP] Error sending notification: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
       );
     }
   }
@@ -162,7 +160,7 @@ export class TaskService {
       );
     } catch (error) {
       this.logger.logProcess(
-        `[WHATSAPP] Error sending error notification: ${error.message}`,
+        `[WHATSAPP] Error sending error notification: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
       );
     }
   }

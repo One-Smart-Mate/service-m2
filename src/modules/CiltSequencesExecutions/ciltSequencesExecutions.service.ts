@@ -17,10 +17,10 @@ import { CiltSequencesExecutionsEvidencesService } from '../CiltSequencesExecuti
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltSequencesExecutionsEvidencesType, CreateCiltSequencesEvidenceDTO } from '../CiltSequencesExecutionsEvidences/models/dtos/createCiltSequencesEvidence.dto';
 import { CreateEvidenceDTO } from './models/dto/create.evidence.dto';
-import { CardEntity } from '../card/entities/card.entity';
 import { GenerateCiltSequencesExecutionDTO } from './models/dto/generate.ciltSequencesExecution.dto';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import { CiltExecutionPersistence } from './cilt-execution.persistence';
+import { CiltExecutionReportsService, CiltReportFilters } from './cilt-execution-reports.service';
 
 @Injectable()
 export class CiltSequencesExecutionsService {
@@ -33,10 +33,9 @@ export class CiltSequencesExecutionsService {
     @InjectRepository(CiltMstrPositionLevelsEntity)
     private readonly ciltMstrPositionLevelsRepository: Repository<CiltMstrPositionLevelsEntity>,
     private readonly ciltSequencesExecutionsEvidencesService: CiltSequencesExecutionsEvidencesService,
-    @InjectRepository(CardEntity)
-    private readonly cardRepository: Repository<CardEntity>,
     private readonly logger: CustomLoggerService,
     private readonly executionPersistence: CiltExecutionPersistence,
+    private readonly executionReports: CiltExecutionReportsService,
   ) {}
 
   findAll = async () => {
@@ -195,9 +194,9 @@ export class CiltSequencesExecutionsService {
     }
   }
 
-  async findAllByUserIdAndDate(userId: number, date: string) {
+  async findAllByUserIdAndDate(userId: number, date: string, sessionSiteId?: number) {
     try {
-      const conditions = await this.dayConditionsForUser(userId, date);
+      const conditions = await this.dayConditionsForUser(userId, date, sessionSiteId);
       if (!conditions.length) return [];
       return await this.ciltSequencesExecutionsRepository.find({
         where: conditions.map(condition => ({ ...condition, status: 'I' })),
@@ -234,285 +233,33 @@ export class CiltSequencesExecutionsService {
     }
   }
 
-  /**
-   * Compare programmed vs executed by day
-   */
-  async getExecutionChart(filters: {
-    startDate: string;
-    endDate: string;
-    siteId?: number;
-    positionId?: number;
-    levelId?: number;
-  }) {
+  async getExecutionChart(filters: CiltReportFilters) {
     try {
-      const query = this.ciltSequencesExecutionsRepository
-        .createQueryBuilder('execution')
-        .select([
-          'DATE(execution.secuenceSchedule) as date',
-          'COUNT(*) as programmed',
-          'SUM(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 ELSE 0 END) as executed'
-        ])
-        .where('execution.deletedAt IS NULL')
-        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        });
-
-      if (filters.siteId) {
-        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
-      }
-
-      if (filters.positionId) {
-        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
-      }
-
-      if (filters.levelId) {
-        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
-      }
-
-      const result = await query
-        .groupBy('DATE(execution.secuenceSchedule)')
-        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
-        .getRawMany();
-
-      return result.map(item => ({
-        date: item.date,
-        programmed: parseInt(item.programmed),
-        executed: parseInt(item.executed)
-      }));
+      return await this.executionReports.execution(filters);
     } catch (exception) {
       HandleException.exception(exception);
     }
   }
 
-  /**
-   * Compliance by person
-   */
-  async getComplianceByPersonChart(filters: {
-    startDate: string;
-    endDate: string;
-    siteId?: number;
-    positionId?: number;
-    levelId?: number;
-  }) {
+  async getComplianceByPersonChart(filters: CiltReportFilters) {
     try {
-      const query = this.ciltSequencesExecutionsRepository
-        .createQueryBuilder('execution')
-        .leftJoin('execution.user', 'user')
-        .leftJoin('execution.userWhoExecuted', 'userWhoExecuted')
-        .select([
-          'user.id as userId',
-          'user.name as userName',
-          'COUNT(*) as assigned',
-          'SUM(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 ELSE 0 END) as executed'
-        ])
-        .where('execution.deletedAt IS NULL')
-        .andWhere('execution.userId IS NOT NULL')
-        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        });
-
-      if (filters.siteId) {
-        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
-      }
-
-      if (filters.positionId) {
-        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
-      }
-
-      if (filters.levelId) {
-        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
-      }
-
-      const result = await query
-        .groupBy('user.id, user.name')
-        .orderBy('user.name', 'ASC')
-        .getRawMany();
-
-      return result.map(item => ({
-        userId: item.userId,
-        userName: item.userName,
-        assigned: parseInt(item.assigned),
-        executed: parseInt(item.executed),
-        compliancePercentage: item.assigned > 0 ? (parseInt(item.executed) / parseInt(item.assigned)) * 100 : 0
-      }));
+      return await this.executionReports.compliance(filters);
     } catch (exception) {
       HandleException.exception(exception);
     }
   }
 
-  /**
-   * Time by day
-   */
-  async getTimeChart(filters: {
-    startDate: string;
-    endDate: string;
-    siteId?: number;
-    positionId?: number;
-    levelId?: number;
-  }) {
+  async getTimeChart(filters: CiltReportFilters) {
     try {
-      const query = this.ciltSequencesExecutionsRepository
-        .createQueryBuilder('execution')
-        .select([
-          'DATE(execution.secuenceSchedule) as date',
-          'SUM(COALESCE(execution.duration, 0)) as standardTime',
-          'SUM(COALESCE(execution.realDuration, 0)) as realTime',
-          'COUNT(CASE WHEN execution.secuenceStart IS NOT NULL THEN 1 END) as executedCount'
-        ])
-        .where('execution.deletedAt IS NULL')
-        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        });
-
-      if (filters.siteId) {
-        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
-      }
-
-      if (filters.positionId) {
-        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
-      }
-
-      if (filters.levelId) {
-        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
-      }
-
-      const result = await query
-        .groupBy('DATE(execution.secuenceSchedule)')
-        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
-        .getRawMany();
-
-      return result.map(item => ({
-        date: item.date,
-        standardTime: parseInt(item.standardTime) || 0, // in seconds
-        realTime: parseInt(item.realTime) || 0, // in seconds
-        executedCount: parseInt(item.executedCount),
-        standardTimeMinutes: Math.round((parseInt(item.standardTime) || 0) / 60), // convert to minutes
-        realTimeMinutes: Math.round((parseInt(item.realTime) || 0) / 60), // convert to minutes
-        efficiencyPercentage: item.standardTime > 0 ? (parseInt(item.realTime) / parseInt(item.standardTime)) * 100 : 0
-      }));
+      return await this.executionReports.time(filters);
     } catch (exception) {
       HandleException.exception(exception);
     }
   }
 
-  /**
-   * Anomalies detected (TAGs) during the execution
-   */
-  async getAnomaliesChart(filters: {
-    startDate: string;
-    endDate: string;
-    siteId?: number;
-    positionId?: number;
-    levelId?: number;
-  }) {
+  async getAnomaliesChart(filters: CiltReportFilters) {
     try {
-      const query = this.ciltSequencesExecutionsRepository
-        .createQueryBuilder('execution')
-        .select([
-          'DATE(execution.secuenceSchedule) as date',
-          'COUNT(CASE WHEN (execution.nok = 1 OR execution.amTagId IS NOT NULL) THEN 1 END) as anomalies',
-          'COUNT(CASE WHEN execution.nok = 1 THEN 1 END) as nokAnomalies',
-          'COUNT(CASE WHEN execution.amTagId IS NOT NULL AND execution.amTagId > 0 THEN 1 END) as amTagAnomalies',
-          'COUNT(CASE WHEN execution.stoppageReason = 1 THEN 1 END) as stoppageAnomalies'
-        ])
-        .where('execution.deletedAt IS NULL')
-        .andWhere('execution.secuenceStart IS NOT NULL') // only count executed
-        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        });
-
-      if (filters.siteId) {
-        query.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
-      }
-
-      if (filters.positionId) {
-        query.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
-      }
-
-      if (filters.levelId) {
-        query.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
-      }
-
-      const result = await query
-        .groupBy('DATE(execution.secuenceSchedule)')
-        .orderBy('DATE(execution.secuenceSchedule)', 'ASC')
-        .getRawMany();
-
-      // Obtener amTagIds de las mismas executions que ya se filtraron
-      const amTagQuery = this.ciltSequencesExecutionsRepository
-        .createQueryBuilder('execution')
-        .select(['execution.id', 'execution.amTagId', 'execution.siteId', 'DATE(execution.secuenceSchedule) as date'])
-        .where('execution.deletedAt IS NULL')
-        .andWhere('execution.secuenceStart IS NOT NULL')
-        .andWhere('execution.amTagId IS NOT NULL')
-        .andWhere('execution.amTagId > 0')
-        .andWhere('DATE(execution.secuenceSchedule) BETWEEN :startDate AND :endDate', {
-          startDate: filters.startDate,
-          endDate: filters.endDate
-        });
-
-      if (filters.siteId) {
-        amTagQuery.andWhere('execution.siteId = :siteId', { siteId: filters.siteId });
-      }
-
-      if (filters.positionId) {
-        amTagQuery.andWhere('execution.positionId = :positionId', { positionId: filters.positionId });
-      }
-
-      if (filters.levelId) {
-        amTagQuery.andWhere('execution.levelId = :levelId', { levelId: filters.levelId });
-      }
-
-      const amTagResults = await amTagQuery.getRawMany();
-      console.log('amTagResults:', amTagResults);
-      const uniqueAmTagIds = [...new Set(amTagResults.map(item => item.execution_am_tag_id))];
-      console.log('uniqueAmTagIds:', uniqueAmTagIds);
-
-      // Obtener las cards
-      let cards = [];
-      if (uniqueAmTagIds.length > 0) {
-        cards = await this.cardRepository
-          .createQueryBuilder('card')
-          .where('card.id IN (:...ids)', { ids: uniqueAmTagIds })
-          .andWhere('card.deletedAt IS NULL')
-          .innerJoin(CiltSequencesExecutionsEntity, 'linked', 'linked.amTagId = card.id AND linked.siteId = card.siteId')
-          .andWhere('linked.id IN (:...executionIds)', { executionIds: amTagResults.map(item => item.execution_id) })
-          .andWhere('linked.deletedAt IS NULL')
-          .getMany();
-        console.log('cards found:', cards.length);
-      }
-
-      // Agrupar amTagIds por fecha
-      const amTagsByDate = {};
-      amTagResults.forEach(item => {
-        const date = item.date;
-        if (!amTagsByDate[date]) {
-          amTagsByDate[date] = [];
-        }
-        amTagsByDate[date].push(item.execution_am_tag_id);
-      });
-
-      // Crear mapa de cards
-      const cardsMap = new Map(cards.map(card => [card.id, card]));
-
-      return result.map(item => {
-        const dateCards = (amTagsByDate[item.date] || [])
-          .map(amTagId => cardsMap.get(amTagId))
-          .filter(card => card);
-
-        return {
-          date: item.date,
-          totalAnomalies: parseInt(item.anomalies),
-          nokAnomalies: parseInt(item.nokAnomalies),
-          amTagAnomalies: parseInt(item.amTagAnomalies),
-          stoppageAnomalies: parseInt(item.stoppageAnomalies),
-          relatedCards: dateCards
-        };
-      });
+      return await this.executionReports.anomalies(filters);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -523,6 +270,7 @@ export class CiltSequencesExecutionsService {
       const sequence = await this.ciltSequencesRepository.findOne({
         where: { 
           id: generateDto.sequenceId,
+          status: 'A',
           deletedAt: IsNull()
         },
         relations: ['ciltMstr', 'site']
@@ -537,12 +285,13 @@ export class CiltSequencesExecutionsService {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
       }
 
-      const ciltMstrPositionLevel = await this.ciltMstrPositionLevelsRepository.findOne({
-        where: {
-          ciltMstrId: sequence.ciltMstrId,
-          deletedAt: IsNull()
-        }
-      });
+      const ciltMstrPositionLevel = await this.ciltMstrPositionLevelsRepository
+        .createQueryBuilder('assignment')
+        .innerJoin('assignment.position', 'position', "position.siteId = assignment.siteId AND position.status = 'A' AND position.deletedAt IS NULL")
+        .innerJoin('position.usersPositions', 'userPosition', 'userPosition.userId = :userId AND userPosition.siteId = assignment.siteId AND userPosition.deletedAt IS NULL', { userId: generateDto.userId })
+        .where("assignment.ciltMstrId = :masterId AND assignment.siteId = :siteId AND assignment.status = 'A' AND assignment.deletedAt IS NULL", { masterId: sequence.ciltMstrId, siteId: sequence.siteId })
+        .orderBy('assignment.id', 'ASC')
+        .getOne();
 
       if (!ciltMstrPositionLevel) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_MSTR_POSITION_LEVELS);
@@ -590,13 +339,13 @@ export class CiltSequencesExecutionsService {
         status: 'A'
       };
 
-      return await this.executionPersistence.create(newExecution);
+      return await this.executionPersistence.create(newExecution, false, undefined, { assignmentId: Number(ciltMstrPositionLevel.id), sequence });
     } catch (exception) {
       HandleException.exception(exception);
     }
   };
 
-  private async dayConditionsForUser(userId: number, date?: string) {
+  private async dayConditionsForUser(userId: number, date?: string, sessionSiteId?: number) {
     if (date !== undefined) parseCiltLocalDate(date);
     const sites = await this.ciltSequencesExecutionsRepository.manager.find(SiteEntity, {
       where: { status: 'A', deletedAt: IsNull(), userHasSites: {
@@ -604,7 +353,7 @@ export class CiltSequencesExecutionsService {
       } },
     });
     const now = new Date();
-    return sites.map(site => {
+    return sites.filter(site => sessionSiteId === undefined || Number(site.id) === Number(sessionSiteId)).map(site => {
       const timezone = site.timezone || DEFAULT_SITE_TIMEZONE;
       const localDate = date ?? ciltLocalDateAt(now, timezone);
       const { dayStart, dayEnd } = ciltSiteDayRange(localDate, timezone);
@@ -616,7 +365,7 @@ export class CiltSequencesExecutionsService {
     try {
       this.logger.logProcess('[GET_OF_DAY] Starting getOfDay method', { userId: user?.id, timezone: user?.timezone });
       
-      const conditions = await this.dayConditionsForUser(Number(user.id));
+      const conditions = await this.dayConditionsForUser(Number(user.id), undefined, user.fastSiteId);
       const executions = conditions.length ? await this.ciltSequencesExecutionsRepository.find({
         where: conditions,
         relations: [

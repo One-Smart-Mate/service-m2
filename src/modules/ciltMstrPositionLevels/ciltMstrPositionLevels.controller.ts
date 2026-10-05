@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import { Controller, Get, Post, Put, Delete, Param, Body, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { CiltMstrPositionLevelsService } from './ciltMstrPositionLevels.service';
@@ -46,6 +47,7 @@ export class CiltMstrPositionLevelsController {
     return await this.ciltMstrPositionLevelsService.findByCiltMstrId(ciltMstrId);
   }
 
+  @FastSiteScoped()
   @Get('position/user')
   @ApiOperation({ summary: 'Get all CILT Position Levels for current user positions with executions from last 24 hours' })
   async findByUserPositionsWithRecentExecutions(@Request() req) {

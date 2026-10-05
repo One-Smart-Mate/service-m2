@@ -1,3 +1,10 @@
+import { OplLevelsEntity } from '../oplLevels/entities/oplLevels.entity';
+import { OplDetailsEntity } from '../oplDetails/entities/oplDetails.entity';
+import {
+  validateOrder,
+  withSiteTransaction,
+} from '../../common/database/site-transaction';
+import { withLockedOpl } from './opl-transaction';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
@@ -18,7 +25,7 @@ export class OplMasterPersistence {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   create(dto: CreateOplMstrDTO, creatorId: number) {
-    return this.dataSource.transaction(async (manager) => {
+    return withSiteTransaction(this.dataSource, dto.siteId, async (manager) => {
       const creator = await this.findActiveCreator(manager, creatorId);
       const repository = manager.getRepository(OplMstr);
       const lastOpl = await repository.findOne({
@@ -33,7 +40,7 @@ export class OplMasterPersistence {
         ...clientData,
         creatorId: creator.id,
         creatorName: creator.name,
-        order: (lastOpl?.order ?? 0) + 1,
+        order: validateOrder(Number(lastOpl?.order ?? 0) + 1),
       });
       await this.applyType(manager, opl, dto.oplTypeId);
       return repository.save(opl);
@@ -41,15 +48,8 @@ export class OplMasterPersistence {
   }
 
   update(dto: UpdateOplMstrDTO) {
-    return this.dataSource.transaction(async (manager) => {
+    return withLockedOpl(this.dataSource, dto.id, async (manager, opl) => {
       const repository = manager.getRepository(OplMstr);
-      const opl = await repository.findOne({
-        where: { id: dto.id, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
       if (
         dto.siteId !== undefined &&
         Number(dto.siteId) !== Number(opl.siteId)
@@ -62,6 +62,7 @@ export class OplMasterPersistence {
       delete changes.siteId;
       delete changes.creatorId;
       delete changes.creatorName;
+      delete (changes as any).order;
       Object.assign(opl, changes);
       await this.applyType(manager, opl, dto.oplTypeId);
       return repository.save(opl);
@@ -69,32 +70,43 @@ export class OplMasterPersistence {
   }
 
   updateOrder(dto: UpdateOplMstrOrderDTO) {
-    return this.dataSource.transaction(async (manager) => {
+    validateOrder(dto.newOrder);
+    return withLockedOpl(this.dataSource, dto.oplId, async (manager, opl) => {
       const repository = manager.getRepository(OplMstr);
-      const opl = await repository.findOne({
-        where: { id: dto.oplId, deletedAt: IsNull() },
-        lock: { mode: 'pessimistic_write' },
-      });
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
       if (opl.order === dto.newOrder) {
         return opl;
       }
 
       const target = await repository.findOne({
-        where: { siteId: opl.siteId, order: dto.newOrder, deletedAt: IsNull() },
+        where: {
+          siteId: opl.siteId === null ? IsNull() : opl.siteId,
+          order: dto.newOrder,
+          deletedAt: IsNull(),
+        },
         lock: { mode: 'pessimistic_write' },
       });
       const previousOrder = opl.order;
       opl.order = dto.newOrder;
       if (target) {
         target.order = previousOrder;
-        await repository.save([target, opl]);
+        await repository.update(target.id, { order: previousOrder });
+        await repository.update(opl.id, { order: dto.newOrder });
       } else {
-        await repository.save(opl);
+        await repository.update(opl.id, { order: dto.newOrder });
       }
       return opl;
+    });
+  }
+
+  delete(id: number) {
+    return withLockedOpl(this.dataSource, id, async (manager, opl) => {
+      await manager
+        .getRepository(OplDetailsEntity)
+        .softDelete({ oplId: opl.id });
+      await manager
+        .getRepository(OplLevelsEntity)
+        .softDelete({ oplId: opl.id });
+      return manager.getRepository(OplMstr).softDelete(opl.id);
     });
   }
 
@@ -123,7 +135,7 @@ export class OplMasterPersistence {
     const oplType = await manager.getRepository(OplTypes).findOne({
       where: {
         id: oplTypeId,
-        siteId: opl.siteId,
+        siteId: opl.siteId === null ? IsNull() : opl.siteId,
         status: stringConstants.activeStatus,
         deletedAt: IsNull(),
       },

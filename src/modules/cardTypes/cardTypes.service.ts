@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CardTypesEntity } from './entities/cardTypes.entity';
@@ -205,7 +206,7 @@ export class CardTypesService {
     } catch (error) {
       this.logger.warn(
         `Card type ${siteId} was saved but catalog notification failed`,
-        error instanceof Error ? error.stack : undefined,
+        JSON.stringify(errorDiagnostics(error)),
       );
     }
   }

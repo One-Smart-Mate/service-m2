@@ -7,12 +7,24 @@ import { OplMstr } from '../oplMstr/entities/oplMstr.entity';
 import { OplMasterPersistence } from '../oplMstr/opl-master.persistence';
 import { OplTypes } from '../oplTypes/entities/oplTypes.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { SiteEntity } from '../site/entities/site.entity';
 
 const transactionManager = (repositories: Map<unknown, unknown>) => {
   const manager: any = {
     getRepository: jest.fn((entity) => repositories.get(entity)),
+    findOne: jest.fn((entity, options) =>
+      entity === SiteEntity
+        ? Promise.resolve({
+            id: options.where.id,
+            status: 'A',
+            deletedAt: null,
+          })
+        : (repositories.get(entity) as any).findOne(options),
+    ),
   };
-  manager.transaction = jest.fn(async (work) => work(manager));
+  manager.transaction = jest.fn(async (isolationOrWork, work?) =>
+    (work ?? isolationOrWork)(manager),
+  );
   return manager;
 };
 
@@ -100,7 +112,9 @@ describe('CILT and OPL master integrity', () => {
       findOne: jest
         .fn()
         .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce(source)
         .mockResolvedValueOnce(target),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
       save: jest.fn(async (value) => value),
     };
     const manager = transactionManager(new Map([[OplMstr, oplRepository]]));
@@ -111,8 +125,43 @@ describe('CILT and OPL master integrity', () => {
     expect(result).toBe(source);
     expect(source.order).toBe(2);
     expect(target.order).toBe(1);
-    expect(oplRepository.save).toHaveBeenCalledWith([target, source]);
+    expect(oplRepository.update).toHaveBeenCalledWith(12, { order: 1 });
+    expect(oplRepository.update).toHaveBeenCalledWith(11, { order: 2 });
+    expect(oplRepository.save).not.toHaveBeenCalled();
     expect(manager.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('serializes legacy global OPL orders using a stable root even after soft deletion', async () => {
+    const source = { id: 11, siteId: null, order: 1, deletedAt: null };
+    const target = { id: 12, siteId: null, order: 2, deletedAt: null };
+    const repository = {
+      findOne: jest
+        .fn()
+        .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce({ id: 10, siteId: null, deletedAt: new Date() })
+        .mockResolvedValueOnce(source)
+        .mockResolvedValueOnce(target),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const manager = transactionManager(new Map([[OplMstr, repository]]));
+    await new OplMasterPersistence(manager as any).updateOrder({
+      oplId: 11,
+      newOrder: 2,
+    });
+    expect(manager.findOne).toHaveBeenNthCalledWith(
+      1,
+      OplMstr,
+      expect.objectContaining({
+        order: { id: 'ASC' },
+        withDeleted: true,
+        lock: { mode: 'pessimistic_write' },
+      }),
+    );
+    expect(repository.findOne.mock.calls.at(-1)[0].where.siteId).toMatchObject({
+      _type: 'isNull',
+    });
+    expect(repository.update).toHaveBeenCalledWith(11, { order: 2 });
+    expect(repository.update).toHaveBeenCalledWith(12, { order: 1 });
   });
 
   it('creates an OPL with trusted authorship and rejects a type from another site', async () => {

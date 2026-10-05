@@ -1,4 +1,5 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
+import { Injectable, HttpException, HttpStatus, BadGatewayException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CustomLoggerService } from '../../common/logger/logger.service';
 import axios from 'axios';
@@ -50,12 +51,9 @@ export class WhatsappService {
         );
         results.push(result);
         this.logger.log('Authentication message sent successfully');
-      } catch {
+      } catch (error) {
         this.logger.error('Failed to send authentication message');
-        throw new HttpException(
-          'Failed to send authentication message',
-          HttpStatus.BAD_REQUEST
-        );
+        throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
       }
     }
 
@@ -150,20 +148,12 @@ export class WhatsappService {
       const errorDetails = {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        message: error.message,
+        diagnostics: errorDiagnostics(error),
       };
       
       this.logger.error('WhatsApp API Error Details:', JSON.stringify(errorDetails, null, 2));
       
-      const finalErrorMessage = error.response?.data?.error?.message 
-        || error.response?.data?.message
-        || error.message 
-        || 'Failed to send WhatsApp template message';
-      
-      throw new HttpException(
-        `WhatsApp API Error: ${finalErrorMessage}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
     }
   }
 
@@ -178,11 +168,8 @@ export class WhatsappService {
       const response = await axios.get(url, { headers });
       return response.data;
     } catch (error) {
-      this.logger.error('Failed to get phone number info:', error.response?.data || error.message);
-      throw new HttpException(
-        'Failed to get phone number information',
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.logger.error('Failed to get phone number info:', errorDiagnostics(error));
+      throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
     }
   }
 
@@ -209,29 +196,20 @@ export class WhatsappService {
         waba_id: this.wabaId,
         templates: templates,
         total_templates: templates.length,
-        paging: response.data.paging
+        paging: response.data.paging ? { cursors: response.data.paging.cursors, hasNext: Boolean(response.data.paging.next), hasPrevious: Boolean(response.data.paging.previous) } : undefined
       };
     } catch (error) {
       const errorDetails = {
         status: error.response?.status,
         statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
+        diagnostics: errorDiagnostics(error),
         wabaId: this.wabaId,
         url: url
       };
       
       this.logger.error('WhatsApp Templates API Error Details:', JSON.stringify(errorDetails, null, 2));
       
-      const errorMessage = error.response?.data?.error?.message 
-        || error.response?.data?.message
-        || error.message 
-        || 'Failed to fetch WhatsApp message templates';
-      
-      throw new HttpException(
-        `WhatsApp Templates API Error: ${errorMessage}`,
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
     }
   }
 
@@ -262,11 +240,8 @@ export class WhatsappService {
         throw error;
       }
       
-      this.logger.error('Failed to get template by name:', error.message);
-      throw new HttpException(
-        `Failed to retrieve template: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
+      this.logger.error('Failed to get template by name:', errorDiagnostics(error));
+      throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
     }
   }
 
@@ -367,8 +342,7 @@ export class WhatsappService {
         const errorDetails = {
           status: error.response?.status,
           statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message,
+            diagnostics: errorDiagnostics(error),
           wabaId: this.wabaId,
           url: url,
           payload: templatePayload
@@ -376,15 +350,7 @@ export class WhatsappService {
         
         this.logger.error('Template creation failed:', JSON.stringify(errorDetails, null, 2));
         
-        const errorMessage = error.response?.data?.error?.message 
-          || error.response?.data?.message
-          || error.message 
-          || 'Failed to create authentication template';
-        
-        throw new HttpException(
-          `Template Creation Error: ${errorMessage}`,
-          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR
-        );
+        throw new BadGatewayException('WhatsApp service is temporarily unavailable', { cause: error });
       }
     }
   }

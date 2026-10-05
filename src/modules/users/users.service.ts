@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { FastPasswordConflictException } from './fast-password.policy';
 import { In, IsNull, Not, Repository, DataSource } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
@@ -111,7 +112,7 @@ export class UsersService {
       }
     } catch (error) {
       this.logger.error(
-        `Failed to send WhatsApp authentication message: ${error.message}`,
+        `Failed to send WhatsApp authentication message: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
       );
     }
   }
@@ -328,17 +329,7 @@ export class UsersService {
       throw new UnauthorizedException('User has no site access');
     }
 
-    const activeSiteIds = [
-      ...new Set(
-        user.userHasSites
-          .filter(
-            (userSite) =>
-              userSite.status === stringConstants.activeStatus &&
-              userSite.site?.status === stringConstants.activeStatus,
-          )
-          .map((userSite) => Number(userSite.site.id)),
-      ),
-    ];
+    const activeSiteIds = [...new Set(getActiveSiteMemberships(user).map(({ site }) => Number(site.id)))];
     if (activeSiteIds.length === 0) {
       throw new UnauthorizedException('User has no active site access');
     }
@@ -349,7 +340,7 @@ export class UsersService {
   findSiteUsersResponsibleData = async (siteId: number) => {
     try {
       return await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } } },
+        where: { status: 'A', deletedAt: IsNull(), userHasSites: { status: 'A', deletedAt: IsNull(), site: { id: siteId, status: 'A', deletedAt: IsNull() } } },
       });
     } catch (exception) {
       HandleException.exception(exception);
@@ -359,7 +350,7 @@ export class UsersService {
   getSiteUsersTokens = async (siteId: number, excludeWeb: boolean = false) => {
     try {
       const users = await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } } },
+        where: { status: 'A', deletedAt: IsNull(), userHasSites: { status: 'A', deletedAt: IsNull(), site: { id: siteId, status: 'A', deletedAt: IsNull() } } },
         select: ['androidToken', 'iosToken', 'webToken'],
       });
 
@@ -451,44 +442,8 @@ export class UsersService {
   };
 
   findSiteUsers = async (siteId: number) => {
-    try {
-      // Optimized query using QueryBuilder with selective joins
-      const users = await this.userRepository
-        .createQueryBuilder('user')
-        .innerJoin('user.userHasSites', 'userHasSite')
-        .innerJoin('userHasSite.site', 'site')
-        .leftJoin('user.userRoles', 'userRole')
-        .leftJoin('userRole.role', 'role')
-        .leftJoin('user.userHasSites', 'allUserHasSites')
-        .leftJoin('allUserHasSites.site', 'allSites')
-        .where('userHasSite.site.id = :siteId', { siteId })
-        .select([
-          'user.id',
-          'user.name',
-          'user.email',
-          'role.name',
-          'allSites.id',
-          'allSites.name',
-          'allSites.logo',
-        ])
-        .getMany();
-
-      const transformedUsers = users.map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        roles: user.userRoles?.map((userRole) => userRole.role.name).join(',') || '',
-        sites: user.userHasSites?.map((userHasSite) => ({
-          id: userHasSite.site.id,
-          name: userHasSite.site.name,
-          logo: userHasSite.site.logo,
-        })) || [],
-      }));
-
-      return transformedUsers;
-    } catch (exception) {
-      HandleException.exception(exception);
-    }
+    const users = await this.findUsersBySiteWithRoles(siteId);
+    return users.map(user => ({ ...user, roles: user.roles.map(role => role.name).join(',') }));
   };
 
   getAdministrationActor = async (requesterId: number): Promise<UserAdministrationActor> => {
@@ -570,7 +525,7 @@ export class UsersService {
           createUserDTO.translation,
         ).catch((error) => {
           this.logger.logProcess(
-            `[CREATE_USER] Welcome email for ${result.user.email} could not be sent, but the user was created successfully. Error: ${error.message}`,
+            `[CREATE_USER] Welcome email for ${result.user.email} could not be sent, but the user was created successfully. Error: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
           );
         });
       }
@@ -682,7 +637,7 @@ export class UsersService {
 
       return result.user;
     } catch (exception) {
-      this.logger.logProcess(`[UPDATE_USER] Error in update: ${exception.message}`);
+      this.logger.logProcess(`[UPDATE_USER] Error in update: ${errorDiagnostics(exception).driverCode ?? errorDiagnostics(exception).errorType}`);
       HandleException.exception(exception);
     }
   };
@@ -775,7 +730,7 @@ export class UsersService {
       }
       return user;
     } catch (exception) {
-      console.log(exception);
+
       HandleException.exception(exception);
     }
   };
@@ -898,16 +853,16 @@ export class UsersService {
       HandleException.exception(exception);
     }
   }
-  findPositionsByUserId = async (userId: number) => {
+  findPositionsByUserId = async (userId: number, sessionSiteId?: number) => {
     try {
       const user = await this.findByIdWithSites(userId);
-      const siteIds = getActiveSiteMemberships(user).map(({ site }) => Number(site.id));
+      const siteIds = getActiveSiteMemberships(user).map(({ site }) => Number(site.id)).filter(id => sessionSiteId === undefined || id === sessionSiteId);
       if (siteIds.length === 0) return [];
       const userPositions = await this.usersPositionsRepository.find({
         where: {
           user: { id: userId },
           deletedAt: IsNull(),
-          position: { siteId: In(siteIds), deletedAt: IsNull() },
+          position: { siteId: In(siteIds), status: 'A', deletedAt: IsNull() },
         },
         relations: { position: true },
       });
@@ -934,7 +889,7 @@ export class UsersService {
   findUsersBySiteWithRoles = async (siteId: number) => {
     try {
       const users = await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } } },
+        where: { status: 'A', deletedAt: IsNull(), userHasSites: { status: 'A', deletedAt: IsNull(), site: { id: siteId, status: 'A', deletedAt: IsNull() } } },
         relations: { 
           userRoles: { role: true },
           userHasSites: { site: true }
@@ -949,7 +904,7 @@ export class UsersService {
           id: userRole.role.id,
           name: userRole.role.name
         })),
-        sites: user.userHasSites.map((userHasSite) => ({
+        sites: getActiveSiteMemberships(user).filter(({ site }) => Number(site.id) === Number(siteId)).map((userHasSite) => ({
           id: userHasSite.site.id,
           name: userHasSite.site.name,
           logo: userHasSite.site.logo
@@ -963,7 +918,7 @@ export class UsersService {
   findUsersBySiteWithPositions = async (siteId: number) => {
     try {
       const users = await this.userRepository.find({
-        where: { userHasSites: { site: { id: siteId } } },
+        where: { status: 'A', deletedAt: IsNull(), userHasSites: { status: 'A', deletedAt: IsNull(), site: { id: siteId, status: 'A', deletedAt: IsNull() } } },
         relations: { 
           usersPositions: { position: true }
         },
@@ -973,7 +928,7 @@ export class UsersService {
         id: user.id,
         name: user.name,
         email: user.email,
-        positions: user.usersPositions.map((userPosition) => ({
+        positions: (user.usersPositions ?? []).filter(link => !link.deletedAt && Number(link.siteId) === Number(siteId) && link.position?.status === 'A' && !link.position.deletedAt && Number(link.position.siteId) === Number(siteId)).map((userPosition) => ({
           id: userPosition.position.id,
           name: userPosition.position.name,
           description: userPosition.position.description,

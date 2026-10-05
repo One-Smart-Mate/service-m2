@@ -1,3 +1,4 @@
+import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
 import { CardEvidenceUploadService } from './card-evidence-upload.service';
 import {
   BadRequestException,
@@ -179,6 +180,7 @@ export class CardController {
   findByCardUUID(@Param('uuid') uuid: string) {
     return this.cardService.findCardByUUID(uuid);
   }
+  @FastSiteScoped()
   @Get('/responsible/:responsibleId')
   @SelfOrRoles({
     source: 'params',
@@ -196,7 +198,7 @@ export class CardController {
     @Param('responsibleId') responsibleId: number,
     @Request() req,
   ) {
-    return this.cardService.findResponsibleCards(responsibleId, req.user.id);
+    return this.cardService.findResponsibleCards(responsibleId, req.user.id, req.user.fastSiteId);
   }
 
   @Get('/count/:siteId')
@@ -712,6 +714,7 @@ export class CardController {
     return result;
   }
 
+  @FastSiteScoped()
   @Get('/user/:userId')
   @SelfOrRoles({
     source: 'params',
@@ -726,7 +729,7 @@ export class CardController {
   })
   @ApiParam({ name: 'userId' })
   findUserCards(@Param('userId') userId: number, @Request() req) {
-    return this.cardService.findUserCards(userId, req.user.id);
+    return this.cardService.findUserCards(userId, req.user.id, req.user.fastSiteId);
   }
 
   @Post('/discard')

@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { Inject, Injectable } from '@nestjs/common';
 import { Messaging } from 'firebase-admin/messaging';
 import { NotificationDTO } from './models/firebase.request.dto';
@@ -90,7 +91,7 @@ export class FirebaseService {
           results.push({ token: tokenObj.token, success: true });
         } catch (error) {
           this.logger.logFirebase(
-            `Error sending to recipient ${index + 1} (${tokenObj.type}) - ${error.message}`,
+            `Error sending to recipient ${index + 1} (${tokenObj.type}) - ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
           );
           results.push({ token: tokenObj.token, success: false, error });
         }

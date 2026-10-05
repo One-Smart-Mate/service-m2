@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import {
   HttpException,
   Injectable,
@@ -28,18 +29,16 @@ import { stringConstants } from 'src/utils/string.constant';
 import { UpdateDefinitiveSolutionDTO } from './models/dto/update.definitive.solution.dto';
 import { CardNoteEntity } from '../cardNotes/card.notes.entity';
 import { UpdateProvisionalSolutionDTO } from './models/dto/update.provisional.solution.dto';
-import { PriorityEntity } from '../priority/entities/priority.entity';
 import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationDTO } from '../firebase/models/firebase.request.dto';
 import { Week } from './models/card.response.dto';
 import { QUERY_CONSTANTS } from 'src/utils/query.constants';
 import { UpdateCardPriorityDTO } from './models/dto/update.card.priority.dto';
 import { UpdateCardMechanicDTO } from './models/dto/upate.card.responsible.dto';
-import { addDaysToDate, addDaysToDateString, convertToISOFormat } from 'src/utils/general.functions';
+import { addDaysToDate } from 'src/utils/general.functions';
 import { UserEntity } from '../users/entities/user.entity';
 import { DiscardCardDto } from './models/dto/discard.card.dto';
 import { AmDiscardReasonEntity } from '../amDiscardReason/entities/am-discard-reason.entity';
-import { randomUUID } from "crypto";
 import {
   CardReportGroupedDTO,
   CardReportDetailsDTO,
@@ -484,10 +483,11 @@ export class CardService {
   findResponsibleCards = async (
     responsibleId: number,
     requesterId: number,
+    sessionSiteId?: number,
   ) => {
     try {
       const accessibleSiteIds =
-        await this.userService.getAccessibleSiteIds(requesterId);
+        sessionSiteId === undefined ? await this.userService.getAccessibleSiteIds(requesterId) : [sessionSiteId];
       const cards = await this.cardRepository.findBy(
         accessibleSiteIds === null
           ? { responsableId: responsibleId, deletedAt: IsNull() }
@@ -530,204 +530,11 @@ export class CardService {
         evidences,
       };
     } catch (exception) {
-      console.log(exception);
+
       HandleException.exception(exception);
     }
   };
 
-  create = async (createCardDTO: CreateCardDTO) => {
-    try {
-      let cardUUID = createCardDTO.cardUUID;
-      let cardUUIDisNotUnique = await this.cardRepository.exists({
-        where: { cardUUID: cardUUID },
-      });
-
-      while (cardUUIDisNotUnique) {
-        cardUUID = randomUUID();
-        cardUUIDisNotUnique = await this.cardRepository.exists({
-          where: { cardUUID: cardUUID },
-        });
-      }
-
-      createCardDTO.cardUUID = cardUUID;
-
-      const site = await this.siteService.findById(createCardDTO.siteId);
-      var priority = new PriorityEntity();
-      if (createCardDTO.priorityId && createCardDTO.priorityId !== 0) {
-        priority = await this.priorityService.findById(
-          createCardDTO.priorityId,
-        );
-      }
-      const node = await this.levelService.findById(createCardDTO.nodeId);
-      const cardType = await this.cardTypeService.findById(
-        createCardDTO.cardTypeId,
-      );
-      const preclassifier = await this.preclassifierService.findById(
-        createCardDTO.preclassifierId,
-      );
-      const creator = await this.userService.findById(createCardDTO.creatorId);
-
-      if (!site) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.SITE);
-      } else if (!node) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      } else if (!priority) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.PRIORITY);
-      } else if (!cardType) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.CARDTYPES,
-        );
-      } else if (!preclassifier) {
-        throw new NotFoundCustomException(
-          NotFoundCustomExceptionType.PRECLASSIFIER,
-        );
-      } else if (!creator) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.USER);
-      }
-
-      var lastInsertedCard;
-      lastInsertedCard = await this.cardRepository.findOne({
-        order: { id: 'DESC' },
-        where: { siteId: site.id },
-      });
-
-      const levelMap = await this.levelService.findAllLevelsBySite(site.id);
-      const { area, location } = this.levelService.getSuperiorLevelsById(
-        String(node.id),
-        levelMap,
-      );
-
-      const createdAt = new Date(convertToISOFormat(createCardDTO.cardCreationDate));
-
-      const card = await this.cardRepository.create({
-        ...createCardDTO,
-        siteCardId: lastInsertedCard ? lastInsertedCard.siteCardId + 1 : 1,
-        siteCode: site.siteCode,
-        cardTypeColor: cardType.color,
-        cardLocation: location,
-        areaId: area.id,
-        areaName: area.name,
-        nodeName: node.name,
-        levelMachineId: node.levelMachineId,
-        level: node.level,
-        superiorId: Number(node.superiorId) === 0 ? node.id : node.superiorId,
-        responsableId: node.responsibleId && node.responsibleId,
-        responsableName: node.responsibleName && node.responsibleName,
-        mechanicId: node.assignWhileCreate === 1 ? node.responsibleId : null,
-        mechanicName: node.assignWhileCreate === 1 ? node.responsibleName : null,
-        priorityId: priority.id,
-        priorityCode: priority.priorityCode,
-        priorityDescription: priority.priorityDescription,
-        cardTypeMethodology:
-          cardType.cardTypeMethodology === stringConstants.C
-            ? cardType.cardTypeMethodology
-            : null,
-        cardTypeValue:
-          cardType.cardTypeMethodology === stringConstants.C
-            ? (createCardDTO.cardTypeValue as 'safe' | 'unsafe')
-            : null,
-        cardTypeMethodologyName: cardType.methodology,
-        cardTypeName: cardType.name,
-        preclassifierCode: preclassifier.preclassifierCode,
-        preclassifierDescription: preclassifier.preclassifierDescription,
-        creatorName: creator.name,
-        createdAt: createdAt,
-        cardCreationDate: convertToISOFormat(createCardDTO.cardCreationDate),
-        cardDueDate: createCardDTO.customDueDate
-          ? (() => {
-              const [year, month, day] = createCardDTO.customDueDate.split('-').map(Number);
-              return new Date(year, month - 1, day);
-            })()
-          : (priority.id && addDaysToDateString(convertToISOFormat(createCardDTO.cardCreationDate), priority.priorityDays)),
-        commentsAtCardCreation: createCardDTO.comments,
-        appVersion: createCardDTO.appVersion,
-        appSo: createCardDTO.appSo,
-      });
-
-      await this.cardRepository.save(card);
-      lastInsertedCard = await this.cardRepository.find({
-        order: { id: 'DESC' },
-        take: 1,
-      });
-      const cardAssignEvidences = lastInsertedCard[0];
-
-      await Promise.all(
-        createCardDTO.evidences.map(async (evidence) => {
-          switch (evidence.type) {
-            case stringConstants.AUCR:
-              cardAssignEvidences.evidenceAucr = 1;
-              break;
-            case stringConstants.VICR:
-              cardAssignEvidences.evidenceVicr = 1;
-              break;
-            case stringConstants.IMCR:
-              cardAssignEvidences.evidenceImcr = 1;
-              break;
-            case stringConstants.AUCL:
-              cardAssignEvidences.evidenceAucl = 1;
-              break;
-            case stringConstants.VICL:
-              cardAssignEvidences.evidenceVicl = 1;
-              break;
-            case stringConstants.IMCL:
-              cardAssignEvidences.evidenceImcl = 1;
-              break;
-            case stringConstants.IMPS:
-              cardAssignEvidences.evidenceImps = 1;
-              break;
-            case stringConstants.AUPS:
-              cardAssignEvidences.evidenceAups = 1;
-              break;
-            case stringConstants.VIPS:
-              cardAssignEvidences.evidenceVips = 1;
-              break;
-          }
-          var evidenceToCreate = await this.evidenceRepository.create({
-            evidenceName: evidence.url,
-            evidenceType: evidence.type,
-            cardId: cardAssignEvidences.id,
-            siteId: site.id,
-            createdAt: createdAt,
-          });
-          await this.evidenceRepository.save(evidenceToCreate);
-        }),
-      );
-
-      const tokens =
-        await this.userService.getSiteUsersTokensExcludingOwnerUser(
-          cardAssignEvidences.siteId,
-          cardAssignEvidences.creatorId,
-        );
-      await this.firebaseService.sendMultipleMessage(
-        new NotificationDTO(
-          stringConstants.cardsTitle,
-          `${stringConstants.cardsDescription} ${cardAssignEvidences.cardTypeMethodologyName}`,
-          stringConstants.cardsNotificationType,
-        ),
-        tokens,
-      );
-
-      // Send specific notification to responsible if requested and notify is enabled
-      if (createCardDTO.notifyResponsible && node.notify === 1 && node.responsibleId) {
-        const responsibleTokens = await this.userService.getUserToken(node.responsibleId);
-        if (responsibleTokens && responsibleTokens.length > 0) {
-          await this.firebaseService.sendMultipleMessage(
-            new NotificationDTO(
-              stringConstants.cardsTitle,
-              `${stringConstants.cardResponsibleAssignment} ${node.name}: ${cardAssignEvidences.cardTypeMethodologyName}`,
-              stringConstants.cardsNotificationType,
-            ),
-            responsibleTokens,
-          );
-        }
-      }
-
-      return await this.cardRepository.save(cardAssignEvidences);
-    } catch (exception) {
-      console.log(exception);
-      HandleException.exception(exception);
-    }
-  };
   updateDefinitivesolution = async (
     updateDefinitivesolutionDTO: UpdateDefinitiveSolutionDTO,
     actorId: number,
@@ -1498,7 +1305,7 @@ export class CardService {
 
       return weeks;
     } catch (exception) {
-      console.log(exception);
+
       HandleException.exception(exception);
     }
   };
@@ -1853,7 +1660,7 @@ export class CardService {
     };
   }
 
-  findUserCards = async (userId: number, requesterId: number) => {
+  findUserCards = async (userId: number, requesterId: number, sessionSiteId?: number) => {
     try {
       const user = await this.userRepository.findOne({
         where: { id: userId },
@@ -1874,7 +1681,7 @@ export class CardService {
         )
         .map((userSite) => Number(userSite.site.id));
       const accessibleSiteIds =
-        await this.userService.getAccessibleSiteIds(requesterId);
+        sessionSiteId === undefined ? await this.userService.getAccessibleSiteIds(requesterId) : [sessionSiteId];
       const authorizedSiteIds =
         accessibleSiteIds === null
           ? targetSiteIds
@@ -2571,7 +2378,7 @@ export class CardService {
         if (failure.statusCode >= 500) {
           this.logger.error(
             logMessage,
-            error instanceof Error ? error.stack : String(error),
+            JSON.stringify(errorDiagnostics(error)),
           );
         } else {
           this.logger.warn(logMessage);
@@ -2832,7 +2639,7 @@ export class CardService {
       if (!(exception instanceof HttpException)) {
         this.logger.error(
           `Card creation failed for UUID ${createCardDTO.cardUUID}`,
-          exception instanceof Error ? exception.stack : String(exception),
+          JSON.stringify(errorDiagnostics(exception)),
         );
       }
       HandleException.exception(exception);
@@ -2848,7 +2655,7 @@ export class CardService {
         cardUUID,
         success: false,
         statusCode: error.getStatus(),
-        message: error.message,
+        message: error.getStatus() >= 500 ? 'Unable to synchronize card' : error.message,
       };
     }
 

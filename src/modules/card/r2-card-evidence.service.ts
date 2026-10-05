@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import {
   BadGatewayException,
   BadRequestException,
@@ -104,7 +105,7 @@ export class R2CardEvidenceService {
       } else {
         this.logger.error(
           `Cloudflare R2 upload failed for site ${siteId}`,
-          error instanceof Error ? error.stack : undefined,
+          JSON.stringify(errorDiagnostics(error)),
         );
         throw new BadGatewayException(
           'Evidence storage is temporarily unavailable',
@@ -188,7 +189,7 @@ export class R2CardEvidenceService {
     } catch (error) {
       this.logger.error(
         'Cloudflare R2 download failed',
-        error instanceof Error ? error.stack : undefined,
+        JSON.stringify(errorDiagnostics(error)),
       );
       throw new BadGatewayException(
         'Evidence storage is temporarily unavailable',

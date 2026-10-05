@@ -1,3 +1,4 @@
+import { withLockedOpl } from '../oplMstr/opl-transaction';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
@@ -27,28 +28,16 @@ export class OplLevelsService {
 
   async create(createOplLevelsDTO: CreateOplLevelsDTO) {
     try {
-      const [opl, level] = await Promise.all([
-        this.oplMstrRepository.findOneBy({ id: createOplLevelsDTO.oplId }),
-        this.levelRepository.findOneBy({ id: createOplLevelsDTO.levelId }),
-      ]);
-      if (!opl) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_MSTR);
-      }
-      if (!level) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
-      }
-      if (Number(opl.siteId) !== Number(level.siteId)) {
-        throw new BadRequestException(
-          'The OPL and level must belong to the same site',
-        );
-      }
-
-      const oplLevels = this.oplLevelsRepository.create({
-        siteId: opl.siteId,
-        oplId: createOplLevelsDTO.oplId,
-        levelId: createOplLevelsDTO.levelId,
+      return await withLockedOpl(this.oplLevelsRepository.manager.connection, createOplLevelsDTO.oplId, async (manager, opl) => {
+        const level = await manager.findOne(LevelEntity, { where: { id: createOplLevelsDTO.levelId, deletedAt: IsNull(), status: 'A' } });
+        if (!level) throw new NotFoundCustomException(NotFoundCustomExceptionType.LEVELS);
+        if (Number(opl.siteId) !== Number(level.siteId))
+          throw new BadRequestException('The OPL and level must belong to the same site');
+        const repository = manager.getRepository(OplLevelsEntity);
+        const existing = await repository.findOne({ where: { oplId: opl.id, levelId: level.id, deletedAt: IsNull() } });
+        if (existing) return existing;
+        return repository.save(repository.create({ siteId: opl.siteId, oplId: opl.id, levelId: level.id }));
       });
-      return await this.oplLevelsRepository.save(oplLevels);
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -198,8 +187,9 @@ export class OplLevelsService {
         );
       }
 
-      oplLevels.deletedAt = new Date();
-      await this.oplLevelsRepository.save(oplLevels);
+      await withLockedOpl(this.oplLevelsRepository.manager.connection, oplLevels.oplId, async (manager) => {
+        await manager.getRepository(OplLevelsEntity).softDelete({ id: oplLevels.id, oplId: oplLevels.oplId });
+      });
     } catch (exception) {
       HandleException.exception(exception);
     }

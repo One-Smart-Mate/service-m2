@@ -83,11 +83,7 @@ export class OplDetailsService {
 
   delete = async (id: number) => {
     try {
-      const detail = await this.oplDetailsRepository.findOneBy({ id });
-      if (!detail) {
-        throw new NotFoundCustomException(NotFoundCustomExceptionType.OPL_DETAILS);
-      }
-      return await this.oplDetailsRepository.softDelete(id);
+      return await this.oplDetailPersistence.delete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

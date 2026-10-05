@@ -99,7 +99,7 @@ export class CiltSequencesService {
       if (!sequence) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES);
       }
-      return await this.ciltSequencesRepository.softDelete(id);
+      return await this.ciltSequencePersistence.softDelete(id);
     } catch (exception) {
       HandleException.exception(exception);
     }

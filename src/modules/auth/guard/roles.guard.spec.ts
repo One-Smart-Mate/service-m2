@@ -112,4 +112,13 @@ describe('RolesGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
   });
+  it('does not grant platform-administrator authority to a fast session', async () => {
+    metadata.requiredRoles = ['local_admin'];
+    jest.mocked(usersService.getUserRoles).mockResolvedValue(['IH_sis_admin']);
+    await expect(
+      guard.canActivate(
+        createContext({ user: { id: 10, sessionType: 'fast', fastSiteId: 2 } }),
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
 });

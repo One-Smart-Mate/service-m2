@@ -12,8 +12,11 @@ import { CiltSequencesEntity } from './entities/ciltSequences.entity';
 const createDataSource = (repositories: Map<unknown, unknown>) => {
   const manager: any = {
     getRepository: jest.fn((entity) => repositories.get(entity)),
+    findOne: jest.fn((entity, options) => entity === SiteEntity
+      ? Promise.resolve({ id: options.where.id, status: 'A' })
+      : (repositories.get(entity) as any).findOne(options)),
   };
-  manager.transaction = jest.fn(async (work) => work(manager));
+  manager.transaction = jest.fn(async (isolationOrWork, callback?) => (callback ?? isolationOrWork)(manager));
   return manager;
 };
 
@@ -152,11 +155,12 @@ describe('CILT sequence and OPL detail integrity', () => {
   });
 
   it('swaps sequence order atomically only inside its CILT master', async () => {
-    const source = { id: 1, ciltMstrId: 10, order: 1 };
-    const target = { id: 2, ciltMstrId: 10, order: 2 };
+    const source = { id: 1, siteId: 7, ciltMstrId: 10, order: 1 };
+    const target = { id: 2, siteId: 7, ciltMstrId: 10, order: 2 };
     const repository = {
       findOne: jest
         .fn()
+        .mockResolvedValueOnce(source)
         .mockResolvedValueOnce(source)
         .mockResolvedValueOnce(target),
       save: jest.fn(async (value) => value),
@@ -209,7 +213,7 @@ describe('CILT sequence and OPL detail integrity', () => {
       siteId: 7,
       oplId: 40,
       order: 1,
-    });
+    }).mockResolvedValueOnce({ id: 5, siteId: 7, oplId: 40, order: 1 });
     await expect(
       persistence.update({
         id: 5,

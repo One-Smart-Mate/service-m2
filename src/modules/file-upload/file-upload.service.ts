@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { FastPasswordConflictException } from '../users/fast-password.policy';
 import {
   BadRequestException,
@@ -75,7 +76,7 @@ export class FileUploadService {
       }
     } catch (error) {
       this.customLogger.error(
-        `Failed to send WhatsApp authentication message: ${error.message}`,
+        `Failed to send WhatsApp authentication message: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
       );
     }
   }
@@ -272,7 +273,7 @@ export class FileUploadService {
           newUser.translation || stringConstants.LANG_ES,
         );
       } catch (error) {
-        this.logger.error(`Failed to send welcome email: ${error.message}`);
+        this.logger.error(`Failed to send welcome email: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`);
       }
 
       // Send fastPassword via WhatsApp if phone number is provided
@@ -286,7 +287,7 @@ export class FileUploadService {
           );
         } catch (error) {
           this.logger.error(
-            `Failed to send WhatsApp authentication message: ${error.message}`,
+            `Failed to send WhatsApp authentication message: ${errorDiagnostics(error).driverCode ?? errorDiagnostics(error).errorType}`,
           );
         }
       }

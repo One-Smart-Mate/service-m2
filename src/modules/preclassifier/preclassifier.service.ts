@@ -1,3 +1,4 @@
+import { errorDiagnostics } from 'src/common/exceptions/error-details';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PreclassifierEntity } from './entities/preclassifier.entity';
@@ -144,7 +145,7 @@ export class PreclassifierService {
     } catch (error) {
       this.logger.warn(
         `Preclassifier ${siteId} was saved but catalog notification failed`,
-        error instanceof Error ? error.stack : undefined,
+        JSON.stringify(errorDiagnostics(error)),
       );
     }
   }

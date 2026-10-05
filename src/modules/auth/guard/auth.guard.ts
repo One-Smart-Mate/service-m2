@@ -37,51 +37,51 @@ export class AuthGuard implements CanActivate {
     if (!token) {
       throw new UnauthorizedException();
     }
+    let payload: AuthTokenPayload;
     try {
-      const payload =
-        await this.jwtService.verifyAsync<AuthTokenPayload>(token);
-      if (!payload?.id || !payload.jti) {
-        throw new UnauthorizedException();
-      }
-
-      const isFastSession = payload.sessionType === FAST_SESSION;
-      const loadUser = (id: number) =>
-        isFastSession
-          ? this.usersService.findByIdWithSites(id)
-          : this.usersService.findById(id);
-      const [sessionActive, user, actor] = await Promise.all([
-        this.authSessionService.isSessionActive(payload.jti, payload.id),
-        loadUser(payload.id),
-        payload.actorId ? loadUser(payload.actorId) : Promise.resolve(null),
-      ]);
-      const isActive = (candidate: { status?: string }) =>
-        candidate?.status !== stringConstants.inactiveStatus &&
-        candidate?.status !== stringConstants.cancelledStatus;
-
-      if (!sessionActive || !user || !isActive(user)) {
-        throw new UnauthorizedException();
-      }
-      if (payload.actorId && (!actor || !isActive(actor))) {
-        throw new UnauthorizedException();
-      }
-      if (
-        isFastSession &&
-        (!Number.isSafeInteger(payload.fastSiteId) ||
-          payload.fastSiteId <= 0 ||
-          !Number.isSafeInteger(payload.actorId) ||
-          payload.actorId <= 0 ||
-          !hasActiveSiteMembership(user, payload.fastSiteId) ||
-          !hasActiveSiteMembership(actor, payload.fastSiteId))
-      ) {
-        throw new UnauthorizedException(
-          'Fast session site access is no longer active',
-        );
-      }
-
-      request['user'] = payload;
+      payload = await this.jwtService.verifyAsync<AuthTokenPayload>(token);
     } catch {
       throw new UnauthorizedException();
     }
+    if (!payload?.id || !payload.jti) {
+      throw new UnauthorizedException();
+    }
+
+    const isFastSession = payload.sessionType === FAST_SESSION;
+    const loadUser = (id: number) =>
+      isFastSession
+        ? this.usersService.findByIdWithSites(id)
+        : this.usersService.findById(id);
+    const [sessionActive, user, actor] = await Promise.all([
+      this.authSessionService.isSessionActive(payload.jti, payload.id),
+      loadUser(payload.id),
+      payload.actorId ? loadUser(payload.actorId) : Promise.resolve(null),
+    ]);
+    const isActive = (candidate: { status?: string }) =>
+      candidate?.status !== stringConstants.inactiveStatus &&
+      candidate?.status !== stringConstants.cancelledStatus;
+
+    if (!sessionActive || !user || !isActive(user)) {
+      throw new UnauthorizedException();
+    }
+    if (payload.actorId && (!actor || !isActive(actor))) {
+      throw new UnauthorizedException();
+    }
+    if (
+      isFastSession &&
+      (!Number.isSafeInteger(payload.fastSiteId) ||
+        payload.fastSiteId <= 0 ||
+        !Number.isSafeInteger(payload.actorId) ||
+        payload.actorId <= 0 ||
+        !hasActiveSiteMembership(user, payload.fastSiteId) ||
+        !hasActiveSiteMembership(actor, payload.fastSiteId))
+    ) {
+      throw new UnauthorizedException(
+        'Fast session site access is no longer active',
+      );
+    }
+
+    request['user'] = payload;
     return true;
   }
 

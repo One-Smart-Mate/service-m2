@@ -381,6 +381,7 @@ describe('UsersService', () => {
           userRoles: [{ role: { name: 'local_admin' } }],
         } as UserEntity)
         .mockResolvedValueOnce({
+          status: 'A',
           userHasSites: [
             { status: 'A', site: { id: 2, status: 'A' } },
             { status: 'A', site: { id: 3, status: 'A' } },
@@ -397,6 +398,7 @@ describe('UsersService', () => {
           userRoles: [{ role: { name: 'mechanic' } }],
         } as UserEntity)
         .mockResolvedValueOnce({
+          status: 'A',
           userHasSites: [
             { status: 'I', site: { id: 2, status: 'A' } },
             { status: 'A', site: { id: 3, status: 'I' } },
@@ -414,6 +416,7 @@ describe('UsersService', () => {
           userRoles: [{ role: { name: 'mechanic' } }],
         } as UserEntity)
         .mockResolvedValueOnce({
+          status: 'A',
           userHasSites: [
             { status: 'I', site: { id: 2, status: 'A' } },
           ],
@@ -422,6 +425,32 @@ describe('UsersService', () => {
       await expect(service.getAccessibleSiteIds(10)).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+    });
+  });
+
+  describe('site directories', () => {
+    const user = {
+      id: 10, name: 'User', status: 'A', email: 'user@example.com',
+      userRoles: [{ role: { id: 1, name: 'operator' } }],
+      userHasSites: [1, 2].map(id => ({ status: 'A', site: { id, status: 'A', name: `Site ${id}` } })),
+      usersPositions: [1, 2].map(siteId => ({ siteId, position: { id: siteId, siteId, status: 'A', name: `Position ${siteId}` } })),
+    } as any;
+    it('does not disclose the other memberships of a site-directory user', async () => {
+      jest.mocked(userRepository.find).mockResolvedValue([user]);
+      const rows = await service.findUsersBySiteWithRoles(1);
+      expect(rows[0].sites.map(site => site.id)).toEqual([1]);
+      expect(userRepository.find).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: 'A' }) }));
+    });
+    it('does not disclose positions belonging to another site', async () => {
+      jest.mocked(userRepository.find).mockResolvedValue([user]);
+      const rows = await service.findUsersBySiteWithPositions(1);
+      expect(rows[0].positions.map(position => position.siteId)).toEqual([1]);
+    });
+    it('uses the same scoped policy for the legacy directory response', async () => {
+      jest.mocked(userRepository.find).mockResolvedValue([user]);
+      const rows = await service.findSiteUsers(1);
+      expect(rows[0].sites.map(site => site.id)).toEqual([1]);
+      expect(rows[0].roles).toBe('operator');
     });
   });
 

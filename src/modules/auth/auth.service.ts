@@ -147,12 +147,6 @@ export class AuthService {
         sessionType: PRIMARY_SESSION,
       };
 
-      const access_token = await this.issueToken(payload, {
-        type: 'password',
-        value: user.password,
-        siteId: Number(membership.site.id),
-      });
-
       const companyName = await this.siteService.getCompanyName(
         membership.site.companyId,
       );
@@ -163,6 +157,12 @@ export class AuthService {
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+      const access_token = await this.issueToken(payload, {
+        type: 'password',
+        value: user.password,
+        siteId: Number(membership.site.id),
+      });
+
       return new UserResponse(
         { ...user, userHasSites: memberships },
         access_token,
@@ -171,7 +171,6 @@ export class AuthService {
         app_history,
       );
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
@@ -241,13 +240,6 @@ export class AuthService {
         fastSiteId: siteId,
       };
 
-      const access_token = await this.issueToken(
-        payload,
-        { type: 'fastPassword', value: user.fastPasswordDigest, siteId },
-        { expiresIn: FAST_SESSION_EXPIRES_IN },
-        parentSessionId,
-      );
-
       const companyName = await this.siteService.getCompanyName(
         targetMembership.site.companyId,
       );
@@ -258,15 +250,17 @@ export class AuthService {
       const diffTime = dueDate.getTime() - today.getTime();
       const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+      const access_token = await this.issueToken(
+        payload,
+        { type: 'fastPassword', value: user.fastPasswordDigest, siteId },
+        { expiresIn: FAST_SESSION_EXPIRES_IN },
+        parentSessionId,
+      );
+
       return new UserResponse(
         {
           ...user,
-          userHasSites: [
-            targetMembership,
-            ...targetMemberships.filter(
-              ({ site }) => Number(site.id) !== siteId,
-            ),
-          ],
+          userHasSites: [targetMembership],
         },
         access_token,
         roles,
@@ -274,7 +268,6 @@ export class AuthService {
         app_history,
       );
     } catch (exception) {
-      console.log(exception);
       HandleException.exception(exception);
     }
   };
@@ -356,9 +349,9 @@ export class AuthService {
         throw new ValidationException(ValidationExceptionType.USER_INACTIVE);
       }
 
-      if (!user.userHasSites?.length) {
-        throw new UnauthorizedException('User has no site access');
-      }
+      const memberships = getActiveSiteMemberships(user);
+      const membership = memberships[0];
+      if (!membership) throw new UnauthorizedException('User has no active site access');
 
       const roles = await this.usersSevice.getUserRoles(user.id);
 
@@ -374,6 +367,23 @@ export class AuthService {
       };
 
       const access_token = await this.jwtService.signAsync(newPayload);
+      const companyName = await this.siteService.getCompanyName(
+        membership.site.companyId,
+      );
+
+      const site = membership.site;
+      const dueDate = new Date(site.dueDate);
+      const today = new Date();
+      const diffTime = dueDate.getTime() - today.getTime();
+      const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const response = new UserResponse(
+        { ...user, userHasSites: memberships },
+        access_token,
+        roles,
+        companyName,
+        app_history,
+      );
       const rotated = await this.authSessionService.rotateSession(
         currentSessionId,
         user.id,
@@ -383,28 +393,13 @@ export class AuthService {
           sessionType: PRIMARY_SESSION,
           platform: newPayload.platform,
         },
+        Number(membership.site.id),
       );
       if (!rotated) {
         throw new UnauthorizedException('Session is no longer active');
       }
 
-      const companyName = await this.siteService.getCompanyName(
-        user.userHasSites[0].site.companyId,
-      );
-
-      const site = user.userHasSites[0].site;
-      const dueDate = new Date(site.dueDate);
-      const today = new Date();
-      const diffTime = dueDate.getTime() - today.getTime();
-      const app_history = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      return new UserResponse(
-        user,
-        access_token,
-        roles,
-        companyName,
-        app_history,
-      );
+      return response;
     } catch (exception) {
       HandleException.exception(exception);
     }
@@ -429,7 +424,7 @@ export class AuthService {
         message: 'If the account exists, the fast password will be sent',
       };
     } catch (exception) {
-      console.log(exception);
+
       HandleException.exception(exception);
     }
   };

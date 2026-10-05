@@ -56,7 +56,9 @@ describe('NotificationOutboxProcessor', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(manager.createQueryBuilder).mockReturnValue(queryBuilder as never);
+    jest
+      .mocked(manager.createQueryBuilder)
+      .mockReturnValue(queryBuilder as never);
     jest
       .mocked(manager.save)
       .mockImplementation((_entity, value) => Promise.resolve(value as never));
@@ -86,7 +88,7 @@ describe('NotificationOutboxProcessor', () => {
       [{ token: 'device-token', type: 'ANDROID' }],
     );
     expect(repository.update).toHaveBeenCalledWith(
-      { id: 11, status: NotificationOutboxStatus.PROCESSING },
+      { id: 11, status: NotificationOutboxStatus.PROCESSING, attempts: 1 },
       expect.objectContaining({ status: NotificationOutboxStatus.SENT }),
     );
   });
@@ -103,7 +105,7 @@ describe('NotificationOutboxProcessor', () => {
     await processor.processPending();
 
     expect(repository.update).toHaveBeenCalledWith(
-      { id: 11, status: NotificationOutboxStatus.PROCESSING },
+      { id: 11, status: NotificationOutboxStatus.PROCESSING, attempts: 2 },
       expect.objectContaining({
         status: NotificationOutboxStatus.FAILED,
         lockedAt: null,
@@ -112,13 +114,34 @@ describe('NotificationOutboxProcessor', () => {
     );
   });
   it('delivers durable CILT email events and retries a mail failure', async () => {
-    const emailEvent = { ...event, payload: { ...event.payload, email: { type: 'cilt-stoppage', userId: 9, positionName: 'Press', translation: 'ES' } } };
-    queryBuilder.getOne.mockResolvedValueOnce(emailEvent).mockResolvedValueOnce(null);
-    mailService.sendCiltStoppageNotification.mockRejectedValueOnce(new Error('mail unavailable'));
+    const emailEvent = {
+      ...event,
+      payload: {
+        ...event.payload,
+        email: {
+          type: 'cilt-stoppage',
+          userId: 9,
+          positionName: 'Press',
+          translation: 'ES',
+        },
+      },
+    };
+    queryBuilder.getOne
+      .mockResolvedValueOnce(emailEvent)
+      .mockResolvedValueOnce(null);
+    mailService.sendCiltStoppageNotification.mockRejectedValueOnce(
+      new Error('mail unavailable'),
+    );
     await processor.processPending();
-    expect(mailService.sendCiltStoppageNotification).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }), 'Press', 'ES');
-    expect(repository.update).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ status: NotificationOutboxStatus.FAILED }));
+    expect(mailService.sendCiltStoppageNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 9 }),
+      'Press',
+      'ES',
+    );
+    expect(repository.update).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: NotificationOutboxStatus.FAILED }),
+    );
     expect(firebaseService.sendMultipleMessage).not.toHaveBeenCalled();
   });
-
 });

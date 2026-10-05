@@ -79,6 +79,7 @@ describe('Catalog service assignment boundaries', () => {
       hierarchyPersistence as never,
       usersService as never,
       firebaseService as never,
+      { enqueueWithManager: jest.fn() } as never,
     );
 
     await expect(

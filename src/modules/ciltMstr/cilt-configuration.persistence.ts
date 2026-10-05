@@ -2,7 +2,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
+  ConflictException,
 } from '@nestjs/common';
 import {
   DataSource,
@@ -18,6 +18,12 @@ import { CiltMstrEntity } from './entities/ciltMstr.entity';
 import { CiltSequencesEntity } from '../ciltSequences/entities/ciltSequences.entity';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltSecuencesScheduleEntity } from '../ciltSecuencesSchedule/entities/ciltSecuencesSchedule.entity';
+import {
+  validateOrder,
+  withSiteResourceTransaction,
+  withSiteTransaction,
+} from '../../common/database/site-transaction';
+import { UpdateScheduleOrderDTO } from '../ciltSecuencesSchedule/models/dto/update-order.dto';
 import { CreateCiltMstrPositionLevelsDto } from '../ciltMstrPositionLevels/model/create.ciltMstrPositionLevels.dto';
 import { UpdateCiltMstrPositionLevelsDto } from '../ciltMstrPositionLevels/model/update.ciltMstrPositionLevels.dto';
 import { CreateCiltSecuencesScheduleDto } from '../ciltSecuencesSchedule/models/dto/create.ciltSecuencesSchedule.dto';
@@ -27,72 +33,151 @@ import { UpdateCiltSecuencesScheduleDto } from '../ciltSecuencesSchedule/models/
 export class CiltConfigurationPersistence {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
+  deleteAssignment(id: number) {
+    return withSiteResourceTransaction(this.dataSource, CiltMstrPositionLevelsEntity, id,
+      (manager, current) => manager.getRepository(CiltMstrPositionLevelsEntity).update(
+        current.id, { status: 'I', deletedAt: new Date(), updatedAt: new Date() },
+      ));
+  }
+
   createAssignment(input: CreateCiltMstrPositionLevelsDto) {
-    return this.dataSource.transaction(async (manager) => {
-      await this.validateAssignment(manager, input);
-      return manager.save(
-        manager.create(CiltMstrPositionLevelsEntity, {
-          ...input,
-          createdAt: new Date(),
-        }),
-      );
-    });
+    return withSiteTransaction(
+      this.dataSource,
+      input.siteId,
+      async (manager) => {
+        await this.validateAssignment(manager, input);
+        return manager.save(
+          manager.create(CiltMstrPositionLevelsEntity, {
+            ...input,
+            createdAt: new Date(),
+          }),
+        );
+      },
+    );
   }
 
   updateAssignment(input: UpdateCiltMstrPositionLevelsDto) {
-    return this.dataSource.transaction(async (manager) => {
-      const current = await this.lockCurrent(
-        manager,
-        CiltMstrPositionLevelsEntity,
-        input.id,
-      );
-      this.assertSameSite(current.siteId, input.siteId);
-      const merged = Object.assign(current, this.defined(input));
-      await this.validateAssignment(manager, merged);
-      merged.updatedAt = new Date();
-      return manager.save(merged);
-    });
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltMstrPositionLevelsEntity,
+      input.id,
+      async (manager, current) => {
+        this.assertSameSite(current.siteId, input.siteId);
+        const merged = Object.assign(current, this.defined(input));
+        await this.validateAssignment(manager, merged);
+        merged.updatedAt = new Date();
+        return manager.save(merged);
+      },
+    );
   }
 
   createSchedules(input: CreateCiltSecuencesScheduleDto) {
-    return this.dataSource.transaction(async (manager) => {
-      await this.validateSchedule(manager, input);
-      if (!Array.isArray(input.schedules) || !input.schedules.length) {
-        throw new BadRequestException('At least one schedule time is required');
-      }
-      input.schedules.forEach((time) => this.validateTime(time));
-      const previous = await manager.findOne(CiltSecuencesScheduleEntity, {
-        where: { secuenceId: input.secuenceId, deletedAt: IsNull() },
-        order: { order: 'DESC' },
-      });
-      const nextOrder = (previous?.order ?? 0) + 1;
-      const { schedules, ...fields } = input;
-      const entities = schedules.map((schedule, index) =>
-        manager.create(CiltSecuencesScheduleEntity, {
-          ...fields,
-          schedule,
-          order: nextOrder + index,
-          createdAt: new Date(),
-        }),
-      );
-      return manager.save(entities);
-    });
+    return withSiteTransaction(
+      this.dataSource,
+      input.siteId,
+      async (manager) => {
+        await this.validateSchedule(manager, input);
+        if (!Array.isArray(input.schedules) || !input.schedules.length) {
+          throw new BadRequestException(
+            'At least one schedule time is required',
+          );
+        }
+        input.schedules.forEach((time) => this.validateTime(time));
+        const previous = await manager.findOne(CiltSecuencesScheduleEntity, {
+          where: {
+            siteId: input.siteId,
+            secuenceId: input.secuenceId,
+            deletedAt: IsNull(),
+          },
+          order: { order: 'DESC' },
+        });
+        const nextOrder = Number(previous?.order ?? 0) + 1;
+        const { schedules, ...fields } = input;
+        const entities = schedules.map((schedule, index) =>
+          manager.create(CiltSecuencesScheduleEntity, {
+            ...fields,
+            schedule,
+            order: validateOrder(nextOrder + index),
+            createdAt: new Date(),
+          }),
+        );
+        return manager.save(entities);
+      },
+    );
   }
 
   updateSchedule(input: UpdateCiltSecuencesScheduleDto) {
-    return this.dataSource.transaction(async (manager) => {
-      const current = await this.lockCurrent(
-        manager,
-        CiltSecuencesScheduleEntity,
-        input.id,
-      );
-      this.assertSameSite(current.siteId, input.siteId);
-      const merged = Object.assign(current, this.defined(input));
-      await this.validateSchedule(manager, merged);
-      this.validateTime(merged.schedule);
-      merged.updatedAt = new Date();
-      return manager.save(merged);
-    });
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSecuencesScheduleEntity,
+      input.id,
+      async (manager, current) => {
+        this.assertSameSite(current.siteId, input.siteId);
+        const merged = Object.assign(current, this.defined(input));
+        await this.validateSchedule(manager, merged);
+        this.validateTime(merged.schedule);
+        merged.updatedAt = new Date();
+        return manager.save(merged);
+      },
+    );
+  }
+
+  updateScheduleOrder(input: UpdateScheduleOrderDTO) {
+    const newOrder = validateOrder(input.newOrder);
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSecuencesScheduleEntity,
+      input.scheduleId,
+      async (manager, current) => {
+        if (current.status !== 'A')
+          throw new ConflictException('Only active schedules can be reordered');
+        if (Number(current.order) === newOrder) return current;
+        const target = await manager.findOne(CiltSecuencesScheduleEntity, {
+          where: {
+            siteId: current.siteId,
+            secuenceId: current.secuenceId,
+            order: newOrder,
+            status: 'A',
+            deletedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        const updatedAt = new Date();
+        if (target)
+          await manager.update(
+            CiltSecuencesScheduleEntity,
+            { id: target.id, deletedAt: IsNull() },
+            { order: current.order, updatedAt },
+          );
+        await manager.update(
+          CiltSecuencesScheduleEntity,
+          { id: current.id, deletedAt: IsNull() },
+          { order: newOrder, updatedAt },
+        );
+        return Object.assign(current, { order: newOrder, updatedAt });
+      },
+    );
+  }
+
+  deleteSchedule(id: number) {
+    return withSiteResourceTransaction(
+      this.dataSource,
+      CiltSecuencesScheduleEntity,
+      id,
+      async (manager, current) => {
+        const deletedAt = new Date();
+        await manager.update(
+          CiltSecuencesScheduleEntity,
+          { id: current.id },
+          { status: 'I', deletedAt, updatedAt: deletedAt },
+        );
+        return Object.assign(current, {
+          status: 'I',
+          deletedAt,
+          updatedAt: deletedAt,
+        });
+      },
+    );
   }
 
   private async validateAssignment(
@@ -160,20 +245,6 @@ export class CiltConfigurationPersistence {
       throw new BadRequestException(
         `${label} must belong to the selected site and not be deleted`,
       );
-    return record;
-  }
-
-  private async lockCurrent<T extends ObjectLiteral>(
-    manager: EntityManager,
-    entity: EntityTarget<T>,
-    id: number,
-  ): Promise<T> {
-    this.requireId(id);
-    const record = await manager.findOne(entity, {
-      where: { id, deletedAt: IsNull() } as any,
-      lock: { mode: 'pessimistic_write' },
-    });
-    if (!record) throw new NotFoundException('CILT configuration not found');
     return record;
   }
 
