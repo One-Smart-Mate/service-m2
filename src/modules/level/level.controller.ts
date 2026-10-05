@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Put, Query } from '@nestjs/common';
 import { LevelService } from './level.service';
-import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiParam, ApiTags, ApiBody, ApiBearerAuth, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { CreateLevelDto } from './models/dto/create.level.dto';
 import { UpdateLevelDTO } from './models/dto/update.level.dto';
 import { MoveLevelDto } from './models/dto/move.level.dto';
@@ -213,6 +213,17 @@ export class LevelController {
 
     // New format: return full pagination object
     return result;
+  }
+
+  @Get('/card-stats/:siteId')
+  @ApiParam({ name: 'siteId', required: true, example: 1, description: 'Site ID' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Per-node open-card and CILT/OPL assignment counts for the whole site',
+  })
+  async getLevelCardStats(@Param('siteId') siteId: number) {
+    return await this.levelService.getLevelCardStats(+siteId);
   }
 
   @Post('/clone')

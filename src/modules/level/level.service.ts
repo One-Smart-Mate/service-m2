@@ -756,6 +756,88 @@ export class LevelService {
     }
   };
 
+  /**
+   * Per-node counts for the whole site in a single call, so the levels tree can
+   * color/number every node from the start instead of lazily (which left deep
+   * nodes blank until expanded). Returns OWN counts per level id; the client
+   * rolls them up to ancestors using the level hierarchy.
+   */
+  getLevelCardStats = async (siteId: number) => {
+    try {
+      const cardRows: Array<{ node_id: number; c: number }> =
+        await this.levelRepository.manager.query(
+          `SELECT node_id, COUNT(*) AS c
+             FROM cards
+            WHERE site_id = ? AND status = 'A' AND deleted_at IS NULL
+              AND node_id IS NOT NULL
+            GROUP BY node_id`,
+          [siteId],
+        );
+      const ciltRows: Array<{ level_id: number; c: number }> =
+        await this.levelRepository.manager.query(
+          `SELECT level_id, COUNT(*) AS c
+             FROM cilt_mstr_position_levels
+            WHERE site_id = ? AND status = 'A' AND deleted_at IS NULL
+            GROUP BY level_id`,
+          [siteId],
+        );
+      const oplRows: Array<{ level_id: number; c: number }> =
+        await this.levelRepository.manager.query(
+          `SELECT level_id, COUNT(*) AS c
+             FROM opl_mstr_levels
+            WHERE site_id = ? AND deleted_at IS NULL
+            GROUP BY level_id`,
+          [siteId],
+        );
+
+      const cardCounts: Record<string, number> = {};
+      for (const r of cardRows) cardCounts[String(r.node_id)] = Number(r.c);
+
+      const assignmentCounts: Record<string, number> = {};
+      for (const r of ciltRows) {
+        assignmentCounts[String(r.level_id)] =
+          (assignmentCounts[String(r.level_id)] || 0) + Number(r.c);
+      }
+      for (const r of oplRows) {
+        assignmentCounts[String(r.level_id)] =
+          (assignmentCounts[String(r.level_id)] || 0) + Number(r.c);
+      }
+
+      // Roll own counts up to every ancestor so each node reflects its own
+      // cards/assignments PLUS all descendants' — the tree can then color and
+      // number every node from the start without expanding it.
+      const levels = levelMapFrom(
+        await this.levelRepository.findBy({
+          siteId,
+          status: stringConstants.A,
+          deletedAt: IsNull(),
+        }),
+      );
+      const rollUp = (own: Record<string, number>): Record<string, number> => {
+        const total: Record<string, number> = {};
+        for (const [levelIdStr, count] of Object.entries(own)) {
+          const levelId = Number(levelIdStr);
+          // traceLevelHierarchy returns the chain (entities) node..root.
+          const chain = traceLevelHierarchy(levelId, levels);
+          const ancestorIds =
+            chain.length > 0 ? chain.map((l) => Number(l.id)) : [levelId];
+          for (const ancestorId of ancestorIds) {
+            total[String(ancestorId)] =
+              (total[String(ancestorId)] || 0) + count;
+          }
+        }
+        return total;
+      };
+
+      return {
+        cardCounts: rollUp(cardCounts),
+        assignmentCounts: rollUp(assignmentCounts),
+      };
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   cloneLevel = async (levelId: number, nameSuffix: string = ' (Copy)') => {
     try {
       const result = await this.hierarchyPersistence.withLevel(
