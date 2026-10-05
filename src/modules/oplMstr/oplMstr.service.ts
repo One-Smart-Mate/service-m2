@@ -18,7 +18,7 @@ import { LevelEntity } from '../level/entities/level.entity';
 import { UpdateOplMstrOrderDTO } from './models/dto/update-order.dto';
 import { OplMasterPersistence } from './opl-master.persistence';
 import { MailService } from '../mail/mail.service';
-import { UsersService } from '../users/users.service';
+import { UserEntity } from '../users/entities/user.entity';
 
 @Injectable()
 export class OplMstrService {
@@ -38,7 +38,8 @@ export class OplMstrService {
     private readonly oplMasterPersistence: OplMasterPersistence,
     private readonly oplAccessPersistence: OplAccessPersistence,
     private readonly mailService: MailService,
-    private readonly usersService: UsersService,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) {}
 
   findAll = async () => {
@@ -266,7 +267,7 @@ export class OplMstrService {
       return;
     }
     try {
-      const reviewer = await this.usersService.findById(reviewerId);
+      const reviewer = await this.userRepository.findOneBy({ id: reviewerId });
       if (reviewer?.email) {
         await this.mailService.sendOplReviewerAssignmentEmail(reviewer, oplTitle);
       } else {
