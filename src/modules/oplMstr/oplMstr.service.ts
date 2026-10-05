@@ -325,7 +325,17 @@ export class OplMstrService {
 
   update = async (updateOplDto: UpdateOplMstrDTO) => {
     try {
-      return await this.oplMasterPersistence.update(updateOplDto);
+      const previous = await this.oplRepository.findOneBy({ id: updateOplDto.id });
+      const previousReviewerId = previous?.reviewerId ?? null;
+      const updated = await this.oplMasterPersistence.update(updateOplDto);
+      const newReviewerId = updated?.reviewerId ?? null;
+      if (newReviewerId && newReviewerId !== previousReviewerId) {
+        await this.notifyReviewerByEmail(
+          newReviewerId,
+          updated?.title ?? previous?.title ?? '',
+        );
+      }
+      return updated;
     } catch (exception) {
       HandleException.exception(exception);
     }
