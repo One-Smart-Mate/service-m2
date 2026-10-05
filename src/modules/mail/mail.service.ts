@@ -78,4 +78,22 @@ export class MailService {
       HandleException.exception(exception);
     }
   }
+
+  async sendOplReviewerAssignmentEmail(
+    user: Partial<UserEntity>,
+    oplTitle: string,
+    translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES
+  ) {
+    try {
+      this.logger.logEmail('Sending OPL reviewer assignment email', { email: user.email, oplTitle });
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: stringConstants.emailTemplates[translation].oplReviewAssignment.subject,
+        html: emailTemplates[translation].sendOplReviewAssignmentMessage(user.name, oplTitle, stringConstants.primaryColor),
+      });
+    } catch (exception) {
+      this.logger.logException('MailService', 'sendOplReviewerAssignmentEmail', exception);
+      HandleException.exception(exception);
+    }
+  }
 }

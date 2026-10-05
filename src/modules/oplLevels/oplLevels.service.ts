@@ -166,6 +166,24 @@ export class OplLevelsService {
       });
       const levelMap = new Map(levels.map((lvl) => [Number(lvl.id), lvl]));
 
+      // Count how many times this OPL has been used on each node (level),
+      // i.e. CILT executions that reference this OPL (as reference or
+      // remediation OPL) scoped to the node. Zero when the node has no usage.
+      const usageMap = new Map<number, number>();
+      if (levelIds.length > 0) {
+        const usageRows = await this.oplLevelsRepository.manager.query(
+          `SELECT level_id AS levelId, COUNT(*) AS usageCount
+             FROM cilt_sequences_executions
+            WHERE level_id IN (?)
+              AND (reference_opl_sop_id = ? OR remediation_opl_sop_id = ?)
+            GROUP BY level_id`,
+          [levelIds, oplId, oplId],
+        );
+        for (const row of usageRows) {
+          usageMap.set(Number(row.levelId), Number(row.usageCount));
+        }
+      }
+
       return oplLevels.map((ol) => {
         const level = levelMap.get(Number(ol.levelId));
         return {
@@ -173,6 +191,8 @@ export class OplLevelsService {
           oplId: ol.oplId,
           levelId: ol.levelId,
           siteId: ol.siteId,
+          usageCount: usageMap.get(Number(ol.levelId)) ?? 0,
+          oplDirectUsageCount: Number(opl.directUsageCount ?? 0),
           level: level
             ? {
                 id: level.id,

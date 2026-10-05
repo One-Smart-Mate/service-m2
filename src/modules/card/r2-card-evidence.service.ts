@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import * as sharp from 'sharp';
 import {
   CardEvidenceUploadType,
 } from './models/dto/upload-card-evidence.dto';
@@ -101,6 +102,92 @@ export class R2CardEvidenceService {
     }
     this.assertSiteKey(siteId, key);
     return this.downloadKey(key);
+  }
+
+  /**
+   * Return a small cached thumbnail for an image evidence. The thumbnail is
+   * generated once with sharp and stored in R2 next to the original (key
+   * suffixed with `.thumb.jpg`); subsequent requests serve the cached object
+   * so the server never re-encodes. Non-image evidences (or any thumbnail
+   * failure) fall back to the original object.
+   */
+  async downloadCardEvidenceThumb(
+    siteId: number,
+    token: string,
+  ): Promise<DownloadedCardEvidence> {
+    let key: string;
+    try {
+      key = Buffer.from(token, 'base64url').toString('utf8');
+    } catch {
+      throw new BadRequestException('Invalid evidence reference');
+    }
+    this.assertSiteKey(siteId, key);
+
+    // Only images have thumbnails; everything else serves the original.
+    if (!/\.(jpe?g|png|webp)$/i.test(key)) {
+      return this.downloadKey(key);
+    }
+
+    const thumbKey = `${key}.thumb.jpg`;
+
+    // 1) Serve the cached thumbnail if it already exists.
+    try {
+      const cached = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: thumbKey }),
+      );
+      if (cached.Body) {
+        const bytes = await cached.Body.transformToByteArray();
+        return {
+          buffer: Buffer.from(bytes),
+          contentType: cached.ContentType || 'image/jpeg',
+          size: cached.ContentLength ?? bytes.byteLength,
+          fileName: thumbKey.substring(thumbKey.lastIndexOf('/') + 1),
+        };
+      }
+    } catch {
+      // Not cached yet: fall through and generate it.
+    }
+
+    // 2) Generate the thumbnail from the original, cache it, and return it.
+    try {
+      const original = await this.downloadKey(key);
+      const thumbBuffer = await sharp(original.buffer)
+        .rotate()
+        .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
+        .toBuffer();
+
+      // Cache in R2 (best-effort: a failed write still serves the thumbnail).
+      await this.client
+        .send(
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: thumbKey,
+            Body: thumbBuffer,
+            ContentType: 'image/jpeg',
+            ContentLength: thumbBuffer.length,
+            CacheControl: 'public, max-age=31536000, immutable',
+          }),
+        )
+        .catch((error) => {
+          this.logger.warn(
+            `Thumbnail cache write failed for ${thumbKey}: ${error?.message ?? error}`,
+          );
+        });
+
+      return {
+        buffer: thumbBuffer,
+        contentType: 'image/jpeg',
+        size: thumbBuffer.length,
+        fileName: thumbKey.substring(thumbKey.lastIndexOf('/') + 1),
+      };
+    } catch (error) {
+      // Any thumbnail failure must not break the UI: serve the original.
+      this.logger.warn(
+        `Thumbnail generation failed for ${key}, serving original: ${error?.message ?? error}`,
+      );
+      return this.downloadKey(key);
+    }
   }
 
   async downloadLegacyCardEvidence(
