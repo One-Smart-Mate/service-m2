@@ -11,9 +11,11 @@ import { OplTypes } from '../oplTypes/entities/oplTypes.entity';
 import { OplUserAccessEntity } from './entities/oplUserAccess.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { OplMasterPersistence } from './opl-master.persistence';
+import { MailModule } from '../mail/mail.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([OplMstr, OplLevelsEntity, LevelEntity, OplDetailsEntity, OplTypes, OplUserAccessEntity, UserEntity])],
+  imports: [TypeOrmModule.forFeature([OplMstr, OplLevelsEntity, LevelEntity, OplDetailsEntity, OplTypes, OplUserAccessEntity, UserEntity]), MailModule, UsersModule],
   controllers: [OplMstrController],
   providers: [OplMstrService, OplMasterPersistence, OplAccessPersistence],
   exports: [OplMstrService],
