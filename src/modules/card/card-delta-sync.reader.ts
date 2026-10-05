@@ -221,10 +221,9 @@ export class CardDeltaSyncReader {
         ? { revision: String(last.revision), id: String(last.id) }
         : {
             revision: upperRevision,
-            id:
-              last && String(last.revision) === upperRevision
-                ? String(last.id)
-                : '0',
+            // Every change up to this committed revision was consumed. An
+            // empty poll must not rewind its ID and replay the last change.
+            id: CardSyncCursorPolicy.MAX_DATABASE_ID,
           },
       siteId,
     );

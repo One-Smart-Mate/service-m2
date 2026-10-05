@@ -13,7 +13,9 @@ describe('AuthSessionService', () => {
   };
   const repository = {
     manager: {
-      transaction: jest.fn((callback) => callback(manager)),
+      connection: {
+        transaction: jest.fn((_isolation, callback) => callback(manager)),
+      },
     },
   } as unknown as Repository<AuthSessionEntity>;
   const service = new AuthSessionService(repository);
@@ -36,6 +38,15 @@ describe('AuthSessionService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('retries only a session transaction explicitly aborted by MySQL', async () => {
+    const transaction = repository.manager.connection.transaction as jest.Mock;
+    transaction.mockRejectedValueOnce({ driverError: { code: 'ER_LOCK_DEADLOCK' } });
+    manager.update.mockResolvedValue({ affected: 1 });
+    await expect(service.revokeSession('fixture-session', 7)).resolves.toBe(true);
+    expect(transaction).toHaveBeenCalledTimes(2);
+    expect(transaction).toHaveBeenCalledWith('READ COMMITTED', expect.any(Function));
   });
 
   it('creates a fast session only below an active primary session', async () => {

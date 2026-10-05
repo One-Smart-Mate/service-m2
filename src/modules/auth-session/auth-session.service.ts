@@ -5,6 +5,7 @@ import { AuthSessionEntity } from './entities/auth-session.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { UserHasSitesEntity } from '../users/entities/user.has.sites.entity';
 import { SiteEntity } from '../site/entities/site.entity';
+import { retryDatabaseTransaction } from '../../common/database/site-transaction';
 
 export interface VerifiedSessionCredential {
   type: 'password' | 'fastPassword';
@@ -33,28 +34,33 @@ export class AuthSessionService {
     data: CreateAuthSession,
     credential: VerifiedSessionCredential,
   ): Promise<boolean> {
-    return this.sessionRepository.manager.transaction(async (manager) => {
-      const users = await this.lockActiveUsers(manager, [data.userId]);
-      const user = users.get(Number(data.userId));
-      if (
-        data.sessionType !== 'primary' ||
-        credential.type !== 'password' ||
-        !user ||
-        !credential.value ||
-        user.password !== credential.value ||
-        !(await this.lockMemberships(manager, credential.siteId, [data.userId]))
-      ) {
-        return false;
-      }
-      await manager.insert(AuthSessionEntity, {
-        ...data,
-        actorId: null,
-        parentSessionId: null,
-        createdAt: new Date(),
-        revokedAt: null,
-      });
-      return true;
-    });
+    return retryDatabaseTransaction(
+      this.sessionRepository.manager.connection,
+      async (manager) => {
+        const users = await this.lockActiveUsers(manager, [data.userId]);
+        const user = users.get(Number(data.userId));
+        if (
+          data.sessionType !== 'primary' ||
+          credential.type !== 'password' ||
+          !user ||
+          !credential.value ||
+          user.password !== credential.value ||
+          !(await this.lockMemberships(manager, credential.siteId, [
+            data.userId,
+          ]))
+        ) {
+          return false;
+        }
+        await manager.insert(AuthSessionEntity, {
+          ...data,
+          actorId: null,
+          parentSessionId: null,
+          createdAt: new Date(),
+          revokedAt: null,
+        });
+        return true;
+      },
+    );
   }
 
   async createChildSession(
@@ -63,51 +69,57 @@ export class AuthSessionService {
     actorId: number,
     credential: VerifiedSessionCredential,
   ): Promise<boolean> {
-    return this.sessionRepository.manager.transaction(async (manager) => {
-      // Credential writers lock the user before sites and sessions. Keep that
-      // order, including both identities, before locking the parent session.
-      const users = await this.lockActiveUsers(manager, [actorId, data.userId]);
-      const target = users.get(Number(data.userId));
-      if (
-        data.sessionType !== 'fast' ||
-        credential.type !== 'fastPassword' ||
-        !target ||
-        !credential.value ||
-        target.fastPasswordDigest !== credential.value ||
-        !users.has(Number(actorId)) ||
-        !(await this.lockMemberships(manager, credential.siteId, [
+    return retryDatabaseTransaction(
+      this.sessionRepository.manager.connection,
+      async (manager) => {
+        // Credential writers lock the user before sites and sessions. Keep that
+        // order, including both identities, before locking the parent session.
+        const users = await this.lockActiveUsers(manager, [
           actorId,
           data.userId,
-        ]))
-      ) {
-        return false;
-      }
-      const parent = await manager.findOne(AuthSessionEntity, {
-        where: {
-          id: parentSessionId,
-          userId: actorId,
-          revokedAt: IsNull(),
-        },
-        lock: { mode: 'pessimistic_write' },
-      });
+        ]);
+        const target = users.get(Number(data.userId));
+        if (
+          data.sessionType !== 'fast' ||
+          credential.type !== 'fastPassword' ||
+          !target ||
+          !credential.value ||
+          target.fastPasswordDigest !== credential.value ||
+          !users.has(Number(actorId)) ||
+          !(await this.lockMemberships(manager, credential.siteId, [
+            actorId,
+            data.userId,
+          ]))
+        ) {
+          return false;
+        }
+        const parent = await manager.findOne(AuthSessionEntity, {
+          where: {
+            id: parentSessionId,
+            userId: actorId,
+            revokedAt: IsNull(),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
 
-      if (
-        !parent ||
-        parent.sessionType !== 'primary' ||
-        (parent.expiresAt && parent.expiresAt.getTime() <= Date.now())
-      ) {
-        return false;
-      }
+        if (
+          !parent ||
+          parent.sessionType !== 'primary' ||
+          (parent.expiresAt && parent.expiresAt.getTime() <= Date.now())
+        ) {
+          return false;
+        }
 
-      await manager.insert(AuthSessionEntity, {
-        ...data,
-        actorId,
-        parentSessionId,
-        createdAt: new Date(),
-        revokedAt: null,
-      });
-      return true;
-    });
+        await manager.insert(AuthSessionEntity, {
+          ...data,
+          actorId,
+          parentSessionId,
+          createdAt: new Date(),
+          revokedAt: null,
+        });
+        return true;
+      },
+    );
   }
 
   private async lockActiveUsers(manager: EntityManager, ids: number[]) {
@@ -179,25 +191,28 @@ export class AuthSessionService {
       return false;
     }
 
-    return this.sessionRepository.manager.transaction(async (manager) => {
-      const revokedAt = new Date();
-      const result = await manager.update(
-        AuthSessionEntity,
-        { id: sessionId, userId, revokedAt: IsNull() },
-        { revokedAt },
-      );
+    return retryDatabaseTransaction(
+      this.sessionRepository.manager.connection,
+      async (manager) => {
+        const revokedAt = new Date();
+        const result = await manager.update(
+          AuthSessionEntity,
+          { id: sessionId, userId, revokedAt: IsNull() },
+          { revokedAt },
+        );
 
-      if (!result.affected) {
-        return false;
-      }
+        if (!result.affected) {
+          return false;
+        }
 
-      await manager.update(
-        AuthSessionEntity,
-        { parentSessionId: sessionId, revokedAt: IsNull() },
-        { revokedAt },
-      );
-      return true;
-    });
+        await manager.update(
+          AuthSessionEntity,
+          { parentSessionId: sessionId, revokedAt: IsNull() },
+          { revokedAt },
+        );
+        return true;
+      },
+    );
   }
 
   async rotateSession(
@@ -206,38 +221,41 @@ export class AuthSessionService {
     replacement: CreateAuthSession,
     siteId: number,
   ): Promise<boolean> {
-    return this.sessionRepository.manager.transaction(async (manager) => {
-      // Serialize refresh with credential replacement and account disablement.
-      const users = await this.lockActiveUsers(manager, [userId]);
-      if (
-        !users.has(Number(userId)) ||
-        Number(replacement.userId) !== Number(userId) ||
-        !(await this.lockMemberships(manager, siteId, [userId]))
-      ) {
-        return false;
-      }
-      const revokedAt = new Date();
-      const result = await manager.update(
-        AuthSessionEntity,
-        { id: currentSessionId, userId, revokedAt: IsNull() },
-        { revokedAt },
-      );
-      if (!result.affected) {
-        return false;
-      }
+    return retryDatabaseTransaction(
+      this.sessionRepository.manager.connection,
+      async (manager) => {
+        // Serialize refresh with credential replacement and account disablement.
+        const users = await this.lockActiveUsers(manager, [userId]);
+        if (
+          !users.has(Number(userId)) ||
+          Number(replacement.userId) !== Number(userId) ||
+          !(await this.lockMemberships(manager, siteId, [userId]))
+        ) {
+          return false;
+        }
+        const revokedAt = new Date();
+        const result = await manager.update(
+          AuthSessionEntity,
+          { id: currentSessionId, userId, revokedAt: IsNull() },
+          { revokedAt },
+        );
+        if (!result.affected) {
+          return false;
+        }
 
-      await manager.update(
-        AuthSessionEntity,
-        { parentSessionId: currentSessionId, revokedAt: IsNull() },
-        { revokedAt },
-      );
-      await manager.insert(AuthSessionEntity, {
-        ...replacement,
-        createdAt: new Date(),
-        revokedAt: null,
-      });
-      return true;
-    });
+        await manager.update(
+          AuthSessionEntity,
+          { parentSessionId: currentSessionId, revokedAt: IsNull() },
+          { revokedAt },
+        );
+        await manager.insert(AuthSessionEntity, {
+          ...replacement,
+          createdAt: new Date(),
+          revokedAt: null,
+        });
+        return true;
+      },
+    );
   }
 
   async revokeAllForUser(userId: number): Promise<void> {

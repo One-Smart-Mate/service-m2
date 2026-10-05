@@ -13,7 +13,8 @@ describe('Lightsail deployment configuration', () => {
     DB_PASSWORD: 'fake',
     DB_PORT: '3306',
     DB_USERNAME: 'fixture',
-    JWT_SECRET: 'fake',
+    JWT_SECRET: 'fixture-jwt-secret-with-at-least-32-bytes',
+    FAST_PASSWORD_PEPPER: 'fixture-fast-password-pepper-with-32-bytes',
     JWT_EXPIRES_IN: '1h',
     CLOUDFLARE_R2_ACCESS_KEY: 'fake',
     CLOUDFLARE_R2_SECRET_KEY: 'fake',
@@ -40,6 +41,9 @@ describe('Lightsail deployment configuration', () => {
       readFileSync(join(directory, 'containers.json'), 'utf8'),
     );
     expect(container.fixture.environment.FIREBASE_PRIVATE_KEY).toBe(secret);
+    expect(container.fixture.environment.FAST_PASSWORD_PEPPER).toBe(
+      environment.FAST_PASSWORD_PEPPER,
+    );
     const endpoint = JSON.parse(
       readFileSync(join(directory, 'public.json'), 'utf8'),
     );
@@ -54,4 +58,18 @@ describe('Lightsail deployment configuration', () => {
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('CLOUDFLARE_R2_ACCESS_KEY');
   });
+  it.each(['JWT_SECRET', 'FAST_PASSWORD_PEPPER'])(
+    'blocks missing or short %s before creating a deployment',
+    (key) => {
+      for (const value of ['', 'short']) {
+        const result = spawnSync(process.execPath, [script, '--verify'], {
+          cwd: directory,
+          env: { ...environment, [key]: value },
+          encoding: 'utf8',
+        });
+        expect(result.status).not.toBe(0);
+        expect(result.stderr).toContain(key);
+      }
+    },
+  );
 });

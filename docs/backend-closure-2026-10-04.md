@@ -1,5 +1,7 @@
 # Cierre de hallazgos del backend — 2026-10-04
 
+Actualización: `backend-verification-2026-10-05.md` documenta la ejecución con MySQL real, las correcciones adicionales y el estado actual. Los pendientes de MySQL descritos aquí corresponden al estado de esta revisión histórica.
+
 ## Resultado y alcance
 
 Se implementaron las correcciones de los 8 hallazgos abiertos del informe `backend-reaudit-after-p3-2026-10-04.md`: 3 P1 y 5 P2. Se conservaron las correcciones anteriores de P0/P1/P2/P3. Esta revisión incluyó rutas alternativas, directorios antiguos, creación manual de ejecuciones y mutaciones que afectan la sincronización.

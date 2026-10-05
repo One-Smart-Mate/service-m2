@@ -16,6 +16,7 @@ const REQUIRED_MIGRATIONS = [
   'ReserveCardEvidenceUploads1791072000002',
   'AddSiteTimezone1791072000003',
   'CommitOrderedCardSync1791072000004',
+  'RepairCardSyncClockLocking1791158400000',
 ];
 
 const REQUIRED_INDEXES: IndexRequirement[] = [

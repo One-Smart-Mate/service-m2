@@ -29,7 +29,8 @@
     "migration:run": "npx typeorm-ts-node-commonjs migration:run -d ./src/config/data-source.ts",
     "migration:revert": "npx typeorm-ts-node-commonjs migration:revert -d ./src/config/data-source.ts",
     "db:verify": "ts-node -r tsconfig-paths/register src/scripts/verify-database-readiness.ts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test:integration:mysql": "jest --config ./test/jest-mysql.json --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",

@@ -1,4 +1,10 @@
-import { QueryRunner, Table, TableColumn, TableIndex } from 'typeorm';
+import {
+  QueryRunner,
+  Table,
+  TableColumn,
+  TableIndex,
+  TableForeignKey,
+} from 'typeorm';
 import { OptimizeMobileCriticalQueries1790419200000 } from './1790419200000-OptimizeMobileCriticalQueries';
 
 describe('OptimizeMobileCriticalQueries migration', () => {
@@ -63,9 +69,9 @@ describe('OptimizeMobileCriticalQueries migration', () => {
 
   it('fails before changing data when a required legacy column is missing', async () => {
     const tables = buildTables();
-    tables.get('cards').removeColumn(
-      tables.get('cards').findColumnByName('site_id'),
-    );
+    tables
+      .get('cards')
+      .removeColumn(tables.get('cards').findColumnByName('site_id'));
     const runner = createRunner(tables);
 
     await expect(migration.up(runner)).rejects.toThrow(
@@ -106,5 +112,36 @@ describe('OptimizeMobileCriticalQueries migration', () => {
     await expect(migration.up(runner)).rejects.toThrow(
       'idx_cards_site_sync exists with incompatible columns',
     );
+  });
+  it('restores an InnoDB foreign key index before reverting its replacement', async () => {
+    const tables = buildTables();
+    const priorities = tables.get('priorities');
+    priorities.indices.push(
+      new TableIndex({
+        name: 'idx_priorities_site_state_order',
+        columnNames: ['site_id', 'status', 'deleted_at', 'order', 'id'],
+      }),
+    );
+    priorities.foreignKeys.push(
+      new TableForeignKey({
+        columnNames: ['site_id'],
+        referencedTableName: 'sites',
+        referencedColumnNames: ['id'],
+      }),
+    );
+    const runner = createRunner(tables);
+    runner.dropIndex = jest.fn().mockResolvedValue(undefined);
+    await migration.down(runner);
+    expect(runner.createIndex).toHaveBeenCalledWith(
+      'priorities',
+      expect.objectContaining({
+        name: expect.stringMatching(/^idx_fk_rollback_/),
+        columnNames: ['site_id'],
+      }),
+    );
+    const create = (runner.createIndex as jest.Mock).mock
+      .invocationCallOrder[0];
+    const drop = (runner.dropIndex as jest.Mock).mock.invocationCallOrder[0];
+    expect(create).toBeLessThan(drop);
   });
 });

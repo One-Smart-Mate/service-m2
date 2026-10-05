@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { createDatabaseTlsOptions } from './transport-security.config';
 import { utcMysqlDriver } from './database-utc.config';
 
 const AppDataSource = new DataSource({
   type: 'mysql',
+  connectorPackage: 'mysql2',
   driver: utcMysqlDriver,
   timezone: 'Z',
   host: process.env.DB_HOST,

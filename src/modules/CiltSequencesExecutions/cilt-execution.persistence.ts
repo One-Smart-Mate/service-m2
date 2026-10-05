@@ -379,8 +379,9 @@ export class CiltExecutionPersistence {
   private async validateRelations(
     manager: EntityManager,
     input: ExecutionInput,
-    siteId: number,
+    rawSiteId: number,
   ): Promise<void> {
+    const siteId = Number(rawSiteId);
     if (!Number.isSafeInteger(siteId) || siteId <= 0)
       throw new BadRequestException('Execution site is required');
     const references = [

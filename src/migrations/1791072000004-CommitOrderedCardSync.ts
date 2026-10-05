@@ -41,8 +41,8 @@ export class CommitOrderedCardSync1791072000004 implements MigrationInterface {
             DECLARE v_revision BIGINT UNSIGNED;
             ${event === 'UPDATE' ? `IF OLD.site_id <> NEW.site_id ${table === 'evidences' ? 'OR OLD.card_id <> NEW.card_id' : ''} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Sync resource ownership is immutable'; END IF;` : ''}
             ${table === 'evidences' && event !== 'DELETE' ? `IF NOT EXISTS (SELECT 1 FROM cards WHERE id = NEW.card_id AND site_id = NEW.site_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Evidence must belong to its card site'; END IF;` : ''}
-            INSERT IGNORE INTO card_sync_clock (site_id, revision) VALUES (${row}.site_id, 0);
-            UPDATE card_sync_clock SET revision = revision + 1 WHERE site_id = ${row}.site_id;
+            INSERT INTO card_sync_clock (site_id, revision) VALUES (${row}.site_id, 1)
+              ON DUPLICATE KEY UPDATE revision = revision + 1;
             SELECT revision INTO v_revision FROM card_sync_clock WHERE site_id = ${row}.site_id;
             INSERT INTO card_sync_changes (card_id, site_id, revision, card_uuid, changed_at, deleted_at)
             ${identity}

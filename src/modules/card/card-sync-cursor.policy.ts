@@ -9,6 +9,7 @@ export interface CardSyncCursor {
 export class CardSyncCursorPolicy {
   static readonly DEFAULT_LIMIT = 200;
   static readonly MAX_LIMIT = 500;
+  static readonly MAX_DATABASE_ID = '18446744073709551615';
 
   static decode(cursor?: string, siteId?: number): CardSyncCursor {
     if (!cursor) return { revision: '0', id: '0' };

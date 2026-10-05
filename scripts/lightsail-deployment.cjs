@@ -32,6 +32,7 @@ const keys = [
   'URL_WEB',
   'JWT_EXPIRES_IN',
   'JWT_SECRET',
+  'FAST_PASSWORD_PEPPER',
   'USER_ONE',
   'USER_TWO',
   'WHATSAPP_ACCESS_TOKEN',
@@ -55,6 +56,7 @@ const required = [
   'DB_PORT',
   'DB_USERNAME',
   'JWT_SECRET',
+  'FAST_PASSWORD_PEPPER',
   'JWT_EXPIRES_IN',
   'CLOUDFLARE_R2_ACCESS_KEY',
   'CLOUDFLARE_R2_SECRET_KEY',
@@ -65,6 +67,10 @@ const required = [
 const missing = required.filter((key) => !process.env[key]?.trim());
 if (missing.length)
   throw new Error(`Missing deployment configuration: ${missing.join(', ')}`);
+for (const key of ['JWT_SECRET', 'FAST_PASSWORD_PEPPER']) {
+  if (Buffer.byteLength(process.env[key].trim(), 'utf8') < 32)
+    throw new Error(`${key} must contain at least 32 bytes`);
+}
 if (
   !/^\d+$/.test(process.env.DB_PORT) ||
   Number(process.env.DB_PORT) < 1 ||

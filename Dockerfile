@@ -17,6 +17,9 @@ COPY . .
 # Compila la app
 RUN npm run build
 
+# Keep the runtime dependency tree limited to production packages.
+RUN npm prune --omit=dev --ignore-scripts
+
 # Stage 2: Runtime
 FROM node:22-alpine
 WORKDIR /app
@@ -31,4 +34,3 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
-

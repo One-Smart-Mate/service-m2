@@ -10,8 +10,9 @@ describe('Commit ordered card sync migration SQL generation', () => {
     expect(triggers).toHaveLength(6);
     for (const sql of triggers) {
       expect(sql).toContain(
-        'UPDATE card_sync_clock SET revision = revision + 1',
+        'ON DUPLICATE KEY UPDATE revision = revision + 1',
       );
+      expect(sql).not.toContain('INSERT IGNORE INTO card_sync_clock');
       expect(sql).toContain('ON DUPLICATE KEY UPDATE revision = v_revision');
     }
     expect(

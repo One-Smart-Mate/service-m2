@@ -147,12 +147,12 @@ describe('CardDeltaSyncReader', () => {
     expect(result.hasMore).toBe(false);
     expect(CardSyncCursorPolicy.decode(result.nextCursor, 25)).toEqual({
       revision: '3',
-      id: '0',
+      id: CardSyncCursorPolicy.MAX_DATABASE_ID,
     });
     expect(manager.find).not.toHaveBeenCalled();
   });
 
-  it('keeps the last id when the final change shares the upper bound', async () => {
+  it('closes the whole committed revision when the final page is consumed', async () => {
     const syncUntil = new Date('2026-09-24T12:00:00.000Z');
     jest
       .mocked(manager.query)
@@ -179,7 +179,7 @@ describe('CardDeltaSyncReader', () => {
 
     expect(CardSyncCursorPolicy.decode(result.nextCursor, 25)).toEqual({
       revision: '3',
-      id: '9',
+      id: CardSyncCursorPolicy.MAX_DATABASE_ID,
     });
   });
 

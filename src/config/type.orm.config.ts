@@ -9,6 +9,7 @@ const typeOrmConfig = TypeOrmModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (configService: ConfigService) => ({
     type: 'mysql' as const,
+    connectorPackage: 'mysql2' as const,
     driver: utcMysqlDriver,
     timezone: 'Z',
     username: configService.get<string>('DB_USERNAME'),

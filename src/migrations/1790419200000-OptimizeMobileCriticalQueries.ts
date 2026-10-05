@@ -1,4 +1,5 @@
-import { MigrationInterface, QueryRunner, TableIndex } from 'typeorm';
+import { createHash } from 'node:crypto';
+import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
 interface RequiredIndex {
   table: string;
@@ -6,9 +7,7 @@ interface RequiredIndex {
   columns: string[];
 }
 
-export class OptimizeMobileCriticalQueries1790419200000
-  implements MigrationInterface
-{
+export class OptimizeMobileCriticalQueries1790419200000 implements MigrationInterface {
   private readonly indexes: RequiredIndex[] = [
     {
       table: 'cards',
@@ -63,13 +62,7 @@ export class OptimizeMobileCriticalQueries1790419200000
     {
       table: 'preclassifiers',
       name: 'idx_preclassifiers_site_state_type',
-      columns: [
-        'site_id',
-        'status',
-        'deleted_at',
-        'cardType_id',
-        'id',
-      ],
+      columns: ['site_id', 'status', 'deleted_at', 'cardType_id', 'id'],
     },
     {
       table: 'levels',
@@ -97,6 +90,7 @@ export class OptimizeMobileCriticalQueries1790419200000
     for (const index of [...this.indexes].reverse()) {
       const table = await queryRunner.getTable(index.table);
       if (table?.indices.some((existing) => existing.name === index.name)) {
+        await this.preserveForeignKeyIndexes(queryRunner, table, index.name);
         await queryRunner.dropIndex(index.table, index.name);
       }
     }
@@ -105,6 +99,40 @@ export class OptimizeMobileCriticalQueries1790419200000
       if (await queryRunner.hasColumn(tableName, 'sync_changed_at')) {
         await queryRunner.dropColumn(tableName, 'sync_changed_at');
       }
+    }
+  }
+
+  private async preserveForeignKeyIndexes(
+    queryRunner: QueryRunner,
+    table: Table,
+    removedName: string,
+  ): Promise<void> {
+    const removed = table.indices.find((index) => index.name === removedName);
+    for (const foreignKey of table.foreignKeys) {
+      if (!this.hasPrefix(removed.columnNames, foreignKey.columnNames))
+        continue;
+      const remaining = [
+        ...table.indices.filter((index) => index.name !== removedName),
+        ...table.uniques,
+        { columnNames: table.primaryColumns.map((column) => column.name) },
+      ];
+      if (
+        remaining.some((index) =>
+          this.hasPrefix(index.columnNames, foreignKey.columnNames),
+        )
+      )
+        continue;
+      // InnoDB can replace an automatically created FK index with our wider
+      // index. Restore a minimal supporting index before reverting that index.
+      const identity = `${table.name}:${foreignKey.columnNames.join(',')}`;
+      const name = `idx_fk_rollback_${createHash('sha256').update(identity).digest('hex').slice(0, 24)}`;
+      await queryRunner.createIndex(
+        table.name,
+        new TableIndex({
+          name,
+          columnNames: foreignKey.columnNames,
+        }),
+      );
     }
   }
 

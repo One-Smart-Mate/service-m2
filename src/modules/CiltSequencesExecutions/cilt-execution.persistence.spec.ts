@@ -224,6 +224,14 @@ describe('CILT transactional identity and references', () => {
     ).rejects.toThrow(BadRequestException);
     expect(repository.save).not.toHaveBeenCalled();
   });
+  it('completes executions when MySQL returns a bigint site ID as a string', async () => {
+    repository.findOne.mockResolvedValue({
+      ...input, id: 22, siteId: '7', secuenceStart: new Date('2026-10-04T08:00:00Z'),
+    });
+    const saved = await persistence.stop({ id: 22, stopDate: '2026-10-04T08:01:00Z' });
+    expect(saved.status).toBe('R');
+    expect(saved.realDuration).toBe(60);
+  });
   it.each(['siteId', 'levelId', 'positionId', 'userId', 'siteExecutionId'])(
     'keeps execution %s immutable',
     async (field) => {
