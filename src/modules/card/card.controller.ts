@@ -333,12 +333,11 @@ export class CardController {
   async downloadEvidence(
     @Param('siteId', ParseIntPipe) siteId: number,
     @Param('token') token: string,
-    @Query('thumb') thumb?: string,
   ) {
-    const wantsThumb = thumb === '1' || thumb === 'true';
-    const evidence = wantsThumb
-      ? await this.cardEvidenceStorage.downloadCardEvidenceThumb(siteId, token)
-      : await this.cardEvidenceStorage.downloadCardEvidence(siteId, token);
+    const evidence = await this.cardEvidenceStorage.downloadCardEvidence(
+      siteId,
+      token,
+    );
     return new StreamableFile(evidence.buffer, {
       type: evidence.contentType,
       length: evidence.size,
