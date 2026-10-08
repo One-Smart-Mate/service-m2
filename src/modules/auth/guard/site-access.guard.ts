@@ -129,7 +129,10 @@ export class SiteAccessGuard implements CanActivate {
           request[resourceAccess.source]?.[resourceAccess.requestKey];
         if (
           resourceAccess.required === false &&
-          (resourceId === undefined || resourceId === null || resourceId === '')
+          (resourceId === undefined ||
+            resourceId === null ||
+            resourceId === '' ||
+            Number(resourceId) === 0)
         ) {
           continue;
         }
