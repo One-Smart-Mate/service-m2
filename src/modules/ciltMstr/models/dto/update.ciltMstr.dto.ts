@@ -18,10 +18,10 @@ export class UpdateCiltMstrDTO {
   @Length(1, 45)
   ciltName?: string;
 
-  @ApiProperty({ required: false, description: 'CILT description', maxLength: 255, example: 'Detailed steps for welding metal parts' })
+  @ApiProperty({ required: false, description: 'CILT description', maxLength: 500, example: 'Detailed steps for welding metal parts' })
   @IsOptional()
   @IsString()
-  @Length(1, 255)
+  @Length(1, 500)
   ciltDescription?: string;
 
   @ApiProperty({ required: false, description: 'Creator ID', example: 10 })
