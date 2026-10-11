@@ -135,10 +135,14 @@ export class PositionPersistence {
     if (!site)
       throw new BadRequestException('Active position site is required');
 
-    const levelId = this.requiredId(input.levelId, 'levelId');
+    // A position may be a "starting" position not tied to any level node.
+    // When levelId is absent (null/0) we skip the tree walk and leave the
+    // level/area fields null; otherwise we derive them from the node hierarchy.
+    const hasLevel = input.levelId != null && Number(input.levelId) !== 0;
+    const levelId = hasLevel ? this.requiredId(input.levelId, 'levelId') : null;
     const levels: LevelEntity[] = [];
     const visited = new Set<number>();
-    let currentId = levelId;
+    let currentId = levelId ?? 0;
     while (currentId) {
       if (visited.has(currentId)) {
         throw new BadRequestException(
@@ -193,19 +197,21 @@ export class PositionPersistence {
       }
       if (id === responsibleId) responsibleName = user.name;
     }
-    const root = levels[levels.length - 1];
+    const root = levels.length ? levels[levels.length - 1] : null;
     return {
       siteId,
       siteName: site.name,
       siteType: site.siteType,
       levelId,
-      levelName: levels[0].name,
-      areaId: Number(root.id),
-      areaName: root.name,
-      route: levels
-        .map(({ name }) => name)
-        .reverse()
-        .join('/'),
+      levelName: levels.length ? levels[0].name : null,
+      areaId: root ? Number(root.id) : null,
+      areaName: root ? root.name : null,
+      route: levels.length
+        ? levels
+            .map(({ name }) => name)
+            .reverse()
+            .join('/')
+        : '/',
       nodeResponsableId: responsibleId,
       nodeResponsableName: responsibleName,
     };
