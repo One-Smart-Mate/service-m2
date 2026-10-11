@@ -142,7 +142,8 @@ export class CiltSequencesExecutionsService {
         where: { 
           id,
           deletedAt: IsNull() 
-        } 
+        },
+        relations: ['evidences'],
       });
       if (!execution) {
         throw new NotFoundCustomException(NotFoundCustomExceptionType.CILT_SEQUENCES_EXECUTIONS);
