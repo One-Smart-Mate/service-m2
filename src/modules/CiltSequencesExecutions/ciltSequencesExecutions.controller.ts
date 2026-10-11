@@ -1,7 +1,9 @@
 import { FastSiteScoped } from 'src/common/decorators/fast-site-scoped.decorator';
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request } from '@nestjs/common';
-import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Request, UseInterceptors, UploadedFile, BadRequestException, ParseIntPipe } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBody, ApiParam, ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { CiltSequencesExecutionsService } from './ciltSequencesExecutions.service';
+import { R2CiltEvidenceService } from './r2-cilt-evidence.service';
 import { CreateCiltSequencesExecutionDTO } from './models/dto/create.ciltSequencesExecution.dto';
 import { UpdateCiltSequencesExecutionDTO } from './models/dto/update.ciltSequencesExecution.dto';
 import { StartCiltSequencesExecutionDTO } from './models/dto/start.ciltSequencesExecution.dto';
@@ -29,7 +31,10 @@ import {
 @ApiBearerAuth()
 @Controller('cilt-sequences-executions')
 export class CiltSequencesExecutionsController {
-  constructor(private readonly ciltSequencesExecutionsService: CiltSequencesExecutionsService) {}
+  constructor(
+    private readonly ciltSequencesExecutionsService: CiltSequencesExecutionsService,
+    private readonly r2CiltEvidence: R2CiltEvidenceService,
+  ) {}
 
   @Get("/all")
   @RequireRoles(PLATFORM_ADMIN_ROLE)
@@ -357,6 +362,66 @@ export class CiltSequencesExecutionsController {
   @ApiBody({ type: CreateEvidenceDTO })
   createEvidence(@Body() createEvidenceDTO: CreateEvidenceDTO) {
     return this.ciltSequencesExecutionsService.createEvidence(createEvidenceDTO);
+  }
+
+  @Post('evidence/:siteId/upload')
+  @SiteResourceAccess({
+    resource: 'site',
+    lookup: 'id',
+    source: 'params',
+    requestKey: 'siteId',
+  })
+  @ApiOperation({
+    summary: 'Upload a CILT execution evidence photo (stores to R2 and registers it)',
+  })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['executionId', 'file'],
+      properties: {
+        executionId: { type: 'number', example: 1 },
+        type: { type: 'string', example: 'INITIAL' },
+        file: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+      fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'].includes(
+          file.mimetype,
+        );
+        cb(
+          allowed ? null : new BadRequestException('Unsupported evidence file type'),
+          allowed,
+        );
+      },
+    }),
+  )
+  async uploadEvidence(
+    @Param('siteId', ParseIntPipe) siteId: number,
+    @Body() body: { executionId: string | number; type?: string },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) throw new BadRequestException('Evidence file is required');
+    const executionId = Number(body.executionId);
+    if (!Number.isInteger(executionId) || executionId <= 0) {
+      throw new BadRequestException('A valid executionId is required');
+    }
+    const evidenceUrl = await this.r2CiltEvidence.uploadExecutionEvidence(
+      siteId,
+      executionId,
+      file,
+    );
+    return this.ciltSequencesExecutionsService.createEvidence({
+      executionId,
+      evidenceUrl,
+      type: body.type as any,
+      createdAt: new Date().toISOString(),
+    } as CreateEvidenceDTO);
   }
 
   @Delete('evidence/:id')

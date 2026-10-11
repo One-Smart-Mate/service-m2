@@ -21,6 +21,7 @@ import { CardEntity } from '../card/entities/card.entity';
 import { CiltMstrPositionLevelsEntity } from '../ciltMstrPositionLevels/entities/ciltMstrPositionLevels.entity';
 import { CiltExecutionPersistence } from './cilt-execution.persistence';
 import { CiltExecutionReportsService } from './cilt-execution-reports.service';
+import { R2CiltEvidenceService } from './r2-cilt-evidence.service';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { CiltExecutionReportsService } from './cilt-execution-reports.service';
     CiltExecutionPersistence,
     CiltExecutionReportsService,
     CustomLoggerService,
+    R2CiltEvidenceService,
   ],
   exports: [CiltSequencesExecutionsService],
 })
