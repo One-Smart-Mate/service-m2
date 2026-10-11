@@ -36,6 +36,15 @@ export class CiltMstrController {
     return await this.ciltMstrService.findBySiteId(siteId);
   }
 
+  @Get('site/:siteId/with-sequences')
+  @ApiOperation({
+    summary: 'Get all CILTs of a site including their sequences (offline sync)',
+  })
+  @ApiParam({ name: 'siteId', type: 'number', description: 'Site ID' })
+  async findBySiteIdWithSequences(@Param('siteId') siteId: number) {
+    return await this.ciltMstrService.findBySiteIdWithSequences(siteId);
+  }
+
   @FastSiteScoped()
   @Post('user')
   @SelfOrRoles({

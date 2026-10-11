@@ -54,6 +54,28 @@ export class CiltMstrService {
     }
   };
 
+  // Returns every active CILT of a site WITH its sequences (no executions), in a
+  // single response. Used by the mobile app's offline catalog sync so it can
+  // store procedures and sequences locally and work without connectivity.
+  findBySiteIdWithSequences = async (siteId: number) => {
+    try {
+      const cilts = await this.ciltQueryService.getActiveCiltsForSite(siteId);
+      const ciltIds = cilts.map((c) => c.id);
+      const sequences =
+        ciltIds.length > 0
+          ? await this.ciltQueryService.getActiveSequencesForCilts(ciltIds)
+          : [];
+      return cilts.map((cilt) => ({
+        ...cilt,
+        sequences: sequences.filter(
+          (s) => Number(s.ciltMstrId) === Number(cilt.id),
+        ),
+      }));
+    } catch (exception) {
+      HandleException.exception(exception);
+    }
+  };
+
   findById = async (id: number) => {
     try {
       const cilt = await this.ciltQueryService.getCiltById(id);
