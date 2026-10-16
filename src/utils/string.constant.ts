@@ -229,6 +229,18 @@ export const stringConstants = {
         footer: 'Por favor, ingresa a la plataforma para revisarlo.',
         help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
         team: '– El Equipo OSM'
+      },
+      oplExpiredTraining: {
+        subject: 'Capacitación vencida: debes volver a tomar un curso',
+        greeting: 'Hola',
+        message: 'Tu capacitación del siguiente curso (OPL) ha vencido y debes volver a tomarla:',
+        objectiveLabel: 'Objetivo',
+        expiredOnLabel: 'Venció el',
+        howToLabel: '¿Cómo tomarlo?',
+        howTo: 'Ingresa a la plataforma OSM (o a la app en tu celular), ve a la sección de OPL y abre este curso para tomarlo nuevamente. Al terminar, márcalo como tomado para que tu supervisor lo valide.',
+        warning: 'Mientras no vuelvas a tomar y validar este curso, tu capacitación figurará como vencida.',
+        help: '¿Necesitas ayuda? Contáctanos en cualquier momento, ¡estamos aquí para ti!',
+        team: '– El Equipo OSM'
       }
     },
     [LANG_EN]: {
@@ -271,6 +283,18 @@ export const stringConstants = {
         greeting: 'Hello',
         message: 'You have been assigned as the reviewer of the OPL',
         footer: 'Please log in to the platform to review it.',
+        help: 'Need help? Reach out to us anytime—we\'re here for you!',
+        team: '– The OSM Team'
+      },
+      oplExpiredTraining: {
+        subject: 'Training expired: you must retake a course',
+        greeting: 'Hello',
+        message: 'Your training for the following course (OPL) has expired and you must retake it:',
+        objectiveLabel: 'Objective',
+        expiredOnLabel: 'Expired on',
+        howToLabel: 'How to take it',
+        howTo: 'Log in to the OSM platform (or the mobile app), go to the OPL section and open this course to take it again. When finished, mark it as taken so your supervisor can validate it.',
+        warning: 'Until you retake and validate this course, your training will show as expired.',
         help: 'Need help? Reach out to us anytime—we\'re here for you!',
         team: '– The OSM Team'
       }

@@ -96,4 +96,30 @@ export class MailService {
       HandleException.exception(exception);
     }
   }
+
+  async sendOplExpiredTrainingEmail(
+    user: Partial<UserEntity>,
+    oplTitle: string,
+    oplObjective: string | null,
+    expiredOn: string,
+    translation: typeof stringConstants.LANG_ES | typeof stringConstants.LANG_EN = stringConstants.LANG_ES
+  ) {
+    try {
+      this.logger.logEmail('Sending OPL expired training email', { email: user.email, oplTitle });
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: stringConstants.emailTemplates[translation].oplExpiredTraining.subject,
+        html: emailTemplates[translation].sendOplExpiredTrainingMessage(
+          user.name,
+          oplTitle,
+          oplObjective,
+          expiredOn,
+          stringConstants.primaryColor,
+        ),
+      });
+    } catch (exception) {
+      this.logger.logException('MailService', 'sendOplExpiredTrainingEmail', exception);
+      HandleException.exception(exception);
+    }
+  }
 }

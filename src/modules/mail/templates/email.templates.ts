@@ -110,6 +110,45 @@ const getEmailTemplate = (lang: typeof stringConstants.LANG_ES | typeof stringCo
         <p style="font-size: 14px; color: #666;">${t.oplReviewAssignment.help}</p>
         <p style="font-size: 14px; color: #333;">${t.oplReviewAssignment.team}</p>
       </div>
+    </div>`,
+
+    sendOplExpiredTrainingMessage: (
+      userName: string,
+      oplTitle: string,
+      oplObjective: string | null,
+      expiredOn: string,
+      primaryColor: string,
+    ) => `
+    <div style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background-color: #fff;">
+      <div style="background-color: ${primaryColor}; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: #fff; font-size: 24px; margin: 0;">${t.oplExpiredTraining.subject}</h1>
+      </div>
+      <div style="padding: 20px;">
+        <p style="font-size: 16px; color: #666;">
+          ${t.oplExpiredTraining.greeting} <strong>${userName}</strong>,
+        </p>
+        <p style="font-size: 16px; color: #666;">${t.oplExpiredTraining.message}</p>
+        <div style="margin: 20px 0; background-color: #f6f6f6; padding: 16px; border-radius: 6px; border-left: 4px solid ${primaryColor};">
+          <p style="font-size: 18px; color: #333; margin: 0 0 8px 0;"><strong>${oplTitle}</strong></p>
+          ${
+            oplObjective
+              ? `<p style="font-size: 14px; color: #555; margin: 0 0 8px 0;">${t.oplExpiredTraining.objectiveLabel}: ${oplObjective}</p>`
+              : ''
+          }
+          <p style="font-size: 14px; color: #c0392b; margin: 0;">${t.oplExpiredTraining.expiredOnLabel}: <strong>${expiredOn}</strong></p>
+        </div>
+        <div style="margin: 20px 0;">
+          <p style="font-size: 15px; color: #333; margin: 0 0 6px 0;"><strong>${t.oplExpiredTraining.howToLabel}:</strong></p>
+          <p style="font-size: 14px; color: #555; margin: 0;">${t.oplExpiredTraining.howTo}</p>
+        </div>
+        <div style="margin: 20px 0; background-color: #fff3f3; padding: 15px; border-radius: 5px; border-left: 4px solid #ff0000;">
+          <p style="font-size: 14px; color: #ff0000; margin: 0;">${t.oplExpiredTraining.warning}</p>
+        </div>
+      </div>
+      <div style="background-color: #f9f9f9; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
+        <p style="font-size: 14px; color: #666;">${t.oplExpiredTraining.help}</p>
+        <p style="font-size: 14px; color: #333;">${t.oplExpiredTraining.team}</p>
+      </div>
     </div>`
   };
 };
