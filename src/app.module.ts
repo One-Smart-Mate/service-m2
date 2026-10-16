@@ -35,6 +35,7 @@ import { CiltFrequenciesModule } from './modules/ciltFrequencies/ciltFrequencies
 import { CiltSequencesExecutionsModule } from './modules/CiltSequencesExecutions/ciltSequencesExecutions.module';
 import { CiltSequencesExecutionsEvidencesModule } from './modules/CiltSequencesExecutionsEvidences/ciltSequencesExecutionsEvidences.module';
 import { OplLevelsModule } from './modules/oplLevels/oplLevels.module';
+import { OplTrainingModule } from './modules/oplTraining/oplTraining.module';
 import { CiltSecuencesScheduleModule } from './modules/ciltSecuencesSchedule/ciltSecuencesSchedule.module';
 import { CiltMstrPositionLevelsModule } from './modules/ciltMstrPositionLevels/ciltMstrPositionLevels.module';
 import { TaskModule } from './modules/task/task.module';
@@ -94,6 +95,7 @@ import { AuthSessionModule } from './modules/auth-session/auth-session.module';
     OplDetailsModule,
     RepositoryModule,
     OplLevelsModule,
+    OplTrainingModule,
     CiltSecuencesScheduleModule,
     CiltMstrPositionLevelsModule,
     TaskModule,

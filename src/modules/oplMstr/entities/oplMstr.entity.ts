@@ -49,6 +49,9 @@ export class OplMstr {
   @Column("varchar", { name: "opl_type", nullable: true, length: 50 })
   oplType: string | null;
 
+  @Column("int", { name: "validity_days", nullable: true })
+  validityDays: number | null;
+
   @Column("tinyint", { name: "order", default: 1, nullable: true })
   order: number;
 
