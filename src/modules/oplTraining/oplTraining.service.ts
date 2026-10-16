@@ -322,6 +322,7 @@ export class OplTrainingService {
         return {
           id: r.id,
           oplId: r.oplId,
+          siteId: r.siteId,
           status: r.status,
           selfCompletedAt: r.selfCompletedAt,
           validatedAt: r.validatedAt,
